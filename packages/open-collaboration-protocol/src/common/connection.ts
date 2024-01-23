@@ -28,10 +28,10 @@ export interface EditorHandler {
     open(uri: string): void;
     onTextChanged(handler: BroadcastHandler<[types.EditorChange]>): void;
     textChanged(update: types.EditorChange): void;
-    onPresenceUpdated(handler: BroadcastHandler<[types.EditorPresence]>): void;
-    presenceUpdated(presense: types.EditorPresence): void;
-    onPresenceRequest(handler: Handler<[types.EditorPresenceRequestParams], types.EditorPresence>): void;
-    presenceRequest(params: types.EditorPresenceRequestParams): Promise<types.EditorPresence>;
+    onPresenceUpdated(handler: BroadcastHandler<[types.EditorPresenceUpdate]>): void;
+    presenceUpdated(presense: types.EditorPresenceUpdate): void;
+    onPresenceRequest(handler: Handler<[types.EditorPresenceRequestParams], types.EditorFilePresence>): void;
+    presenceRequest(params: types.EditorPresenceRequestParams): Promise<types.EditorFilePresence>;
 }
 
 export interface FileSystemHandler {

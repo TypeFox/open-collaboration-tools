@@ -114,9 +114,13 @@ export interface EditorPresenceRequestParams {
     path: string
 }
 
-export interface EditorPresence {
-    peerId: string;
+export interface EditorPresenceUpdate {
     path: string
+    selection: EditorSelection[]
+}
+
+export interface EditorFilePresence {
+    peerId: string
     selection: EditorSelection[]
 }
 

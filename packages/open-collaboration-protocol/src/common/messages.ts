@@ -25,8 +25,8 @@ export namespace Messages {
     export namespace Editor {
         export const Open = new NotificationType<[string]>('editor/open');
         export const TextChanged = new BroadcastType<[types.EditorChange]>('editor/textChanged');
-        export const PresenceUpdated = new BroadcastType<[types.EditorPresence]>('editor/presenceUpdated');
-        export const PresenceRequest = new RequestType<[types.EditorPresenceRequestParams], types.EditorPresence>('editor/presenceRequest');
+        export const PresenceUpdated = new BroadcastType<[types.EditorPresenceUpdate]>('editor/presenceUpdated');
+        export const PresenceRequest = new RequestType<[types.EditorPresenceRequestParams], types.EditorFilePresence[]>('editor/presenceRequest');
     }
 
     export namespace FileSystem {

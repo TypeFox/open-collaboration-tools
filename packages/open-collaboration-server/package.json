@@ -3,8 +3,8 @@
   "version": "0.0.1",
   "description": "Open Collaboration Server Implementation",
   "dependencies": {
-    "open-collaboration-protocol": "0.0.1",
-    "open-collaboration-rpc": "0.0.1",
+    "open-collaboration-protocol": "0.0.2",
+    "open-collaboration-rpc": "0.0.2",
     "inversify": "^6.0.2",
     "jose": "^4.14.4",
     "nanoid": "^3.0.0",
