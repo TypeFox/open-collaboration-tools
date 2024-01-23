@@ -1,0 +1,8 @@
+{
+    "files": [],
+    "references": [
+        { "path": "./packages/open-collaboration-rpc/tsconfig.src.json" },
+        { "path": "./packages/open-collaboration-protocol/tsconfig.src.json" },
+        { "path": "./packages/open-collaboration-server/tsconfig.src.json" }
+    ]
+ }

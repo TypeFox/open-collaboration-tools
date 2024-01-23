@@ -1,0 +1,28 @@
+{
+  "name": "open-collaboration-protocol",
+  "version": "0.0.1",
+  "description": "Open Collaboration Protocol Implementation",
+  "dependencies": {
+    "open-collaboration-rpc": "0.0.1"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "exports": {
+    ".": "./lib/common/index.js"
+  },
+  "keywords": [],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/TypeFox/open-collaboration-server.git"
+  },
+  "bugs": {
+    "url": "https://github.com/TypeFox/open-collaboration-server/issues"
+  },
+  "homepage": "https://github.com/TypeFox/open-collaboration-server",
+  "files": [
+    "lib",
+    "src"
+  ]
+}

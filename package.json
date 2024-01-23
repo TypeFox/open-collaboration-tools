@@ -1,0 +1,47 @@
+{
+  "name": "open-collaboration-server-workspaces",
+  "private": true,
+  "engineStrict": true,
+  "engines": {
+    "node": ">= 18.0.0",
+    "npm": ">= 9.5.0"
+  },
+  "scripts": {
+    "clean": "shx rm -rf packages/*/lib packages/*/out packages/*/*.tsbuildinfo",
+    "build": "tsc -b tsconfig.build.json",
+    "watch": "tsc -b tsconfig.build.json -w",
+    "build:clean": "npm run clean && npm run build",
+    "lint": "npm run lint --workspaces",
+    "start": "npm run start --workspace=open-collaboration-server",
+    "test": "vitest",
+    "test-ui": "vitest --ui",
+    "coverage": "vitest run --coverage",
+    "reset:repo": "git clean -f -X -d"
+  },
+  "devDependencies": {
+    "@types/node": "~16.18.41",
+    "@types/vscode": "~1.67.0",
+    "@typescript-eslint/eslint-plugin": "~6.4.1",
+    "@typescript-eslint/parser": "~6.4.1",
+    "@vitest/coverage-v8": "~1.0.0",
+    "@vitest/ui": "~1.0.0",
+    "concurrently": "~8.2.1",
+    "esbuild": "~0.19.2",
+    "eslint": "~8.47.0",
+    "eslint-plugin-header": "~3.1.1",
+    "editorconfig": "~2.0.0",
+    "shx": "~0.3.4",
+    "typescript": "~5.1.6",
+    "vitest": "~1.0.0"
+  },
+  "overrides": {
+   "@types/node": "~16.18.41"
+  },
+  "volta": {
+    "node": "18.17.1",
+    "npm": "9.6.7"
+  },
+  "workspaces": [
+    "packages/*"
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "name": "open-collaboration-rpc",
+  "version": "0.0.1",
+  "description": "Open Collaboration RPC Implementation",
+  "dependencies": {
+    "socket.io-client": "^4.5.3"
+  },
+  "files": [
+    "lib",
+    "src"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "exports": {
+    ".": "./lib/common/index.js",
+    "./browser/websocket": "./lib/browser/websocket-transport.js",
+    "./browser/socket.io": "./lib/browser/socket-io-transport.js"
+  },
+  "keywords": [],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/TypeFox/open-collaboration-server.git"
+  },
+  "bugs": {
+    "url": "https://github.com/TypeFox/open-collaboration-server/issues"
+  },
+  "homepage": "https://github.com/TypeFox/open-collaboration-server"
+}
