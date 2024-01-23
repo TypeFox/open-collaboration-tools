@@ -118,21 +118,33 @@ export class AbstractBroadcastConnection implements BroadcastConnection {
         }
     }
 
+    private write(message: unknown): void {
+        this.transport.write(this.encoding.encode(message));
+    }
+
+    onRequest(type: string, handler: Handler<any[], any>): void;
+    onRequest<P extends unknown[], R>(type: RequestType<P, R> | string, handler: Handler<P, R>): void;
     onRequest(type: RequestType<any[], any> | string, handler: Handler<any[], any>): void {
         const method = typeof type === 'string' ? type : type.method;
         this.messageHandlers.set(method, handler);
     }
 
+    onNotification(type: string, handler: Handler<any[]>): void
+    onNotification<P extends unknown[]>(type: NotificationType<P> | string, handler: Handler<P>): void
     onNotification(type: NotificationType<any[]> | string, handler: Handler<any[]>): void {
         const method = typeof type === 'string' ? type : type.method;
         this.messageHandlers.set(method, handler);
     }
 
+    onBroadcast(type: BroadcastType<any[]> | string, handler: BroadcastHandler<any[]>): void;
+    onBroadcast(type: BroadcastType<any[]> | string, handler: BroadcastHandler<any[]>): void;
     onBroadcast(type: BroadcastType<any[]> | string, handler: BroadcastHandler<any[]>): void {
         const method = typeof type === 'string' ? type : type.method;
         this.messageHandlers.set(method, handler);
     }
 
+    sendRequest(type: string, ...parameters: any[]): Promise<any>;
+    sendRequest<P extends unknown[], R>(type: RequestType<P, R> | string, ...parameters: P): Promise<R>;
     sendRequest(type: RequestType<any, any> | string, ...parameters: any[]): Promise<any> {
         const id = this.requestId++;
         const deferred = new Deferred<any>();
@@ -153,15 +165,15 @@ export class AbstractBroadcastConnection implements BroadcastConnection {
         return deferred.promise;
     }
 
-    private write(message: unknown): void {
-        this.transport.write(this.encoding.encode(message));
-    }
-
+    sendNotification(type: string, ...parameters: any[]): void;
+    sendNotification<P extends unknown[]>(type: NotificationType<P>, ...parameters: P): void;
     sendNotification(type: NotificationType<any> | string, ...parameters: any[]): void {
         const message = NotificationMessage.create(type, parameters);
         this.write(message);
     }
 
+    sendBroadcast(type: string, ...parameters: any[]): void;
+    sendBroadcast<P extends unknown[]>(type: BroadcastType<P>, ...parameters: P): void;
     sendBroadcast(type: BroadcastType<any> | string, ...parameters: any[]): void {
         const message = BroadcastMessage.create(type, '', parameters);
         this.write(message);

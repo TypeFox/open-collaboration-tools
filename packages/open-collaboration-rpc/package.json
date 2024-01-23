@@ -1,6 +1,6 @@
 {
   "name": "open-collaboration-rpc",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Open Collaboration RPC Implementation",
   "dependencies": {
     "socket.io-client": "^4.5.3"

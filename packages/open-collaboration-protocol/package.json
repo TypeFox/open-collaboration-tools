@@ -1,9 +1,9 @@
 {
   "name": "open-collaboration-protocol",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Open Collaboration Protocol Implementation",
   "dependencies": {
-    "open-collaboration-rpc": "0.0.2"
+    "open-collaboration-rpc": "0.0.3"
   },
   "publishConfig": {
     "access": "public"

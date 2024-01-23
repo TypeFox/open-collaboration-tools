@@ -120,6 +120,11 @@ export interface EditorPresenceUpdate {
 }
 
 export interface EditorFilePresence {
+    path: string
+    presences: EditorPeerPresence[]
+}
+
+export interface EditorPeerPresence {
     peerId: string
     selection: EditorSelection[]
 }
