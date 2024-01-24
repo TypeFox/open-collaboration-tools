@@ -1,10 +1,10 @@
 {
   "name": "open-collaboration-server",
-  "version": "0.0.1",
+  "version": "0.0.3",
   "description": "Open Collaboration Server Implementation",
   "dependencies": {
-    "open-collaboration-protocol": "0.0.4",
-    "open-collaboration-rpc": "0.0.4",
+    "open-collaboration-protocol": "0.0.6",
+    "open-collaboration-rpc": "0.0.5",
     "inversify": "^6.0.2",
     "jose": "^4.14.4",
     "nanoid": "^3.0.0",

@@ -4,8 +4,8 @@
 // terms of the MIT License, which is available in the project root.
 // ******************************************************************************
 
-import { Emitter, Event, Deferred } from '../common/utils';
-import { MessageTransport, MessageTransportProvider } from '../common';
+import { Emitter, Event, Deferred } from './utils';
+import { MessageTransport, MessageTransportProvider } from './transport';
 
 export const WebSocketTransportProvider: MessageTransportProvider = {
     id: 'websocket',

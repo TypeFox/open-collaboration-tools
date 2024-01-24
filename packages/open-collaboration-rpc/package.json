@@ -1,10 +1,7 @@
 {
   "name": "open-collaboration-rpc",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "description": "Open Collaboration RPC Implementation",
-  "dependencies": {
-    "socket.io-client": "^4.5.3"
-  },
   "files": [
     "lib",
     "src"
@@ -12,8 +9,8 @@
   "publishConfig": {
     "access": "public"
   },
-  "main": "./lib/common/index.js",
-  "types": "./lib/common/index.d.ts",
+  "main": "./lib/index.js",
+  "types": "./lib/index.d.ts",
   "keywords": [],
   "license": "MIT",
   "repository": {

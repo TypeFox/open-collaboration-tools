@@ -10,14 +10,15 @@ import * as path from 'path';
 import { Server } from 'socket.io';
 import * as ws from 'ws';
 import * as express from 'express';
-import { SocketIoChannel, WebSocketChannel } from './channel';
+import { Channel, SocketIoChannel, WebSocketChannel } from './channel';
 import { PeerFactory } from './peer';
 import { RoomManager, isRoomClaim } from './room-manager';
 import { UserManager } from './user-manager';
 import { CredentialsManager } from './credentials-manager';
 import { User } from './types';
-import { ErrorMessage } from 'open-collaboration-rpc';
+import { ErrorMessage, MessageEncoding } from 'open-collaboration-rpc';
 import { EncodingProvider } from './encoding-provider';
+import { ProtocolServerMetaData } from 'open-collaboration-protocol';
 
 @injectable()
 export class CollaborationServer {
@@ -54,57 +55,23 @@ export class CollaborationServer {
                 }
                 return acc;
             }, {} as Record<string, string>);
-            const jwt = headers['x-jwt'] as string;
-            if (!jwt) {
-                socket.close();
-                return;
-            }
-            let encoding = headers['x-encoding'] as string;
-            if (!encoding) {
-                encoding = 'json';
-            }
             try {
-                const messageEncoding = this.encodingProvider.getEncoding(encoding);
-                const roomClaim = await this.credentials.verifyJwt(jwt, isRoomClaim);
-                const channel = new WebSocketChannel(socket, messageEncoding);
-                const peer = this.peerFactory({
-                    user: roomClaim.user,
-                    channel
-                });
-                await this.roomManager.join(peer, roomClaim.room, roomClaim.host ?? false);
+                await this.connectChannel(headers, encoding => new WebSocketChannel(socket, encoding));
             } catch (err) {
                 socket.close();
                 console.log(err);
             }
         });
         const io = new Server(httpServer, {
-            path: '/socket-io',
             cors: {
                 origin: '*',
                 methods: ['GET', 'POST']
             }
         });
         io.on('connection', async socket => {
-            const headers = socket.request.headers;
-            const jwt = headers['x-jwt'] as string;
-            if (!jwt) {
-                socket.send(ErrorMessage.create('No JWT auth token set'));
-                socket.disconnect(true);
-                return;
-            }
-            let encoding = headers['x-encoding'] as string;
-            if (!encoding) {
-                encoding = 'json';
-            }
+            const headers = socket.request.headers as Record<string, string>;
             try {
-                const messageEncoding = this.encodingProvider.getEncoding(encoding);
-                const roomClaim = await this.credentials.verifyJwt(jwt, isRoomClaim);
-                const channel = new SocketIoChannel(socket, messageEncoding);
-                const peer = this.peerFactory({
-                    user: roomClaim.user,
-                    channel
-                });
-                await this.roomManager.join(peer, roomClaim.room, roomClaim.host ?? false);
+                await this.connectChannel(headers, encoding => new SocketIoChannel(socket, encoding));
             } catch (err) {
                 socket.send(ErrorMessage.create('Failed to join room'));
                 socket.disconnect(true);
@@ -113,6 +80,25 @@ export class CollaborationServer {
         });
         httpServer.listen(Number(args.port), String(args.hostname));
         console.log('Open Collaboration Server listening on ' + args.hostname + ':' + args.port);
+    }
+
+    protected async connectChannel(headers: Record<string, string>, channelProvider: (encoding: MessageEncoding) => Channel): Promise<void> {
+        const jwt = headers['x-jwt'] as string;
+        if (!jwt) {
+            throw new Error('No JWT auth token set');
+        }
+        let encoding = headers['x-encoding'] as string;
+        if (!encoding) {
+            encoding = 'json';
+        }
+        const messageEncoding = this.encodingProvider.getEncoding(encoding);
+        const roomClaim = await this.credentials.verifyJwt(jwt, isRoomClaim);
+        const channel = channelProvider(messageEncoding);
+        const peer = this.peerFactory({
+            user: roomClaim.user,
+            channel
+        });
+        await this.roomManager.join(peer, roomClaim.room, roomClaim.host ?? false);
     }
 
     protected async getUserFromAuth(req: express.Request): Promise<User | undefined> {
@@ -204,18 +190,19 @@ export class CollaborationServer {
                 res.send('Failed to confirm login token');
             }
         });
-        app.get('/api/meta', async (req, res) => {
-            res.send({
+        app.get('/api/meta', async (_, res) => {
+            const data: ProtocolServerMetaData = {
                 owner: '',
                 version: '',
                 transports: [
                     'websocket',
-                    'socket-io'
+                    'socket.io'
                 ],
-                encoding: [
+                encodings: [
                     'json'
                 ]
-            });
+            };
+            res.send(data);
         });
         app.post('/api/session/join/:room', async (req, res) => {
             try {

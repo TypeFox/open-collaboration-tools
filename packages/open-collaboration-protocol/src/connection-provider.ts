@@ -10,7 +10,7 @@ import { ProtocolBroadcastConnection, createConnection } from "./connection";
 export interface ConnectionProviderOptions {
     url: string;
     userToken?: string;
-    fetch: typeof fetch;
+    fetch?: typeof fetch;
     opener: (url: string) => void;
     transports: MessageTransportProvider[];
     encodings: MessageEncoding[];
@@ -31,9 +31,12 @@ export interface ConnectionRoomClaim {
 export class ConnectionProvider {
 
     private options: ConnectionProviderOptions;
+    private fetch: typeof fetch;
 
     constructor(options: ConnectionProviderOptions) {
         this.options = options;
+        this.fetch = options.fetch ?? fetch;
+        this.userAuthToken = options.userToken;
     }
 
     protected userAuthToken?: string;
@@ -48,7 +51,7 @@ export class ConnectionProvider {
     }
 
     async login(): Promise<string> {
-        const loginResponse = await this.options.fetch(this.getUrl('/api/login/url'), {
+        const loginResponse = await this.fetch(this.getUrl('/api/login/url'), {
             method: 'POST'
         });
         const loginBody = await loginResponse.json();
@@ -56,7 +59,7 @@ export class ConnectionProvider {
         const url = loginBody.url as string;
         const fullUrl = url.startsWith('/') ? this.getUrl(url) : url;
         this.options.opener(fullUrl);
-        const confirmResponse = await this.options.fetch(this.getUrl(`/api/login/confirm/${confirmToken}`), {
+        const confirmResponse = await this.fetch(this.getUrl(`/api/login/confirm/${confirmToken}`), {
             method: 'POST'
         });
         const confirmBody = await confirmResponse.json();
@@ -66,7 +69,7 @@ export class ConnectionProvider {
 
     async validate(): Promise<boolean> {
         if (this.userAuthToken) {
-            const validateResponse = await this.options.fetch(this.getUrl('/api/login/validate'), {
+            const validateResponse = await this.fetch(this.getUrl('/api/login/validate'), {
                 method: 'POST',
                 headers: {
                     'x-jwt': this.userAuthToken!
@@ -84,7 +87,7 @@ export class ConnectionProvider {
         if (!valid) {
             loginToken = await this.login();
         }
-        const response = await this.options.fetch(this.getUrl('/api/session/create'), {
+        const response = await this.fetch(this.getUrl('/api/session/create'), {
             method: 'POST',
             headers: {
                 'x-jwt': this.userAuthToken!
@@ -104,7 +107,7 @@ export class ConnectionProvider {
         if (!valid) {
             loginToken = await this.login();
         }
-        const response = await this.options.fetch(this.getUrl(`/api/session/join/${roomToken}`), {
+        const response = await this.fetch(this.getUrl(`/api/session/join/${roomToken}`), {
             method: 'POST',
             headers: {
                 'x-jwt': this.userAuthToken!
@@ -119,7 +122,7 @@ export class ConnectionProvider {
     }
 
     async connect(): Promise<ProtocolBroadcastConnection> {
-        const metadata = await this.options.fetch(this.getUrl('/api/meta'));
+        const metadata = await this.fetch(this.getUrl('/api/meta'));
         const metadataBody = await metadata.json() as ProtocolServerMetaData;
         const transportIndex = this.findFitting(metadataBody.transports, this.options.transports.map(t => t.id));
         const encodingIndex = this.findFitting(metadataBody.encodings, this.options.encodings.map(e => e.encoding));

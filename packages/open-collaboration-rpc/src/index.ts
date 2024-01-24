@@ -9,3 +9,4 @@ export * from './transport';
 export * from './utils';
 export * from './messages';
 export * from './connection';
+export * from './websocket-transport';
