@@ -23,20 +23,26 @@ export namespace Messages {
     }
 
     export namespace Editor {
-        export const Open = new NotificationType<[string]>('editor/open');
-        export const TextChanged = new BroadcastType<[types.EditorChange]>('editor/textChanged');
-        export const PresenceUpdated = new BroadcastType<[types.EditorPresenceUpdate]>('editor/presenceUpdated');
-        export const PresenceRequest = new RequestType<[types.EditorPresenceRequestParams], types.EditorFilePresence>('editor/presenceRequest');
+        export const Open = new NotificationType<[types.Path]>('editor/open');
+        export const Close = new BroadcastType<[types.Path]>('editor/close');
+    }
+
+    export namespace Sync {
+        export const DataUpdate = new BroadcastType<[string]>('sync/dataUpdate');
+        export const DataNotify = new NotificationType<[string]>('sync/dataNotify');
+        export const AwarenessUpdate = new BroadcastType<[string]>('sync/awarenessUpdate');
+        export const AwarenessQuery = new BroadcastType<[]>('sync/awarenessQuery');
+        export const AwarenessNotify = new NotificationType<[string]>('sync/awarenessNotify');
     }
 
     export namespace FileSystem {
-        export const Stat = new RequestType<[string], types.FileSystemStat>('fileSystem/stat');
-        export const Mkdir = new RequestType<[string], undefined>('fileSystem/mkdir');
-        export const ReadFile = new RequestType<[string], string>('fileSystem/readFile');
-        export const WriteFile = new RequestType<[string, string], undefined>('fileSystem/writeFile');
-        export const ReadDir = new RequestType<[string], Record<string, types.FileType>>('fileSystem/readDir');
-        export const Delete = new RequestType<[string], undefined>('fileSystem/delete');
-        export const Rename = new RequestType<[string, string], undefined>('fileSystem/rename');
+        export const Stat = new RequestType<[types.Path], types.FileSystemStat>('fileSystem/stat');
+        export const Mkdir = new RequestType<[types.Path], undefined>('fileSystem/mkdir');
+        export const ReadFile = new RequestType<[types.Path], string>('fileSystem/readFile');
+        export const WriteFile = new RequestType<[types.Path, string], undefined>('fileSystem/writeFile');
+        export const ReadDir = new RequestType<[types.Path], Record<string, types.FileType>>('fileSystem/readDir');
+        export const Delete = new RequestType<[types.Path], undefined>('fileSystem/delete');
+        export const Rename = new RequestType<[types.Path, types.Path], undefined>('fileSystem/rename');
         export const Change = new BroadcastType<[types.FileChangeEvent]>('fileSystem/change');
     }
 

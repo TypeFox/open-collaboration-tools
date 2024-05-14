@@ -17,6 +17,10 @@ export interface Message {
     kind: string;
 }
 
+export type MessageTarget = string | undefined;
+export type MessageOrigin = string;
+export type MessageId = number | string;
+
 export namespace Message {
     export function is(item: unknown): item is Message {
         const message = item as Message;
@@ -58,15 +62,33 @@ export interface RequestMessage extends Message {
     method: string;
 
     /**
+     * The origin peer id of the request.
+     */
+    origin: MessageOrigin;
+
+    /**
+     * The peer id to which the request is addressed.
+     */
+    target: MessageTarget;
+
+    /**
      * The method's params.
      */
     params?: unknown[];
 }
 
 export namespace RequestMessage {
-    export function create(signature: RequestType<any, any> | string, id: number | string, params?: any[]): RequestMessage {
+    export function create(
+        signature: RequestType<any, any> | string,
+        id: number | string,
+        origin: MessageOrigin,
+        target: MessageTarget,
+        params?: any[]
+    ): RequestMessage {
         return {
             id,
+            origin,
+            target,
             method: typeof signature === 'string' ? signature : signature.method,
             kind: 'request',
             version: VERSION,
@@ -139,16 +161,28 @@ export interface NotificationMessage extends Message {
     method: string;
 
     /**
+     * The origin peer id of the notification.
+     */
+    origin: MessageOrigin;
+
+    /**
+     * The peer id to which the notification is addressed.
+     */
+    target: MessageTarget;
+
+    /**
      * The method's params.
      */
     params?: unknown[];
 }
 
 export namespace NotificationMessage {
-    export function create(signature: NotificationType<any> | string, params?: any[]): NotificationMessage {
+    export function create(signature: NotificationType<any> | string, origin: MessageOrigin, target: MessageTarget, params?: any[]): NotificationMessage {
         return {
             method: typeof signature === 'string' ? signature : signature.method,
             kind: 'notification',
+            target: target,
+            origin,
             version: VERSION,
             params
         };
@@ -164,7 +198,7 @@ export interface BroadcastMessage extends Message {
     /**
      * ID of peer who initiated the broadcast.
      */
-    clientId: string;
+    origin: string;
 
     /**
      * The method to be invoked.
@@ -178,9 +212,9 @@ export interface BroadcastMessage extends Message {
 }
 
 export namespace BroadcastMessage {
-    export function create(signature: BroadcastType<any> | string, clientId: string, params?: any[]): BroadcastMessage {
+    export function create(signature: BroadcastType<any> | string, origin: string, params?: any[]): BroadcastMessage {
         return {
-            clientId,
+            origin: origin,
             method: typeof signature === 'string' ? signature : signature.method,
             kind: 'broadcast',
             version: VERSION,

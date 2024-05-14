@@ -4,15 +4,15 @@
 // terms of the MIT License, which is available in the project root.
 // ******************************************************************************
 
-import { AbstractBroadcastConnection, BroadcastConnection, BroadcastHandler, Handler, MessageEncoding, MessageTransport } from 'open-collaboration-rpc';
+import { AbstractBroadcastConnection, BroadcastConnection, Handler, MessageEncoding, MessageTarget, MessageTransport } from 'open-collaboration-rpc';
 import type * as types from './types';
 import { Messages } from './messages';
 
 export interface RoomHandler {
-    onJoin(handler: BroadcastHandler<[types.Peer]>): void;
-    onLeave(handler: BroadcastHandler<[types.Peer]>): void;
-    onClose(handler: BroadcastHandler<[]>): void;
-    onPermissions(handler: BroadcastHandler<[types.Permissions]>): void;
+    onJoin(handler: Handler<[types.Peer]>): void;
+    onLeave(handler: Handler<[types.Peer]>): void;
+    onClose(handler: Handler<[]>): void;
+    onPermissions(handler: Handler<[types.Permissions]>): void;
     updatePermissions(permissions: types.Permissions): void;
 }
 
@@ -20,37 +20,44 @@ export interface PeerHandler {
     onJoinRequest(handler: Handler<[types.User], boolean>): void;
     onInfo(handler: Handler<[types.Peer]>): void;
     onInit(handler: Handler<[types.InitRequest], types.InitResponse>): void;
-    init(request: types.InitRequest): Promise<types.InitResponse>;
+    init(target: MessageTarget, request: types.InitRequest): Promise<types.InitResponse>;
 }
 
 export interface EditorHandler {
     onOpen(handler: Handler<[string]>): void;
-    open(uri: string): void;
-    onTextChanged(handler: BroadcastHandler<[types.EditorChange]>): void;
-    textChanged(update: types.EditorChange): void;
-    onPresenceUpdated(handler: BroadcastHandler<[types.EditorPresenceUpdate]>): void;
-    presenceUpdated(presense: types.EditorPresenceUpdate): void;
-    onPresenceRequest(handler: Handler<[types.EditorPresenceRequestParams], types.EditorFilePresence>): void;
-    presenceRequest(params: types.EditorPresenceRequestParams): Promise<types.EditorFilePresence>;
+    open(target: MessageTarget, path: types.Path): void;
+    onClose(handler: Handler<[types.Path]>): void;
+    close(path: types.Path): void;
 }
 
 export interface FileSystemHandler {
     onReadFile(handler: Handler<[string], string>): void;
-    readFile(uri: string): Promise<string>;
+    readFile(target: MessageTarget, path: string): Promise<string>;
     onWriteFile(handler: Handler<[string, string]>): void;
-    writeFile(uri: string, content: string): Promise<void>;
+    writeFile(target: MessageTarget, path: string, content: string): Promise<void>;
     onStat(handler: Handler<[string], types.FileSystemStat>): void;
-    stat(uri: string): Promise<types.FileSystemStat>;
+    stat(target: MessageTarget, path: string): Promise<types.FileSystemStat>;
     onMkdir(handler: Handler<[string]>): void;
-    mkdir(uri: string): Promise<void>;
+    mkdir(target: MessageTarget, path: string): Promise<void>;
     onReaddir(handler: Handler<[string], types.FileSystemDirectory>): void;
-    readdir(uri: string): Promise<types.FileSystemDirectory>;
+    readdir(target: MessageTarget, path: string): Promise<types.FileSystemDirectory>;
     onDelete(handler: Handler<[string]>): void;
-    delete(uri: string): Promise<void>;
+    delete(target: MessageTarget, path: string): Promise<void>;
     onRename(handler: Handler<[string, string]>): void;
-    rename(from: string, to: string): Promise<void>;
-    onChange(handler: BroadcastHandler<[types.FileChangeEvent]>): void;
+    rename(target: MessageTarget, from: string, to: string): Promise<void>;
+    onChange(handler: Handler<[types.FileChangeEvent]>): void;
     change(event: types.FileChangeEvent): void;
+}
+
+export interface SyncHandler {
+    onDataUpdate(handler: Handler<[string]>): void;
+    dataUpdate(data: string): void;
+    dataUpdate(target: MessageTarget, data: string): void;
+    onAwarenessUpdate(handler: Handler<[string]>): void;
+    awarenessUpdate(data: string): void;
+    awarenessUpdate(target: MessageTarget, data: string): void;
+    onAwarenessQuery(handler: Handler<[]>): void;
+    awarenessQuery(): void;
 }
 
 export interface ProtocolBroadcastConnection extends BroadcastConnection {
@@ -58,6 +65,7 @@ export interface ProtocolBroadcastConnection extends BroadcastConnection {
     peer: PeerHandler;
     fs: FileSystemHandler;
     editor: EditorHandler;
+    sync: SyncHandler;
 }
 
 export function createConnection(transport: MessageTransport, encoding: MessageEncoding): ProtocolBroadcastConnection {
@@ -78,36 +86,59 @@ export class ProtocolBroadcastConnectionImpl extends AbstractBroadcastConnection
         onJoinRequest: handler => this.onRequest(Messages.Peer.Join, handler),
         onInfo: handler => this.onNotification(Messages.Peer.Info, handler),
         onInit: handler => this.onRequest(Messages.Peer.Init, handler),
-        init: request => this.sendRequest(Messages.Peer.Init, request)
+        init: (target, request) => this.sendRequest(Messages.Peer.Init, target, request)
     };
 
     fs: FileSystemHandler = {
         onReadFile: handler => this.onRequest(Messages.FileSystem.ReadFile, handler),
-        readFile: uri => this.sendRequest(Messages.FileSystem.ReadFile, uri),
+        readFile: (target, path) => this.sendRequest(Messages.FileSystem.ReadFile, target, path),
         onWriteFile: handler => this.onRequest(Messages.FileSystem.WriteFile, handler),
-        writeFile: (uri, content) => this.sendRequest(Messages.FileSystem.WriteFile, uri, content),
+        writeFile: (target, path, content) => this.sendRequest(Messages.FileSystem.WriteFile, target, path, content),
         onReaddir: handler => this.onRequest(Messages.FileSystem.ReadDir, handler),
-        readdir: uri => this.sendRequest(Messages.FileSystem.ReadDir, uri),
+        readdir: (target, path) => this.sendRequest(Messages.FileSystem.ReadDir, target, path),
         onStat: handler => this.onRequest(Messages.FileSystem.Stat, handler),
-        stat: uri => this.sendRequest(Messages.FileSystem.Stat, uri),
+        stat: (target, path) => this.sendRequest(Messages.FileSystem.Stat, target, path),
         onMkdir: handler => this.onRequest(Messages.FileSystem.Mkdir, handler),
-        mkdir: uri => this.sendRequest(Messages.FileSystem.Mkdir, uri),
+        mkdir: (target, path) => this.sendRequest(Messages.FileSystem.Mkdir, target, path),
         onDelete: handler => this.onRequest(Messages.FileSystem.Delete, handler),
-        delete: uri => this.sendRequest(Messages.FileSystem.Delete, uri),
+        delete: (target, path) => this.sendRequest(Messages.FileSystem.Delete, target, path),
         onRename: handler => this.onRequest(Messages.FileSystem.Rename, handler),
-        rename: (from, to) => this.sendRequest(Messages.FileSystem.Rename, from, to),
+        rename: (target, from, to) => this.sendRequest(Messages.FileSystem.Rename, target, from, to),
         onChange: handler => this.onBroadcast(Messages.FileSystem.Change, handler),
         change: event => this.sendBroadcast(Messages.FileSystem.Change, event)
     };
 
     editor: EditorHandler = {
         onOpen: handler => this.onNotification(Messages.Editor.Open, handler),
-        open: uri => this.sendNotification(Messages.Editor.Open, uri),
-        onTextChanged: handler => this.onBroadcast(Messages.Editor.TextChanged, handler),
-        textChanged: editorUpdate => this.sendBroadcast(Messages.Editor.TextChanged, editorUpdate),
-        onPresenceUpdated: handler => this.onBroadcast(Messages.Editor.PresenceUpdated, handler),
-        presenceUpdated: presenceUpdate => this.sendBroadcast(Messages.Editor.PresenceUpdated, presenceUpdate),
-        onPresenceRequest: handler => this.onRequest(Messages.Editor.PresenceRequest, handler),
-        presenceRequest: requestParams => this.sendRequest(Messages.Editor.PresenceRequest, requestParams)
+        open: (target, path) => this.sendNotification(Messages.Editor.Open, target, path),
+        onClose: handler => this.onBroadcast(Messages.Editor.Close, handler),
+        close: path => this.sendBroadcast(Messages.Editor.Close, path)
+    };
+
+    sync: SyncHandler = {
+        onDataUpdate: handler => {
+            this.onBroadcast(Messages.Sync.DataUpdate, handler);
+            this.onNotification(Messages.Sync.DataNotify, handler);
+        },
+        dataUpdate: (target: string, data?: string) => {
+            if (data === undefined) {
+                this.sendBroadcast(Messages.Sync.DataUpdate, target);
+            } else {
+                this.sendNotification(Messages.Sync.DataNotify, target, data);
+            }
+        },
+        onAwarenessUpdate: handler => {
+            this.onBroadcast(Messages.Sync.AwarenessUpdate, handler);
+            this.onNotification(Messages.Sync.AwarenessNotify, handler);
+        },
+        awarenessUpdate: (target: string, data?: string) => {
+            if (data === undefined) {
+                this.sendBroadcast(Messages.Sync.AwarenessUpdate, target);
+            } else {
+                this.sendNotification(Messages.Sync.AwarenessNotify, target, data);
+            }
+        },
+        onAwarenessQuery: handler => this.onBroadcast(Messages.Sync.AwarenessQuery, handler),
+        awarenessQuery: () => this.sendBroadcast(Messages.Sync.AwarenessQuery)
     };
 }

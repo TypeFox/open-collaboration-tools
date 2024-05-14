@@ -6,13 +6,12 @@
 
 import { isObject } from "./utils/types";
 import { MessageEncoding } from "./encoding";
-import { BroadcastMessage, BroadcastType, ErrorMessage, Message, NotificationMessage, NotificationType, RequestMessage, RequestType, ResponseErrorMessage, ResponseMessage } from "./messages";
+import { BroadcastMessage, BroadcastType, ErrorMessage, Message, MessageTarget, NotificationMessage, NotificationType, RequestMessage, RequestType, ResponseErrorMessage, ResponseMessage } from "./messages";
 import { MessageTransport } from "./transport";
 import { Emitter, Event } from './utils/event';
 import { Deferred } from "./utils/promise";
 
-export type Handler<P extends unknown[], R = void> = (...parameters: P) => (R | Promise<R>);
-export type BroadcastHandler<P extends unknown[]> = (clientId: string, ...parameters: P) => void;
+export type Handler<P extends unknown[], R = void> = (origin: string, ...parameters: P) => (R | Promise<R>);
 export type ErrorHandler = (message: string) => void;
 
 export interface BroadcastConnection {
@@ -20,8 +19,8 @@ export interface BroadcastConnection {
     onRequest<P extends unknown[], R>(type: RequestType<P, R>, handler: Handler<P, R>): void;
     onNotification(type: string, handler: Handler<any[]>): void;
     onNotification<P extends unknown[]>(type: NotificationType<P>, handler: Handler<P>): void;
-    onBroadcast(type: string, handler: BroadcastHandler<any[]>): void;
-    onBroadcast<P extends unknown[]>(type: BroadcastType<P>, handler: BroadcastHandler<P>): void;
+    onBroadcast(type: string, handler: Handler<any[]>): void;
+    onBroadcast<P extends unknown[]>(type: BroadcastType<P>, handler: Handler<P>): void;
     onError(handler: ErrorHandler): void;
     sendRequest(type: string, ...parameters: any[]): Promise<any>;
     sendRequest<P extends unknown[], R>(type: RequestType<P, R>, ...parameters: P): Promise<R>;
@@ -41,7 +40,7 @@ export interface RelayedRequest {
 
 export class AbstractBroadcastConnection implements BroadcastConnection {
 
-    protected messageHandlers = new Map<string, Function>();
+    protected messageHandlers = new Map<string, Handler<any[], any>>();
     protected onErrorEmitter = new Emitter<string>();
     protected onDisconnectEmitter = new Emitter<void>();
 
@@ -87,7 +86,7 @@ export class AbstractBroadcastConnection implements BroadcastConnection {
                     return;
                 }
                 try {
-                    const result = handler(...(message.params ?? []));
+                    const result = handler(message.origin, ...(message.params ?? []));
                     Promise.resolve(result).then(value => {
                         const responseMessage = ResponseMessage.create(message.id, value);
                         this.write(responseMessage);
@@ -107,11 +106,7 @@ export class AbstractBroadcastConnection implements BroadcastConnection {
                     console.error(`No handler registered for ${message.kind} method ${message.method}.`);
                     return;
                 }
-                if (BroadcastMessage.is(message)) {
-                    handler(message.clientId, ...(message.params ?? []));
-                } else {
-                    handler(...(message.params ?? []));
-                }
+                handler(message.origin, ...(message.params ?? []));
             } else if (ErrorMessage.is(message)) {
                 this.onErrorEmitter.fire(message.message);
             }
@@ -136,16 +131,16 @@ export class AbstractBroadcastConnection implements BroadcastConnection {
         this.messageHandlers.set(method, handler);
     }
 
-    onBroadcast(type: BroadcastType<any[]> | string, handler: BroadcastHandler<any[]>): void;
-    onBroadcast(type: BroadcastType<any[]> | string, handler: BroadcastHandler<any[]>): void;
-    onBroadcast(type: BroadcastType<any[]> | string, handler: BroadcastHandler<any[]>): void {
+    onBroadcast(type: BroadcastType<any[]> | string, handler: Handler<any[]>): void;
+    onBroadcast(type: BroadcastType<any[]> | string, handler: Handler<any[]>): void;
+    onBroadcast(type: BroadcastType<any[]> | string, handler: Handler<any[]>): void {
         const method = typeof type === 'string' ? type : type.method;
         this.messageHandlers.set(method, handler);
     }
 
-    sendRequest(type: string, ...parameters: any[]): Promise<any>;
-    sendRequest<P extends unknown[], R>(type: RequestType<P, R> | string, ...parameters: P): Promise<R>;
-    sendRequest(type: RequestType<any, any> | string, ...parameters: any[]): Promise<any> {
+    sendRequest(type: string, target: MessageTarget, ...parameters: any[]): Promise<any>;
+    sendRequest<P extends unknown[], R>(type: RequestType<P, R> | string, target: MessageTarget, ...parameters: P): Promise<R>;
+    sendRequest(type: RequestType<any, any> | string, target: MessageTarget, ...parameters: any[]): Promise<any> {
         const id = this.requestId++;
         const deferred = new Deferred<any>();
         const dispose = () => {
@@ -160,15 +155,15 @@ export class AbstractBroadcastConnection implements BroadcastConnection {
             dispose
         };
         this.requestMap.set(id, relayedMessage);
-        const message = RequestMessage.create(type, id, parameters);
+        const message = RequestMessage.create(type, id, '', target, parameters);
         this.write(message);
         return deferred.promise;
     }
 
-    sendNotification(type: string, ...parameters: any[]): void;
-    sendNotification<P extends unknown[]>(type: NotificationType<P>, ...parameters: P): void;
-    sendNotification(type: NotificationType<any> | string, ...parameters: any[]): void {
-        const message = NotificationMessage.create(type, parameters);
+    sendNotification(type: string, target: MessageTarget, ...parameters: any[]): void;
+    sendNotification<P extends unknown[]>(type: NotificationType<P>, target: MessageTarget, ...parameters: P): void;
+    sendNotification(type: NotificationType<any> | string, target: MessageTarget, ...parameters: any[]): void {
+        const message = NotificationMessage.create(type, '', target, parameters);
         this.write(message);
     }
 

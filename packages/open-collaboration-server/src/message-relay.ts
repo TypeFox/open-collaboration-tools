@@ -64,7 +64,7 @@ export class MessageRelay {
         if (!room) {
             throw new Error("Origin peer doesn't belong to any room");
         }
-        message.clientId = origin.id;
+        message.origin = origin.id;
         for (const peer of room.peers) {
             if (peer !== origin) {
                 peer.channel.sendMessage(message);

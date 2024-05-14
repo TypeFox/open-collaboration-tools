@@ -96,9 +96,10 @@ export class CollaborationServer {
         const channel = channelProvider(messageEncoding);
         const peer = this.peerFactory({
             user: roomClaim.user,
+            host: roomClaim.host ?? false,
             channel
         });
-        await this.roomManager.join(peer, roomClaim.room, roomClaim.host ?? false);
+        await this.roomManager.join(peer, roomClaim.room);
     }
 
     protected async getUserFromAuth(req: express.Request): Promise<User | undefined> {

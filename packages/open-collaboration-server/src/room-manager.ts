@@ -68,10 +68,10 @@ export class RoomManager {
         };
     }
 
-    async join(peer: Peer, roomId: string, host: boolean): Promise<Room> {
+    async join(peer: Peer, roomId: string): Promise<Room> {
         let room: Room;
-        if (host) {
-            room = new RoomImpl(roomId, peer);
+        if (peer.host) {
+            room = new Room(roomId, peer, []);
             this.rooms.set(room.id, room);
             this.peers.set(peer.id, room);
             console.log('Created room with id', room.id);
@@ -108,6 +108,8 @@ export class RoomManager {
             peer,
             NotificationMessage.create(
                 Messages.Peer.Info,
+                '',
+                peer.id,
                 [peer.toProtocol()]
             )
         );
@@ -126,7 +128,7 @@ export class RoomManager {
         try {
             const response = await this.messageRelay.sendRequest(
                 room.host,
-                RequestMessage.create(Messages.Peer.Join, this.credentials.secureId(), [user])
+                RequestMessage.create(Messages.Peer.Join, this.credentials.secureId(), '', room.host.id, [user])
             ) as boolean;
             if (response) {
                 const claim: RoomClaim = {
@@ -142,20 +144,4 @@ export class RoomManager {
         }
     }
 
-}
-
-export class RoomImpl implements Room {
-    id: string;
-    host: Peer;
-    guests: Peer[];
-
-    get peers(): Peer[] {
-        return [this.host, ...this.guests];
-    }
-
-    constructor(id: string, host: Peer) {
-        this.id = id;
-        this.host = host;
-        this.guests = [];
-    }
 }

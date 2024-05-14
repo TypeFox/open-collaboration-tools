@@ -8,11 +8,18 @@ import { Channel } from './channel';
 import * as protocol from 'open-collaboration-protocol';
 import { isObject } from 'open-collaboration-rpc';
 
-export interface Room {
-    id: string;
-    host: Peer;
-    guests: Peer[];
-    readonly peers: readonly Peer[];
+export class Room {
+    constructor(public id: string, public host: Peer, public guests: Peer[]) {
+    }
+
+    get peers(): Peer[] {
+        return [this.host, ...this.guests];
+    }
+
+    getPeer(id: string): Peer | undefined {
+        return this.peers.find(peer => peer.id === id);
+    }
+
 }
 
 export interface User {
@@ -29,11 +36,13 @@ export const PeerInfo = Symbol('PeerInfo');
 
 export interface PeerInfo {
     user: User;
+    host: boolean;
     channel: Channel;
 }
 
 export interface Peer {
     id: string;
+    host: boolean;
     user: User;
     channel: Channel;
     room: Room;

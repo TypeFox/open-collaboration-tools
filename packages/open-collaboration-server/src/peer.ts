@@ -25,6 +25,10 @@ export class PeerImpl implements Peer {
         return this.peerInfo.user;
     }
 
+    get host(): boolean {
+        return this.peerInfo.host;
+    }
+
     get channel(): Channel {
         return this.peerInfo.channel;
     }
@@ -55,8 +59,15 @@ export class PeerImpl implements Peer {
         if (ResponseMessage.is(message) || ResponseErrorMessage.is(message)) {
             this.messageRelay.pushResponse(this, message);
         } else if (RequestMessage.is(message)) {
+            // Override whatever we know about the origin of the message
+            message.origin = this.id;
             try {
-                const response = await this.messageRelay.sendRequest(this.room.host, message);
+                // If no target is specified, the host is the default target
+                const peer = message.target ? this.room.getPeer(message.target) : this.room.host;
+                if (!peer) {
+                    throw new Error('Could not find the target peer: ' + message.target);
+                }
+                const response = await this.messageRelay.sendRequest(peer, message);
                 const responseMessage: ResponseMessage = {
                     id: message.id,
                     version: message.version,
@@ -69,7 +80,12 @@ export class PeerImpl implements Peer {
                 this.channel.sendMessage(errorResponseMessage);
             }
         } else if (NotificationMessage.is(message)) {
-            this.messageRelay.sendNotification(this.room.host, message);
+            message.origin = this.id;
+            const target = message.target ? this.room.getPeer(message.target) : this.room.host;
+            if (!target) {
+                throw new Error('Could not find the target peer: ' + message.target);
+            }
+            this.messageRelay.sendNotification(target, message);
         } else if (BroadcastMessage.is(message)) {
             this.messageRelay.sendBroadcast(this, message);
         }
@@ -78,6 +94,7 @@ export class PeerImpl implements Peer {
     toProtocol(): protocol.Peer {
         return {
             id: this.id,
+            host: this.host,
             name: this.user.name,
             email: this.user.email
         };

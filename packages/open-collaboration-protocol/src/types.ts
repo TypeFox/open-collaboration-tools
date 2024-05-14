@@ -4,6 +4,8 @@
 // terms of the MIT License, which is available in the project root.
 // ******************************************************************************
 
+export type Path = string;
+
 export interface User {
     name: string
     email?: string
@@ -11,6 +13,7 @@ export interface User {
 
 export interface Peer {
     id: string
+    host: boolean
     name: string
     email?: string
 }
@@ -61,6 +64,14 @@ export interface FileSystemDirectory {
     [name: string]: FileType
 }
 
+export interface FileData {
+    version: string
+    /**
+     * Base64 encoded content.
+     */
+    content: string
+}
+
 export enum FilePermission {
     /**
      * File is readonly.
@@ -81,60 +92,11 @@ export interface FileChangeEvent {
 
 export interface FileChange {
     type: FileChangeEventType
-    path: string
+    path: Path
 }
 
 export enum FileChangeEventType {
     Create = 0,
     Update = 1,
     Delete = 2
-}
-
-export interface EditorChange {
-    path: string
-    content: EditorContentUpdate[]
-}
-
-export interface EditorContentUpdate {
-    range: EditorRange
-    text: string
-}
-
-export interface EditorRange {
-    start: EditorPosition
-    end: EditorPosition
-}
-
-export interface EditorPosition {
-    line: number
-    character: number
-}
-
-export interface EditorPresenceRequestParams {
-    path: string
-}
-
-export interface EditorPresenceUpdate {
-    path: string
-    selection: EditorSelection[]
-}
-
-export interface EditorFilePresence {
-    path: string
-    presences: EditorPeerPresence[]
-}
-
-export interface EditorPeerPresence {
-    peerId: string
-    selection: EditorSelection[]
-}
-
-export interface EditorSelection {
-    direction: EditorSelectionDirection
-    range: EditorRange
-}
-
-export enum EditorSelectionDirection {
-    Forward = 0,
-    Backward = 1
 }
