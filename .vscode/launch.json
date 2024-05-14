@@ -7,7 +7,7 @@
         {
             "type": "node",
             "request": "launch",
-            "name": "Launch Program",
+            "name": "Launch Server",
             "skipFiles": [
                 "<node_internals>/**"
             ],
@@ -29,8 +29,7 @@
 			],
 			"outFiles": [
 				"${workspaceFolder}/packages/open-collaboration-vscode/dist/**/*.js"
-			],
-			"preLaunchTask": "${defaultBuildTask}"
+			]
 		}
     ]
 }
