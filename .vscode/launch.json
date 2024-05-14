@@ -19,6 +19,18 @@
             "outFiles": [
                 "${workspaceFolder}/packages/open-collaboration-server/lib/**/*.js"
             ]
-        }
+        },
+        {
+			"name": "Run VS Code Extension",
+			"type": "extensionHost",
+			"request": "launch",
+			"args": [
+				"--extensionDevelopmentPath=${workspaceFolder}/packages/open-collaboration-vscode"
+			],
+			"outFiles": [
+				"${workspaceFolder}/packages/open-collaboration-vscode/dist/**/*.js"
+			],
+			"preLaunchTask": "${defaultBuildTask}"
+		}
     ]
 }
