@@ -28,7 +28,7 @@
 				"--extensionDevelopmentPath=${workspaceFolder}/packages/open-collaboration-vscode"
 			],
 			"outFiles": [
-				"${workspaceFolder}/packages/open-collaboration-vscode/dist/**/*.js"
+				"${workspaceFolder}/packages/open-collaboration-vscode/lib/**/*.js"
 			]
 		}
     ]

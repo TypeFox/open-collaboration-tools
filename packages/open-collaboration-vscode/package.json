@@ -10,7 +10,7 @@
     "Other"
   ],
   "activationEvents": [],
-  "main": "./dist/extension.js",
+  "main": "./lib/extension.js",
   "contributes": {
     "configuration": {
       "title": "Open Collaboration Tools",
