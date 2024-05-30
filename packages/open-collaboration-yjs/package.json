@@ -1,0 +1,33 @@
+{
+    "name": "open-collaboration-yjs",
+    "version": "0.0.1",
+    "description": "Open Collaboration Yjs Integration",
+    "dependencies": {
+        "lib0": "^0.2.94",
+        "open-collaboration-protocol": "0.0.7",
+        "open-collaboration-rpc": "0.0.6",
+        "y-protocols": "^1.0.6"
+    },
+    "peerDependencies": {
+        "yjs": "^13.0.0"
+    },
+    "publishConfig": {
+        "access": "public"
+    },
+    "main": "./lib/index.js",
+    "types": "./lib/index.d.ts",
+    "keywords": [],
+    "license": "MIT",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/TypeFox/open-collaboration-server.git"
+    },
+    "bugs": {
+        "url": "https://github.com/TypeFox/open-collaboration-server/issues"
+    },
+    "homepage": "https://github.com/TypeFox/open-collaboration-server",
+    "files": [
+        "lib",
+        "src"
+    ]
+}
