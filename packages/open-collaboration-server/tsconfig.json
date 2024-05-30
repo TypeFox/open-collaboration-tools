@@ -1,12 +1,15 @@
-// this file is required for VSCode to work properly
 {
-  "extends": "./tsconfig.src.json",
+  "extends": "../../tsconfig.json",
   "compilerOptions": {
-    "noEmit": true,
-    "rootDir": "."
+    "rootDir": "src",
+    "outDir": "lib"
   },
+  "references": [{
+    "path": "../open-collaboration-protocol/tsconfig.json"
+  }, {
+    "path": "../open-collaboration-rpc/tsconfig.json"
+  }],
   "include": [
-    "src/**/*",
-    "test/**/*"
+    "src/**/*.ts"
   ]
 }

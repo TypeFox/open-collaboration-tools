@@ -62,12 +62,7 @@ export class PeerImpl implements Peer {
             // Override whatever we know about the origin of the message
             message.origin = this.id;
             try {
-                // If no target is specified, the host is the default target
-                const peer = message.target ? this.room.getPeer(message.target) : this.room.host;
-                if (!peer) {
-                    throw new Error('Could not find the target peer: ' + message.target);
-                }
-                const response = await this.messageRelay.sendRequest(peer, message);
+                const response = await this.messageRelay.sendRequest(this.getTargetPeer(message.target), message);
                 const responseMessage: ResponseMessage = {
                     id: message.id,
                     version: message.version,
@@ -76,19 +71,28 @@ export class PeerImpl implements Peer {
                 };
                 this.channel.sendMessage(responseMessage);
             } catch (err) {
-                const errorResponseMessage = ResponseErrorMessage.create(message.id, 'err.message');
+                const errorResponseMessage = ResponseErrorMessage.create(message.id, 'Failed to retrieve the requested data.');
                 this.channel.sendMessage(errorResponseMessage);
             }
         } else if (NotificationMessage.is(message)) {
             message.origin = this.id;
-            const target = message.target ? this.room.getPeer(message.target) : this.room.host;
-            if (!target) {
-                throw new Error('Could not find the target peer: ' + message.target);
+            try {
+                this.messageRelay.sendNotification(this.getTargetPeer(message.target), message);
+            } catch (err) {
+                console.error(`Failed sending notification to: ${message.target}`, err);
             }
-            this.messageRelay.sendNotification(target, message);
         } else if (BroadcastMessage.is(message)) {
             this.messageRelay.sendBroadcast(this, message);
         }
+    }
+
+    private getTargetPeer(targetId: string | undefined): Peer {
+        // If no target is specified, the host is the default target
+        const peer = targetId ? this.room.getPeer(targetId) : this.room.host;
+        if (!peer) {
+            throw new Error('Could not find the target peer: ' + targetId);
+        }
+        return peer;
     }
 
     toProtocol(): protocol.Peer {
