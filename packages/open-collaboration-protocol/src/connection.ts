@@ -17,7 +17,7 @@ export interface RoomHandler {
 }
 
 export interface PeerHandler {
-    onJoinRequest(handler: Handler<[types.User], boolean>): void;
+    onJoinRequest(handler: Handler<[types.User], types.JoinResponse | undefined>): void;
     onInfo(handler: Handler<[types.Peer]>): void;
     onInit(handler: Handler<[types.InitRequest], types.InitResponse>): void;
     init(target: MessageTarget, request: types.InitRequest): Promise<types.InitResponse>;

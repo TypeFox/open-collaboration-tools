@@ -31,7 +31,7 @@
     "access": "public"
   },
   "scripts": {
-    "start": "node lib/app.js start"
+    "start": "node lib/app.js start --hostname=0.0.0.0"
   },
   "keywords": [],
   "license": "MIT",

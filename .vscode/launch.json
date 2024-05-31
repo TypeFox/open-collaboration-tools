@@ -13,7 +13,8 @@
             ],
             "program": "${workspaceFolder}/packages/open-collaboration-server/lib/app.js",
             "args": [
-                "start"
+                "start",
+                "--hostname=0.0.0.0"
             ],
             "sourceMaps": true,
             "outFiles": [
@@ -27,6 +28,7 @@
 			"args": [
 				"--extensionDevelopmentPath=${workspaceFolder}/packages/open-collaboration-vscode"
 			],
+            "sourceMaps": true,
 			"outFiles": [
 				"${workspaceFolder}/packages/open-collaboration-vscode/lib/**/*.js"
 			]

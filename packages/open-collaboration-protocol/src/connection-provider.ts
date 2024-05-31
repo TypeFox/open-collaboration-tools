@@ -6,14 +6,28 @@
 
 import { MessageEncoding, MessageTransportProvider } from "open-collaboration-rpc";
 import { ProtocolBroadcastConnection, createConnection } from "./connection";
+import * as types from './types';
+
+export type Fetch = (url: string, options?: FetchRequestOptions) => Promise<FetchResponse>;
 
 export interface ConnectionProviderOptions {
     url: string;
     userToken?: string;
-    fetch?: typeof fetch;
+    fetch: Fetch;
     opener: (url: string) => void;
     transports: MessageTransportProvider[];
     encodings: MessageEncoding[];
+}
+
+export interface FetchRequestOptions {
+    method?: string;
+    headers?: Record<string, string>;
+}
+
+export interface FetchResponse {
+    status?: number;
+    json(): Promise<any>;
+    text(): Promise<string>;
 }
 
 export interface ProtocolServerMetaData {
@@ -24,18 +38,20 @@ export interface ProtocolServerMetaData {
 }
 
 export interface ConnectionRoomClaim {
+    roomId: string;
     roomToken: string;
+    workspace?: types.Workspace;
     loginToken?: string;
 }
 
 export class ConnectionProvider {
 
     private options: ConnectionProviderOptions;
-    private fetch: typeof fetch;
+    private fetch: Fetch;
 
     constructor(options: ConnectionProviderOptions) {
         this.options = options;
-        this.fetch = options.fetch ?? fetch;
+        this.fetch = options.fetch ?? ((url, options) => fetch(url, options));
         this.userAuthToken = options.userToken;
     }
 
@@ -94,34 +110,37 @@ export class ConnectionProvider {
             }
         });
         const body = await response.json();
-        this.roomAuthToken = body.token;
+        const roomAuthToken = body.token;
         return {
             loginToken,
-            roomToken: body.room
+            roomId: body.room,
+            roomToken: roomAuthToken
         };
     }
 
-    async joinRoom(roomToken: string): Promise<ConnectionRoomClaim> {
+    async joinRoom(roomId: string): Promise<ConnectionRoomClaim> {
         const valid = await this.validate();
         let loginToken: string | undefined;
         if (!valid) {
             loginToken = await this.login();
         }
-        const response = await this.fetch(this.getUrl(`/api/session/join/${roomToken}`), {
+        const response = await this.fetch(this.getUrl(`/api/session/join/${roomId}`), {
             method: 'POST',
             headers: {
                 'x-jwt': this.userAuthToken!
             }
         });
         const body = await response.json();
-        this.roomAuthToken = body.token;
+        const roomAuthToken = body.token;
         return {
             loginToken,
-            roomToken
+            roomId,
+            workspace: body.response?.workspace,
+            roomToken: roomAuthToken
         };
     }
 
-    async connect(): Promise<ProtocolBroadcastConnection> {
+    async connect(roomAuthToken: string): Promise<ProtocolBroadcastConnection> {
         const metadata = await this.fetch(this.getUrl('/api/meta'));
         const metadataBody = await metadata.json() as ProtocolServerMetaData;
         const transportIndex = this.findFitting(metadataBody.transports, this.options.transports.map(t => t.id));
@@ -129,7 +148,7 @@ export class ConnectionProvider {
         const transportProvider = this.options.transports[transportIndex];
         const encoding = this.options.encodings[encodingIndex];
         const transport = transportProvider.createTransport(this.options.url, {
-            'x-jwt': this.roomAuthToken!,
+            'x-jwt': roomAuthToken,
             'x-encoding': encoding.encoding
         });
         const connection = createConnection(

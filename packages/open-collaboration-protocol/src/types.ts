@@ -11,6 +11,10 @@ export interface User {
     email?: string
 }
 
+export interface JoinResponse {
+    workspace: Workspace
+}
+
 export interface Peer {
     id: string
     host: boolean
@@ -23,11 +27,11 @@ export interface InitRequest {
 }
 
 export interface InitResponse {
-    protocol: string;
-    host: Peer;
-    guests: Peer[];
-    permissions: Permissions;
-    capabilities: Capabilities;
+    protocol: string
+    host: Peer
+    guests: Peer[]
+    permissions: Permissions
+    capabilities: Capabilities
     workspace: Workspace
 }
 

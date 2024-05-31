@@ -213,9 +213,10 @@ export class CollaborationServer {
                 if (!room) {
                     throw new Error(`Room with requested id ${roomId} does not exist`);
                 }
-                const jwt = await this.roomManager.requestJoin(room, user!);
+                const result = await this.roomManager.requestJoin(room, user!);
                 res.send({
-                    token: jwt
+                    token: result.jwt,
+                    response: result.response
                 });
             } catch (err) {
                 console.error(err);

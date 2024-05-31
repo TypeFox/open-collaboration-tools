@@ -9,8 +9,10 @@
   "categories": [
     "Other"
   ],
-  "activationEvents": [],
-  "main": "./lib/extension.js",
+  "activationEvents": [
+    "onFileSystem:collab"
+  ],
+  "main": "./dist/extension.js",
   "contributes": {
     "configuration": {
       "title": "Open Collaboration Tools",
@@ -47,9 +49,13 @@
     "check-types": "tsc --noEmit"
   },
   "dependencies": {
-    "open-collaboration-protocol": "0.0.6"
+    "node-fetch": "^2.0.0",
+    "open-collaboration-protocol": "0.0.7",
+    "ws": "^8.17.0"
   },
   "devDependencies": {
-    "@types/vscode": "^1.89.0"
+    "@types/node-fetch": "^2.0.0",
+    "@types/vscode": "^1.89.0",
+    "@types/ws": "^8.5.10"
   }
 }
