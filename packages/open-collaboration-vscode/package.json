@@ -49,11 +49,13 @@
     "check-types": "tsc --noEmit"
   },
   "dependencies": {
+    "lodash.throttle": "^4.1.1",
     "node-fetch": "^2.0.0",
     "open-collaboration-protocol": "0.0.7",
     "ws": "^8.17.0"
   },
   "devDependencies": {
+    "@types/lodash.throttle": "^4.1.9",
     "@types/node-fetch": "^2.0.0",
     "@types/vscode": "^1.89.0",
     "@types/ws": "^8.5.10"

@@ -9,7 +9,7 @@ import * as http from 'http';
 import * as path from 'path';
 import { Server } from 'socket.io';
 import * as ws from 'ws';
-import * as express from 'express';
+import express from 'express';
 import { Channel, SocketIoChannel, WebSocketChannel } from './channel';
 import { PeerFactory } from './peer';
 import { RoomManager, isRoomClaim } from './room-manager';
