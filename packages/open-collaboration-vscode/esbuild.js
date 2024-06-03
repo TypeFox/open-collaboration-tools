@@ -32,7 +32,6 @@ async function main() {
 		format: 'cjs',
 		minify: production,
 		sourcemap: !production,
-		sourcesContent: false,
 		platform: 'node',
 		outfile: 'dist/extension.js',
 		external: ['vscode'],

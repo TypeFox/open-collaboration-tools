@@ -4,14 +4,78 @@ import { JsonMessageEncoding, WebSocketTransportProvider } from 'open-collaborat
 import { WebSocket } from 'ws';
 import { CollaborationInstance } from './collaboration-instance';
 import fetch from 'node-fetch';
+import { createRoom, joinRoom } from './collaboration-connection';
 
 (global as any).WebSocket = WebSocket;
 
 let connectionProvider: ConnectionProvider | undefined;
-let instance: CollaborationInstance | undefined;
 let userToken: string | undefined;
+let instance: CollaborationInstance | undefined;
+let statusBarItem: vscode.StatusBarItem;
 
 export async function activate(context: vscode.ExtensionContext) {
+
+    statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 5);
+    statusBarItem.text = '$(live-share) OCT';
+    statusBarItem.command = 'oct.enter';
+    statusBarItem.show();
+
+    initializeConnection(context).then(value => instance = value);
+
+    context.subscriptions.push(vscode.workspace.onDidChangeConfiguration((event) => {
+        if (event.affectsConfiguration('oct.serverUrl')) {
+            const newUrl = vscode.workspace.getConfiguration().get<string>('oct.serverUrl')
+            connectionProvider = newUrl ? createConnectionProvider(newUrl) : undefined;
+        }
+    }));
+
+    context.subscriptions.push(
+        vscode.commands.registerCommand('oct.enter', async () => {
+            if (!connectionProvider) {
+                vscode.window.showInformationMessage('No OCT Server configured. Please set the server URL in the settings', 'Open Settings').then((selection) => {
+                    if (selection === 'Open Settings') {
+                        vscode.commands.executeCommand('workbench.action.openSettings', 'oct.serverUrl');
+                    }
+                });
+            } else if (instance) {
+                // Add options to manage the room
+            } else {
+                const quickPick = vscode.window.createQuickPick();
+                quickPick.placeholder = 'Select collaboration option';
+                quickPick.items = [
+                    { label: '$(add) Create New Collaboration Session' },
+                    { label: '$(vm-connect) Join Collaboration Session' }
+                ];
+                const index = await showQuickPick(quickPick);
+                if (index === 0) {
+                    if (await createRoom(context, connectionProvider)) {
+                        statusBarItem.text = '$(broadcast) OCT Shared';
+                    }
+                } else if (index === 1) {
+                    await joinRoom(context, connectionProvider);
+                }
+            }
+        })
+    );
+}
+
+export function deactivate() {
+}
+
+function showQuickPick(quickPick: vscode.QuickPick<vscode.QuickPickItem>): Promise<number> {
+    return new Promise((resolve) => {
+        quickPick.show();
+        quickPick.onDidAccept(() => {
+            resolve(quickPick.items.indexOf(quickPick.activeItems[0]));
+            quickPick.hide();
+        });
+        quickPick.onDidHide(() => {
+            resolve(-1);
+        });
+    });
+}
+
+async function initializeConnection(context: vscode.ExtensionContext): Promise<CollaborationInstance | undefined> {
     const serverUrl = vscode.workspace.getConfiguration().get<string>('oct.serverUrl');
     userToken = await context.secrets.get('oct.userToken');
 
@@ -21,74 +85,20 @@ export async function activate(context: vscode.ExtensionContext) {
         if (roomToken) {
             await context.secrets.delete('oct.roomToken');
             const connection = await connectionProvider.connect(roomToken);
-            instance = new CollaborationInstance(connection, false);
+            const instance = new CollaborationInstance(connection, false);
             connection.onDisconnect(() => {
                 instance?.dispose();
             });
-            context.subscriptions.push(await instance.initialize());
-            vscode.window.showInformationMessage(`Joined Room: ${roomToken}`);
+            await instance.initialize();
+            statusBarItem.text = '$(broadcast) OCT Shared';
+            statusBarItem.show();
+            return instance;
         }
-    } else {
-        await context.secrets.delete('oct.roomToken');
-        vscode.window.showInformationMessage('No OCT Server configured. Please set the server URL in the settings', 'Open Settings').then((selection) => {
-            if (selection === 'Open Settings') {
-                vscode.commands.executeCommand('workbench.action.openSettings', 'oct.serverUrl');
-            }
-        });
     }
-
-    context.subscriptions.push(vscode.workspace.onDidChangeConfiguration((event) => {
-        if (event.affectsConfiguration('oct.serverUrl')) {
-            const newUrl = vscode.workspace.getConfiguration().get<string>('oct.serverUrl')
-            connectionProvider = newUrl ? createConnectionProvider(newUrl) : undefined;
-        }
-    }));
-
-
-    context.subscriptions.push(
-        vscode.commands.registerCommand('oct.login', () => {
-            connectionProvider?.login();
-        })
-    );
-    context.subscriptions.push(
-        vscode.commands.registerCommand('oct.create-room', async () => {
-            if (!connectionProvider) {
-                return;
-            }
-            const roomClaim = await connectionProvider.createRoom();
-            if (roomClaim.loginToken) {
-                userToken = roomClaim.loginToken;
-                await context.secrets.store('oct.userToken', userToken);
-            }
-            const connection = await connectionProvider.connect(roomClaim.roomToken);
-            instance = new CollaborationInstance(connection, true);
-            vscode.window.showInformationMessage(`Created Room: ${roomClaim.roomId}`);
-        })
-    );
-    context.subscriptions.push(
-        vscode.commands.registerCommand('oct.join-room', async () => {
-            const roomId = await vscode.window.showInputBox({ placeHolder: 'Enter the room ID' })
-            if (roomId && connectionProvider) {
-                const roomClaim = await connectionProvider.joinRoom(roomId);
-                if (roomClaim.loginToken) {
-                    userToken = roomClaim.loginToken;
-                    await context.secrets.store('oct.userToken', userToken);
-                }
-                await context.secrets.store('oct.roomToken', roomClaim.roomToken);
-                const workspaceFolders = (vscode.workspace.workspaceFolders ?? []);
-                const workspace = roomClaim.workspace;
-                const newFolders = workspace.folders.map(folder => ({
-                    name: folder,
-                    uri: vscode.Uri.parse(`collab:/${workspace.name}/${folder}`)
-                }));
-                vscode.workspace.updateWorkspaceFolders(0, workspaceFolders.length, ...newFolders);
-            }
-        })
-    );
+    await context.secrets.delete('oct.roomToken');
+    return undefined;
 }
 
-export function deactivate() {
-}
 
 function createConnectionProvider(url: string): ConnectionProvider {
     return new ConnectionProvider({

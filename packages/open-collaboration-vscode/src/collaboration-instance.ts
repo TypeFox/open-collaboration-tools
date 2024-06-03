@@ -124,6 +124,7 @@ export class CollaborationInstance implements vscode.Disposable {
     private yjs: Y.Doc = new Y.Doc();
     private yjsAwareness = new awarenessProtocol.Awareness(this.yjs);
     private identity = new Deferred<types.Peer>();
+    private toDispose: vscode.Disposable[] = [];
     protected yjsProvider: OpenCollaborationYjsProvider;
     private yjsMutex = createMutex();
     private updates = new Set<string>();
@@ -135,6 +136,15 @@ export class CollaborationInstance implements vscode.Disposable {
         this.connection = connection;
         this.yjsProvider = new OpenCollaborationYjsProvider(connection, this.yjs, this.yjsAwareness);
         this.yjsProvider.connect();
+
+        this.toDispose.push(connection);
+        this.toDispose.push(this.yjsProvider);
+        this.toDispose.push({
+            dispose: () => {
+                this.yjs.destroy();
+                this.yjsAwareness.destroy();
+            }
+        });
 
         connection.peer.onJoinRequest(() => {
             const roots = vscode.workspace.workspaceFolders ?? [];
@@ -222,14 +232,11 @@ export class CollaborationInstance implements vscode.Disposable {
     }
 
     dispose() {
-        this.connection.dispose();
         this.peers.forEach(e => e.dispose());
         this.peers.clear();
         this.documentDisposables.forEach(e => e.forEach(d => d.dispose()));
         this.documentDisposables.clear();
-        this.yjsProvider.dispose();
-        this.yjs.destroy();
-        this.yjsAwareness.destroy();
+        this.toDispose.forEach(e => e.dispose());
     }
 
     private pushDocumentDisposable(path: string, disposable: vscode.Disposable) {
@@ -247,25 +254,25 @@ export class CollaborationInstance implements vscode.Disposable {
             this.registerTextDocument(document);
         });
 
-        vscode.workspace.onDidOpenTextDocument(document => {
+        this.toDispose.push(vscode.workspace.onDidOpenTextDocument(document => {
             this.registerTextDocument(document);
-        });
+        }));
 
-        vscode.workspace.onDidChangeTextDocument(event => {
+        this.toDispose.push(vscode.workspace.onDidChangeTextDocument(event => {
             this.updateTextDocument(event);
-        });
+        }));
 
-        vscode.window.onDidChangeVisibleTextEditors(() => {
+        this.toDispose.push(vscode.window.onDidChangeVisibleTextEditors(() => {
             this.rerenderPresence();
-        });
+        }));
 
-        vscode.workspace.onDidCloseTextDocument(document => {
+        this.toDispose.push(vscode.workspace.onDidCloseTextDocument(document => {
             const uri = document.uri.toString();
             this.documentDisposables.get(uri)?.forEach(e => e.dispose());
             this.documentDisposables.delete(uri);
-        });
+        }));
 
-        vscode.window.onDidChangeTextEditorSelection(async event => {
+        this.toDispose.push(vscode.window.onDidChangeTextEditorSelection(async event => {
             const uri = event.textEditor.document.uri;
             const path = this.getProtocolPath(uri);
             if (path) {
@@ -288,7 +295,7 @@ export class CollaborationInstance implements vscode.Disposable {
                 }
                 
             }
-        });
+        }));
 
         this.yjsAwareness.on('change', () => {
             this.rerenderPresence();
@@ -382,7 +389,10 @@ export class CollaborationInstance implements vscode.Disposable {
                         this.updates.delete(path);
                     }
                 });
-            }, 500);
+            }, 500, {
+                leading: false,
+                trailing: true
+            });
             this.throttles.set(path, value);
         }
         return value;
@@ -463,16 +473,14 @@ export class CollaborationInstance implements vscode.Disposable {
         };
     }
 
-    async initialize(): Promise<vscode.Disposable> {
-        const disposables: vscode.Disposable[] = [];
-        disposables.push(vscode.workspace.registerFileSystemProvider('collab', new CollaborationFileSystemProvider(this.connection, this.yjs)));
+    async initialize(): Promise<void> {
         const response = await this.connection.peer.init('', {
             protocol: '0.0.1'
         });
         for (const peer of [response.host, ...response.guests]) {
             this.peers.set(peer.id, new DisposablePeer(peer));
         }
-        return vscode.Disposable.from(...disposables);
+        this.toDispose.push(vscode.workspace.registerFileSystemProvider('collab', new CollaborationFileSystemProvider(this.connection, this.yjs)));
     }
 
     getProtocolPath(uri?: vscode.Uri): string | undefined {
