@@ -39,12 +39,11 @@ export class CollaborationFileSystemProvider implements vscode.FileSystemProvide
             const stringValue = this.yjs.getText(path);
             return this.encoder.encode(stringValue.toString());
         } else {
-            return this.encoder.encode(await this.connection.fs.readFile('', path));
-            // // Attempt to stat the file to see if it exists on the host system
-            // await this.stat(uri);
-            // // Return an empty if the file exists
-            // // The respective yjs content will be created when the host opens the file
-            // return new Uint8Array();
+            // Attempt to stat the file to see if it exists on the host system
+            await this.stat(uri);
+            // Return an empty if the file exists
+            // The respective yjs content will be created when the host opens the file
+            return new Uint8Array();
         }
     }
     writeFile(uri: vscode.Uri, content: Uint8Array, options: { readonly create: boolean; readonly overwrite: boolean; }): void {

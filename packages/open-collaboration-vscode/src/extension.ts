@@ -17,16 +17,19 @@ export async function activate(context: vscode.ExtensionContext) {
 
     if (serverUrl) {
         connectionProvider = createConnectionProvider(serverUrl);
-        const roomToken = context.globalState.get<string>('oct.roomToken');
+        const roomToken = await context.secrets.get('oct.roomToken');
         if (roomToken) {
-            context.globalState.update('oct.roomToken', undefined);
+            await context.secrets.delete('oct.roomToken');
             const connection = await connectionProvider.connect(roomToken);
             instance = new CollaborationInstance(connection, false);
-            await instance.initialize();
+            connection.onDisconnect(() => {
+                instance?.dispose();
+            });
+            context.subscriptions.push(await instance.initialize());
             vscode.window.showInformationMessage(`Joined Room: ${roomToken}`);
         }
     } else {
-        context.globalState.update('oct.roomToken', undefined);
+        await context.secrets.delete('oct.roomToken');
         vscode.window.showInformationMessage('No OCT Server configured. Please set the server URL in the settings', 'Open Settings').then((selection) => {
             if (selection === 'Open Settings') {
                 vscode.commands.executeCommand('workbench.action.openSettings', 'oct.serverUrl');
@@ -34,12 +37,12 @@ export async function activate(context: vscode.ExtensionContext) {
         });
     }
 
-    vscode.workspace.onDidChangeConfiguration((event) => {
+    context.subscriptions.push(vscode.workspace.onDidChangeConfiguration((event) => {
         if (event.affectsConfiguration('oct.serverUrl')) {
             const newUrl = vscode.workspace.getConfiguration().get<string>('oct.serverUrl')
             connectionProvider = newUrl ? createConnectionProvider(newUrl) : undefined;
         }
-    });
+    }));
 
 
     context.subscriptions.push(
@@ -55,7 +58,7 @@ export async function activate(context: vscode.ExtensionContext) {
             const roomClaim = await connectionProvider.createRoom();
             if (roomClaim.loginToken) {
                 userToken = roomClaim.loginToken;
-                context.secrets.store('oct.userToken', userToken);
+                await context.secrets.store('oct.userToken', userToken);
             }
             const connection = await connectionProvider.connect(roomClaim.roomToken);
             instance = new CollaborationInstance(connection, true);
@@ -69,11 +72,11 @@ export async function activate(context: vscode.ExtensionContext) {
                 const roomClaim = await connectionProvider.joinRoom(roomId);
                 if (roomClaim.loginToken) {
                     userToken = roomClaim.loginToken;
-                    context.secrets.store('oct.userToken', userToken);
+                    await context.secrets.store('oct.userToken', userToken);
                 }
-                context.globalState.update('oct.roomToken', roomClaim.roomToken);
+                await context.secrets.store('oct.roomToken', roomClaim.roomToken);
                 const workspaceFolders = (vscode.workspace.workspaceFolders ?? []);
-                const workspace = roomClaim.workspace!;
+                const workspace = roomClaim.workspace;
                 const newFolders = workspace.folders.map(folder => ({
                     name: folder,
                     uri: vscode.Uri.parse(`collab:/${workspace.name}/${folder}`)

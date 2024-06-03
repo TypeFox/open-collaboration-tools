@@ -37,10 +37,10 @@ export interface ProtocolServerMetaData {
     encodings: string[];
 }
 
-export interface ConnectionRoomClaim {
+export interface ConnectionRoomClaim<Host extends boolean> {
     roomId: string;
     roomToken: string;
-    workspace?: types.Workspace;
+    workspace: Host extends false ? types.Workspace : undefined;
     loginToken?: string;
 }
 
@@ -97,7 +97,7 @@ export class ConnectionProvider {
         }
     }
 
-    async createRoom(): Promise<ConnectionRoomClaim> {
+    async createRoom(): Promise<ConnectionRoomClaim<true>> {
         const valid = await this.validate();
         let loginToken: string | undefined;
         if (!valid) {
@@ -114,11 +114,12 @@ export class ConnectionProvider {
         return {
             loginToken,
             roomId: body.room,
+            workspace: undefined,
             roomToken: roomAuthToken
         };
     }
 
-    async joinRoom(roomId: string): Promise<ConnectionRoomClaim> {
+    async joinRoom(roomId: string): Promise<ConnectionRoomClaim<false>> {
         const valid = await this.validate();
         let loginToken: string | undefined;
         if (!valid) {
