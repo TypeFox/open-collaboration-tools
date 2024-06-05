@@ -16,6 +16,7 @@ export async function createRoom(context: vscode.ExtensionContext, connectionPro
     connection.onDisconnect(() => {
         instance?.dispose();
     });
+    vscode.window.showInformationMessage(`Room ID: ${roomClaim.roomId}`);
     return instance;
 }
 
