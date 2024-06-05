@@ -13,6 +13,11 @@
     "onStartupFinished"
   ],
   "main": "./dist/extension.js",
+  "capabilities": {
+    "untrustedWorkspaces": {
+        "supported": true
+    }
+  },
   "contributes": {
     "configuration": {
       "title": "Open Collaboration Tools",
