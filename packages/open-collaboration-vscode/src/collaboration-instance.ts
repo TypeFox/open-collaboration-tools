@@ -10,21 +10,6 @@ import { OpenCollaborationYjsProvider } from 'open-collaboration-yjs';
 import { createMutex } from 'lib0/mutex';
 import throttle from 'lodash/throttle';
 
-export interface RelativeSelection {
-    date: number;
-    start: Y.RelativePosition;
-    end: Y.RelativePosition;
-    direction: 'ltr' | 'rtl';
-}
-
-export interface AwarenessState {
-    peer: string;
-    currentSelection?: {
-        path: string;
-        selection: RelativeSelection;
-    }
-}
-
 export class DisposablePeer implements vscode.Disposable {
     
     private peer: types.Peer;
@@ -215,7 +200,9 @@ export class CollaborationInstance implements vscode.Disposable {
             const uri = this.getResourceUri(path);
             if (uri) {
                 const content = await vscode.workspace.fs.readFile(uri);
-                return content.toString();
+                return {
+                    content: Buffer.from(content).toString('base64')
+                };
             } else {
                 throw new Error('Could not read file');
             }
@@ -272,34 +259,53 @@ export class CollaborationInstance implements vscode.Disposable {
             this.documentDisposables.delete(uri);
         }));
 
-        this.toDispose.push(vscode.window.onDidChangeTextEditorSelection(async event => {
-            const uri = event.textEditor.document.uri;
-            const path = this.getProtocolPath(uri);
-            if (path) {
-                const ytext = this.yjs.getText(path);
-                if (event.selections.length > 0) {
-                    const selection = event.selections[0];
-                    const start = event.textEditor.document.offsetAt(selection.start);
-                    const end = event.textEditor.document.offsetAt(selection.end);
-                    const direction = selection.isReversed ? 'rtl' : 'ltr';
-                    const editorSelection: RelativeSelection = {
-                        // Force update the selection
-                        date: Date.now(),
-                        start: Y.createRelativePositionFromTypeIndex(ytext, start),
-                        end: Y.createRelativePositionFromTypeIndex(ytext, end),
-                        direction
-                    };
-                    this.setSharedSelection(path, editorSelection);
-                } else {
-                    this.setSharedSelection(path, undefined);
-                }
-                
-            }
+        this.toDispose.push(vscode.window.onDidChangeTextEditorSelection(event => {
+            this.updateTextSelection(event.textEditor);
+        }));
+        this.toDispose.push(vscode.window.onDidChangeTextEditorVisibleRanges(event => {
+            this.updateTextSelection(event.textEditor);
         }));
 
         this.yjsAwareness.on('change', () => {
             this.rerenderPresence();
         });
+    }
+
+    protected updateTextSelection(editor: vscode.TextEditor): void {
+        const uri = editor.document.uri;
+        const path = this.getProtocolPath(uri);
+        if (path) {
+            const ytext = this.yjs.getText(path);
+            const selections: types.RelativeTextSelection[] = [];
+            for (const selection of editor.selections) {
+                const start = editor.document.offsetAt(selection.start);
+                const end = editor.document.offsetAt(selection.end);
+                const direction = selection.isReversed
+                    ? types.SelectionDirection.RightToLeft
+                    : types.SelectionDirection.LeftToRight;
+                const editorSelection: types.RelativeTextSelection = {
+                    start: Y.createRelativePositionFromTypeIndex(ytext, start),
+                    end: Y.createRelativePositionFromTypeIndex(ytext, end),
+                    direction
+                };
+                selections.push(editorSelection);
+            }
+            const textSelection: types.ClientTextSelection = {
+                path,
+                textSelections: selections,
+                visibleRanges: editor.visibleRanges.map(range => ({
+                    start: {
+                        line: range.start.line,
+                        character: range.start.character
+                    },
+                    end: {
+                        line: range.end.line,
+                        character: range.end.character
+                    }
+                }))
+            };
+            this.setSharedSelection(textSelection);
+        }
     }
 
     protected registerTextDocument(document: vscode.TextDocument): void {
@@ -389,7 +395,7 @@ export class CollaborationInstance implements vscode.Disposable {
                         this.updates.delete(path);
                     }
                 });
-            }, 500, {
+            }, 200, {
                 leading: false,
                 trailing: true
             });
@@ -399,7 +405,7 @@ export class CollaborationInstance implements vscode.Disposable {
     }
 
     protected rerenderPresence() {
-        const states = this.yjsAwareness.getStates() as Map<number, AwarenessState>;
+        const states = this.yjsAwareness.getStates() as Map<number, types.ClientAwareness>;
         for (const [clientID, state] of states.entries()) {
             if (clientID === this.yjs.clientID) {
                 // Ignore own awareness state
@@ -407,16 +413,26 @@ export class CollaborationInstance implements vscode.Disposable {
             }
             const peerId = state.peer;
             const peer = this.peers.get(peerId);
-            if (!state.currentSelection || !peer) {
+            if (!state.selection || !peer) {
                 continue;
             }
-            const { path, selection } = state.currentSelection;
-            const uri = this.getResourceUri(path);
-            if (uri) {
-                const editors = vscode.window.visibleTextEditors.filter(e => e.document.uri.toString() === uri.toString());
-                if (editors.length > 0) {
-                    const model = editors[0].document;
-                    const forward = selection.direction === 'ltr';
+            if (types.ClientTextSelection.is(state.selection)) {
+                this.renderTextPresence(peer, state.selection);
+            }
+        }
+    }
+
+    protected renderTextPresence(peer: DisposablePeer, selection: types.ClientTextSelection): void {
+        const { path, textSelections } = selection;
+        const uri = this.getResourceUri(path);
+        if (uri) {
+            const editors = vscode.window.visibleTextEditors.filter(e => e.document.uri.toString() === uri.toString());
+            if (editors.length > 0) {
+                const model = editors[0].document;
+                const afterRanges: vscode.Range[] = [];
+                const beforeRanges: vscode.Range[] = [];
+                for (const selection of textSelections) {
+                    const forward = selection.direction === 1;
                     const startIndex = Y.createAbsolutePositionFromRelativePosition(selection.start, this.yjs);
                     const endIndex = Y.createAbsolutePositionFromRelativePosition(selection.end, this.yjs);
                     if (startIndex && endIndex) {
@@ -424,37 +440,28 @@ export class CollaborationInstance implements vscode.Disposable {
                         const end = model.positionAt(endIndex.index);
                         // const inverted = (forward && end.line === 0) || (!forward && start.line === 0);
                         const range = new vscode.Range(start, end);
-                        for (const editor of editors) {
-                            const decoration = forward ? peer.decoration.after : peer.decoration.before;
-                            const clear = forward ? peer.decoration.before : peer.decoration.after;
-                            editor.setDecorations(clear, []);
-                            editor.setDecorations(decoration, [range]);
-                        }
+                        (forward ? afterRanges : beforeRanges).push(range);
                     }
+                }
+                for (const editor of editors) {
+                    editor.setDecorations(peer.decoration.before, beforeRanges);
+                    editor.setDecorations(peer.decoration.after, afterRanges);
                 }
             }
         }
     }
 
-    private setSharedSelection(path: string, selection: RelativeSelection | undefined): void {
-        if (selection) {
-            this.yjsAwareness.setLocalStateField('currentSelection', {
-                path,
-                selection
-            });
-        } else {
-            this.yjsAwareness.setLocalStateField('currentSelection', undefined);
-        }
-        
+    private setSharedSelection(selection?: types.ClientSelection): void {
+        this.yjsAwareness.setLocalStateField('selection', selection);
     }
 
-    protected createSelectionFromRelative(selection: RelativeSelection, model: vscode.TextDocument): vscode.Selection | undefined {
+    protected createSelectionFromRelative(selection: types.RelativeTextSelection, model: vscode.TextDocument): vscode.Selection | undefined {
         const start = Y.createAbsolutePositionFromRelativePosition(selection.start, this.yjs);
         const end = Y.createAbsolutePositionFromRelativePosition(selection.end, this.yjs);
         if (start && end) {
             let anchor = model.positionAt(start.index);
             let head = model.positionAt(end.index);
-            if (selection.direction === 'rtl') {
+            if (selection.direction === types.SelectionDirection.RightToLeft) {
                 [anchor, head] = [head, anchor];
             }
             return new vscode.Selection(anchor, head);
@@ -462,14 +469,13 @@ export class CollaborationInstance implements vscode.Disposable {
         return undefined;
     }
 
-    protected createRelativeSelection(selection: vscode.Selection, model: vscode.TextDocument, ytext: Y.Text): RelativeSelection {
+    protected createRelativeSelection(selection: vscode.Selection, model: vscode.TextDocument, ytext: Y.Text): types.RelativeTextSelection {
         const start = Y.createRelativePositionFromTypeIndex(ytext, model.offsetAt(selection.start));
         const end = Y.createRelativePositionFromTypeIndex(ytext, model.offsetAt(selection.end));
         return {
-            date: Date.now(),
             start,
             end,
-            direction: selection.isReversed ? 'rtl' : 'ltr'
+            direction: selection.isReversed ? types.SelectionDirection.RightToLeft : types.SelectionDirection.LeftToRight
         };
     }
 

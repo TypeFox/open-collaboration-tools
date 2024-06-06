@@ -5,6 +5,32 @@
 // ******************************************************************************
 
 export type Path = string;
+export type Token = string;
+export type Id = string;
+
+// HTTP API
+
+export interface CreateRoomResponse {
+    roomId: Id;
+    roomToken: Token;
+    loginToken?: Token;
+}
+
+export interface JoinRoomResponse {
+    roomId: Id;
+    roomToken: Token;
+    loginToken?: Token;
+    workspace: Workspace
+}
+
+export interface ProtocolServerMetaData {
+    owner: string;
+    version: string;
+    transports: string[];
+    encodings: string[];
+}
+
+// Transport based API
 
 export interface User {
     name: string
@@ -16,7 +42,7 @@ export interface JoinResponse {
 }
 
 export interface Peer {
-    id: string
+    id: Id
     host: boolean
     name: string
     email?: string
@@ -69,7 +95,6 @@ export interface FileSystemDirectory {
 }
 
 export interface FileData {
-    version: string
     /**
      * Base64 encoded content.
      */
@@ -104,3 +129,65 @@ export enum FileChangeEventType {
     Update = 1,
     Delete = 2
 }
+
+export interface ClientAwareness {
+    /**
+     * The peer id of the client.
+     */
+    peer: string;
+    /**
+     * The client's current editor selection.
+     */
+    selection?: ClientSelection;
+}
+
+export interface ClientSelection {
+    path: Path;
+}
+
+export interface ClientTextSelection extends ClientSelection {
+    visibleRanges?: Range[];
+    textSelections: RelativeTextSelection[];
+}
+
+export namespace ClientTextSelection {
+    export function is(selection: ClientSelection): selection is ClientTextSelection {
+        const textSelection = selection as ClientTextSelection;
+        return Array.isArray(textSelection.textSelections);
+    }
+}
+
+export namespace SelectionDirection {
+    export const LeftToRight = 1;
+    export const RightToLeft = 2;
+}
+
+export interface ClientId {
+    client: number
+    clock: number
+}
+
+export interface RelativeTextSelection {
+    start: RelativeTextPosition;
+    end: RelativeTextPosition;
+    direction: SelectionDirection;
+}
+
+export interface RelativeTextPosition {
+    type: ClientId | null
+    tname: string | null
+    item: ClientId | null
+    assoc: number
+}
+
+export interface Position {
+    line: number;
+    character: number;
+}
+
+export interface Range {
+    start: Position;
+    end: Position;
+}
+
+export type SelectionDirection = 1 | 2;

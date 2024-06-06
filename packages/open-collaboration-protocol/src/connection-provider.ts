@@ -30,20 +30,6 @@ export interface FetchResponse {
     text(): Promise<string>;
 }
 
-export interface ProtocolServerMetaData {
-    owner: string;
-    version: string;
-    transports: string[];
-    encodings: string[];
-}
-
-export interface ConnectionRoomClaim<Host extends boolean> {
-    roomId: string;
-    roomToken: string;
-    workspace: Host extends false ? types.Workspace : undefined;
-    loginToken?: string;
-}
-
 export class ConnectionProvider {
 
     private options: ConnectionProviderOptions;
@@ -63,7 +49,15 @@ export class ConnectionProvider {
     }
 
     protected getUrl(path: string): string {
-        return `${this.options.url}${path}`;
+        // Remove trailing slashes from the base URL
+        let url = this.options.url;
+        if (url.endsWith('/')) {
+            url = url.slice(0, -1);
+        }
+        if (path.startsWith('/')) {
+            path = path.slice(1);
+        }
+        return `${url}/${path}`;
     }
 
     async login(): Promise<string> {
@@ -97,7 +91,7 @@ export class ConnectionProvider {
         }
     }
 
-    async createRoom(): Promise<ConnectionRoomClaim<true>> {
+    async createRoom(): Promise<types.CreateRoomResponse> {
         const valid = await this.validate();
         let loginToken: string | undefined;
         if (!valid) {
@@ -114,12 +108,11 @@ export class ConnectionProvider {
         return {
             loginToken,
             roomId: body.room,
-            workspace: undefined,
             roomToken: roomAuthToken
         };
     }
 
-    async joinRoom(roomId: string): Promise<ConnectionRoomClaim<false>> {
+    async joinRoom(roomId: string): Promise<types.JoinRoomResponse> {
         const valid = await this.validate();
         let loginToken: string | undefined;
         if (!valid) {
@@ -143,7 +136,7 @@ export class ConnectionProvider {
 
     async connect(roomAuthToken: string): Promise<ProtocolBroadcastConnection> {
         const metadata = await this.fetch(this.getUrl('/api/meta'));
-        const metadataBody = await metadata.json() as ProtocolServerMetaData;
+        const metadataBody = await metadata.json() as types.ProtocolServerMetaData;
         const transportIndex = this.findFitting(metadataBody.transports, this.options.transports.map(t => t.id));
         const encodingIndex = this.findFitting(metadataBody.encodings, this.options.encodings.map(e => e.encoding));
         const transportProvider = this.options.transports[transportIndex];
