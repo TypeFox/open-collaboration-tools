@@ -103,12 +103,11 @@ export class ConnectionProvider {
                 'x-jwt': this.userAuthToken!
             }
         });
-        const body = await response.json();
-        const roomAuthToken = body.token;
+        const body: types.CreateRoomResponse = await response.json();
         return {
             loginToken,
-            roomId: body.room,
-            roomToken: roomAuthToken
+            roomId: body.roomId,
+            roomToken: body.roomToken
         };
     }
 
@@ -124,12 +123,12 @@ export class ConnectionProvider {
                 'x-jwt': this.userAuthToken!
             }
         });
-        const body = await response.json();
-        const roomAuthToken = body.token;
+        const body: types.JoinRoomResponse = await response.json();
+        const roomAuthToken = body.roomToken;
         return {
             loginToken,
             roomId,
-            workspace: body.response?.workspace,
+            workspace: body.workspace,
             roomToken: roomAuthToken
         };
     }
