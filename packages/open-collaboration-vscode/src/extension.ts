@@ -71,6 +71,8 @@ export async function activate(context: vscode.ExtensionContext) {
 }
 
 export function deactivate() {
+    instance?.dispose();
+    statusBarItem.dispose();
 }
 
 function showQuickPick(quickPick: vscode.QuickPick<vscode.QuickPickItem>): Promise<number> {
