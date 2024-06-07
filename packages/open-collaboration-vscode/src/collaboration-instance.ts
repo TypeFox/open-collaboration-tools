@@ -117,7 +117,7 @@ export class CollaborationInstance implements vscode.Disposable {
     private peers = new Map<string, DisposablePeer>();
     private throttles = new Map<string, () => void>();
 
-    constructor(connection: ProtocolBroadcastConnection, private host: boolean) {
+    constructor(connection: ProtocolBroadcastConnection, public host: boolean, public roomToken?: string) {
         this.connection = connection;
         this.yjsProvider = new OpenCollaborationYjsProvider(connection, this.yjs, this.yjsAwareness);
         this.yjsProvider.connect();
@@ -131,14 +131,19 @@ export class CollaborationInstance implements vscode.Disposable {
             }
         });
 
-        connection.peer.onJoinRequest(() => {
+        connection.peer.onJoinRequest(async (_, user) => {
+            const result = await vscode.window.showInformationMessage(
+                `User '${user.email ? `${user.name} (${user.email})` : user.name}' wants to join the collaboration room`,
+                'Allow',
+                'Deny'
+            );
             const roots = vscode.workspace.workspaceFolders ?? [];
-            return {
+            return result === 'Allow' ? {
                 workspace: {
                     name: vscode.workspace.name ?? 'Collaboration',
                     folders: roots.map(e => e.name)
-                }
-            };
+                } 
+            } : undefined;
         });
         connection.room.onJoin(async (_, peer) => {
             this.peers.set(peer.id, new DisposablePeer(peer));

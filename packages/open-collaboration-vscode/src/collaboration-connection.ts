@@ -12,7 +12,7 @@ export async function createRoom(context: vscode.ExtensionContext, connectionPro
         await context.secrets.store('oct.userToken', userToken);
     }
     const connection = await connectionProvider.connect(roomClaim.roomToken);
-    const instance = new CollaborationInstance(connection, true);
+    const instance = new CollaborationInstance(connection, true, roomClaim.roomId);
     connection.onDisconnect(() => {
         instance?.dispose();
     });
@@ -28,19 +28,21 @@ export async function joinRoom(context: vscode.ExtensionContext, connectionProvi
     if (!roomId) {
         roomId = await vscode.window.showInputBox({ placeHolder: 'Enter the room ID' })
     }
-    if (roomId && connectionProvider) {
-        const roomClaim = await connectionProvider.joinRoom(roomId);
-        if (roomClaim.loginToken) {
-            const userToken = roomClaim.loginToken;
-            await context.secrets.store('oct.userToken', userToken);
+    vscode.window.withProgress({location: vscode.ProgressLocation.Notification, title: 'Joining Room'}, async () => {
+        if (roomId && connectionProvider) {
+            const roomClaim = await connectionProvider.joinRoom(roomId);
+            if (roomClaim.loginToken) {
+                const userToken = roomClaim.loginToken;
+                await context.secrets.store('oct.userToken', userToken);
+            }
+            await context.secrets.store('oct.roomToken', roomClaim.roomToken);
+            const workspaceFolders = (vscode.workspace.workspaceFolders ?? []);
+            const workspace = roomClaim.workspace;
+            const newFolders = workspace.folders.map(folder => ({
+                name: folder,
+                uri: vscode.Uri.parse(`collab:/${workspace.name}/${folder}`)
+            }));
+            vscode.workspace.updateWorkspaceFolders(0, workspaceFolders.length, ...newFolders);
         }
-        await context.secrets.store('oct.roomToken', roomClaim.roomToken);
-        const workspaceFolders = (vscode.workspace.workspaceFolders ?? []);
-        const workspace = roomClaim.workspace;
-        const newFolders = workspace.folders.map(folder => ({
-            name: folder,
-            uri: vscode.Uri.parse(`collab:/${workspace.name}/${folder}`)
-        }));
-        vscode.workspace.updateWorkspaceFolders(0, workspaceFolders.length, ...newFolders);
-    }
+    });
 }

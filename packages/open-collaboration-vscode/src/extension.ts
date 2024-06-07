@@ -40,14 +40,21 @@ export async function activate(context: vscode.ExtensionContext) {
             } else if (instance) {
                 const quickPick = vscode.window.createQuickPick();
                 quickPick.placeholder = 'Select collaboration option';
-                quickPick.items = [
+                const items: vscode.QuickPickItem[] = [
                     { label: '$(close) Close Current Session' },
                 ];
+                if(instance.host) {
+                    items.push({ label: '$(copy) Copy Room Token' });
+                }
+                quickPick.items = items;
                 const index = await showQuickPick(quickPick);
                 if(index === 0) {
                     instance.dispose();
                     statusBarItem.text = '$(live-share) OCT';
                     instance = undefined;
+                } else if(index === 1) {
+                    vscode.env.clipboard.writeText(instance.roomToken ?? '');
+                    vscode.window.showInformationMessage(`Room Token ${instance.roomToken} copied to clipboard`);
                 }
 
             } else {
