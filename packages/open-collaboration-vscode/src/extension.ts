@@ -38,7 +38,18 @@ export async function activate(context: vscode.ExtensionContext) {
                     }
                 });
             } else if (instance) {
-                // Add options to manage the room
+                const quickPick = vscode.window.createQuickPick();
+                quickPick.placeholder = 'Select collaboration option';
+                quickPick.items = [
+                    { label: '$(close) Close Current Session' },
+                ];
+                const index = await showQuickPick(quickPick);
+                if(index === 0) {
+                    instance.dispose();
+                    statusBarItem.text = '$(live-share) OCT';
+                    instance = undefined;
+                }
+
             } else {
                 const quickPick = vscode.window.createQuickPick();
                 quickPick.placeholder = 'Select collaboration option';
@@ -48,7 +59,7 @@ export async function activate(context: vscode.ExtensionContext) {
                 ];
                 const index = await showQuickPick(quickPick);
                 if (index === 0) {
-                    if (await createRoom(context, connectionProvider)) {
+                    if (instance = await createRoom(context, connectionProvider)) {
                         statusBarItem.text = '$(broadcast) OCT Shared';
                     }
                 } else if (index === 1) {

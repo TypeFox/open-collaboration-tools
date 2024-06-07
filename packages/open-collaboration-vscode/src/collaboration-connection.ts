@@ -16,7 +16,11 @@ export async function createRoom(context: vscode.ExtensionContext, connectionPro
     connection.onDisconnect(() => {
         instance?.dispose();
     });
-    vscode.window.showInformationMessage(`Room ID: ${roomClaim.roomId}`);
+    vscode.window.showInformationMessage(`Room ID: ${roomClaim.roomId}`, 'Copy to Clipboard').then(value => { 
+        if (value === 'Copy to Clipboard') {
+            vscode.env.clipboard.writeText(roomClaim.roomId);
+        }
+    });
     return instance;
 }
 
