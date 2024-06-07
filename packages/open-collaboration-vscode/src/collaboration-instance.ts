@@ -29,12 +29,13 @@ export class DisposablePeer implements vscode.Disposable {
 
     private createDecorationType(name: string): ClientTextEditorDecorationType {
         const color = createColor();
+        const colorCss = `${color[0]}, ${color[1]}, ${color[2]}`
         const selection: vscode.DecorationRenderOptions = {
-            backgroundColor: `rgba(${color[0]}, ${color[1]}, ${color[2]}, 0.35)`,
+            backgroundColor: `rgba(${colorCss}, 0.35)`,
             borderRadius: '0.1em'
         };
         const cursor: vscode.ThemableDecorationAttachmentRenderOptions = {
-            color: `rgb(${color[0]}, ${color[1]}, ${color[2]})`,
+            color: `rgb(${colorCss})`,
             contentText: 'ᛙ',
             margin: '0px 0px 0px -0.25ch',
             fontWeight: 'bold',
@@ -43,14 +44,27 @@ export class DisposablePeer implements vscode.Disposable {
         const before = vscode.window.createTextEditorDecorationType({
             rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
             ...selection,
-            before: cursor
+            before: cursor  
         });
         const after = vscode.window.createTextEditorDecorationType({
             rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
             ...selection,
             after: cursor
         });
-        return new ClientTextEditorDecorationType(before, after);
+
+        const nameTag = vscode.window.createTextEditorDecorationType({
+            backgroundColor: `rgb(${colorCss})`,
+            rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
+            textDecoration:"none; position: relative; z-index: 10;",
+            after: {
+                contentText: this.peer.name,
+                backgroundColor: `rgb(${colorCss})`,
+                textDecoration:`none; position: absolute; top: -1rem; border-radius: 0.15rem; padding:0px 0.5ch; display: inline-block; 
+                                pointer-events: none; color: #000; font-size: 0.7rem, z-index: 1; font-weight: bold`,
+            }
+        });
+
+        return new ClientTextEditorDecorationType(before, after, nameTag);
     }
     
     dispose() {
@@ -93,9 +107,10 @@ export class ClientTextEditorDecorationType implements vscode.Disposable {
     protected readonly toDispose: vscode.Disposable;
     constructor(
         readonly before: vscode.TextEditorDecorationType,
-        readonly after: vscode.TextEditorDecorationType
+        readonly after: vscode.TextEditorDecorationType,
+        readonly nameTag: vscode.TextEditorDecorationType
     ) {
-        this.toDispose = vscode.Disposable.from(before, after);
+        this.toDispose = vscode.Disposable.from(before, after, nameTag);
     }
 
     dispose(): void {
@@ -451,6 +466,7 @@ export class CollaborationInstance implements vscode.Disposable {
                 for (const editor of editors) {
                     editor.setDecorations(peer.decoration.before, beforeRanges);
                     editor.setDecorations(peer.decoration.after, afterRanges);
+                    editor.setDecorations(peer.decoration.nameTag, beforeRanges);
                 }
             }
         }

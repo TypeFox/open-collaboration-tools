@@ -52,6 +52,7 @@ export async function activate(context: vscode.ExtensionContext) {
                     instance.dispose();
                     statusBarItem.text = '$(live-share) OCT';
                     instance = undefined;
+                    vscode.workspace.updateWorkspaceFolders(0, vscode.workspace.workspaceFolders?.length ?? 0);
                 } else if(index === 1) {
                     vscode.env.clipboard.writeText(instance.roomToken ?? '');
                     vscode.window.showInformationMessage(`Room Token ${instance.roomToken} copied to clipboard`);
