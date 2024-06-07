@@ -14,6 +14,7 @@ export class DisposablePeer implements vscode.Disposable {
     
     private peer: types.Peer;
     private disposables: vscode.Disposable[] = [];
+    private yjsAwareness: awarenessProtocol.Awareness;
     
     readonly decoration: ClientTextEditorDecorationType;
 
@@ -21,8 +22,30 @@ export class DisposablePeer implements vscode.Disposable {
         return this.peer.id;
     }
 
-    constructor(peer: types.Peer) {
+    get clientId(): number | undefined {
+        const states = this.yjsAwareness.getStates() as Map<number, types.ClientAwareness>;
+        for (const [clientID, state] of states.entries()) {
+            if (state.peer === this.peer.id) {
+                return clientID;
+            }
+        }
+        return undefined;
+    }
+
+    get lastUpdated(): number | undefined {
+        const clientId = this.clientId;
+        if (clientId !== undefined) {
+            const meta = this.yjsAwareness.meta.get(clientId);
+            if (meta) {
+                return meta.lastUpdated;
+            }
+        }
+        return undefined;
+    }
+
+    constructor(yAwareness: awarenessProtocol.Awareness, peer: types.Peer) {
         this.peer = peer;
+        this.yjsAwareness = yAwareness;
         this.decoration = this.createDecorationType(peer.name);
         this.disposables.push(this.decoration);
     }
@@ -44,27 +67,34 @@ export class DisposablePeer implements vscode.Disposable {
         const before = vscode.window.createTextEditorDecorationType({
             rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
             ...selection,
-            before: cursor  
+            before: cursor
         });
         const after = vscode.window.createTextEditorDecorationType({
             rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
             ...selection,
             after: cursor
         });
+        const beforeNameTag = this.createNameTag(colorCss, 'top: -1rem;')
+        const beforeInvertedNameTag = this.createNameTag(colorCss, 'bottom: -1rem;');
 
-        const nameTag = vscode.window.createTextEditorDecorationType({
-            backgroundColor: `rgb(${colorCss})`,
-            rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
-            textDecoration:"none; position: relative; z-index: 10;",
-            after: {
-                contentText: this.peer.name,
-                backgroundColor: `rgb(${colorCss})`,
-                textDecoration:`none; position: absolute; top: -1rem; border-radius: 0.15rem; padding:0px 0.5ch; display: inline-block; 
-                                pointer-events: none; color: #000; font-size: 0.7rem, z-index: 1; font-weight: bold`,
-            }
+        return new ClientTextEditorDecorationType(before, after, {
+            default: beforeNameTag,
+            inverted: beforeInvertedNameTag
         });
+    }
 
-        return new ClientTextEditorDecorationType(before, after, nameTag);
+    private createNameTag(color: string, textDecoration?: string): vscode.TextEditorDecorationType {
+        const options: vscode.ThemableDecorationAttachmentRenderOptions = {
+            contentText: this.peer.name,
+            backgroundColor: `rgb(${color})`,
+            textDecoration: `none; position: absolute; border-radius: 0.15rem; padding:0px 0.5ch; display: inline-block; 
+                                pointer-events: none; color: #000; font-size: 0.7rem; z-index: 10; font-weight: bold;${textDecoration ?? ''}`
+        }
+        return vscode.window.createTextEditorDecorationType({
+            backgroundColor: `rgb(${color})`,
+            rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
+            before: options
+        });
     }
     
     dispose() {
@@ -108,9 +138,16 @@ export class ClientTextEditorDecorationType implements vscode.Disposable {
     constructor(
         readonly before: vscode.TextEditorDecorationType,
         readonly after: vscode.TextEditorDecorationType,
-        readonly nameTag: vscode.TextEditorDecorationType
+        readonly nameTags: {
+            default: vscode.TextEditorDecorationType,
+            inverted: vscode.TextEditorDecorationType
+        }
     ) {
-        this.toDispose = vscode.Disposable.from(before, after, nameTag);
+        this.toDispose = vscode.Disposable.from(
+            before, after,
+            nameTags.default,
+            nameTags.inverted,
+        );
     }
 
     dispose(): void {
@@ -161,7 +198,7 @@ export class CollaborationInstance implements vscode.Disposable {
             } : undefined;
         });
         connection.room.onJoin(async (_, peer) => {
-            this.peers.set(peer.id, new DisposablePeer(peer));
+            this.peers.set(peer.id, new DisposablePeer(this.yjsAwareness, peer));
         });
         connection.room.onLeave(async (_, peer) => {
             const disposable = this.peers.get(peer.id);
@@ -286,8 +323,14 @@ export class CollaborationInstance implements vscode.Disposable {
             this.updateTextSelection(event.textEditor);
         }));
 
+        let awarenessTimeout: NodeJS.Timeout | undefined;
+
         this.yjsAwareness.on('change', () => {
             this.rerenderPresence();
+            clearTimeout(awarenessTimeout);
+            awarenessTimeout = setTimeout(() => {
+                this.rerenderPresence();
+            }, 2000);
         });
     }
 
@@ -443,6 +486,7 @@ export class CollaborationInstance implements vscode.Disposable {
     }
 
     protected renderTextPresence(peer: DisposablePeer, selection: types.ClientTextSelection): void {
+        const nameTagVisible = peer.lastUpdated !== undefined && Date.now() - peer.lastUpdated < 1900;
         const { path, textSelections } = selection;
         const uri = this.getResourceUri(path);
         if (uri) {
@@ -451,6 +495,8 @@ export class CollaborationInstance implements vscode.Disposable {
                 const model = editors[0].document;
                 const afterRanges: vscode.Range[] = [];
                 const beforeRanges: vscode.Range[] = [];
+                const beforeNameTags: vscode.Range[] = [];
+                const beforeInvertedNameTags: vscode.Range[] = [];
                 for (const selection of textSelections) {
                     const forward = selection.direction === 1;
                     const startIndex = Y.createAbsolutePositionFromRelativePosition(selection.start, this.yjs);
@@ -458,15 +504,28 @@ export class CollaborationInstance implements vscode.Disposable {
                     if (startIndex && endIndex) {
                         const start = model.positionAt(startIndex.index);
                         const end = model.positionAt(endIndex.index);
-                        // const inverted = (forward && end.line === 0) || (!forward && start.line === 0);
+                        const inverted = (forward && end.line === 0) || (!forward && start.line === 0);
                         const range = new vscode.Range(start, end);
-                        (forward ? afterRanges : beforeRanges).push(range);
+                        if (forward) {
+                            afterRanges.push(range);
+                            if (nameTagVisible) {
+                                const endRange = new vscode.Range(end, end);
+                                (inverted ? beforeInvertedNameTags : beforeNameTags).push(endRange);
+                            }
+                        } else {
+                            beforeRanges.push(range);
+                            if (nameTagVisible) {
+                                const startRange = new vscode.Range(start, start);
+                                (inverted ? beforeInvertedNameTags : beforeNameTags).push(startRange);
+                            }
+                        }
                     }
                 }
                 for (const editor of editors) {
                     editor.setDecorations(peer.decoration.before, beforeRanges);
                     editor.setDecorations(peer.decoration.after, afterRanges);
-                    editor.setDecorations(peer.decoration.nameTag, beforeRanges);
+                    editor.setDecorations(peer.decoration.nameTags.default, beforeNameTags);
+                    editor.setDecorations(peer.decoration.nameTags.inverted, beforeInvertedNameTags);
                 }
             }
         }
@@ -505,9 +564,9 @@ export class CollaborationInstance implements vscode.Disposable {
             protocol: '0.0.1'
         });
         for (const peer of [response.host, ...response.guests]) {
-            this.peers.set(peer.id, new DisposablePeer(peer));
+            this.peers.set(peer.id, new DisposablePeer(this.yjsAwareness, peer));
         }
-        this.toDispose.push(vscode.workspace.registerFileSystemProvider('collab', new CollaborationFileSystemProvider(this.connection, this.yjs)));
+        this.toDispose.push(vscode.workspace.registerFileSystemProvider('oct', new CollaborationFileSystemProvider(this.connection, this.yjs)));
     }
 
     getProtocolPath(uri?: vscode.Uri): string | undefined {

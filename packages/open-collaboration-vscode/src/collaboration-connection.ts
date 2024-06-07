@@ -1,6 +1,7 @@
 import { ConnectionProvider } from "open-collaboration-protocol";
 import * as vscode from 'vscode';
 import { CollaborationInstance } from "./collaboration-instance";
+import { CollaborationUri } from "./collaboration-file-system";
 
 export async function createRoom(context: vscode.ExtensionContext, connectionProvider: ConnectionProvider): Promise<CollaborationInstance | undefined> {
     if (!connectionProvider) {
@@ -40,7 +41,7 @@ export async function joinRoom(context: vscode.ExtensionContext, connectionProvi
             const workspace = roomClaim.workspace;
             const newFolders = workspace.folders.map(folder => ({
                 name: folder,
-                uri: vscode.Uri.parse(`collab:/${workspace.name}/${folder}`)
+                uri: CollaborationUri.create(workspace.name, folder)
             }));
             vscode.workspace.updateWorkspaceFolders(0, workspaceFolders.length, ...newFolders);
         }

@@ -2,6 +2,16 @@ import { ProtocolBroadcastConnection } from 'open-collaboration-protocol';
 import * as vscode from 'vscode';
 import * as Y from 'yjs';
 
+export namespace CollaborationUri {
+
+    export const SCHEME = 'oct';
+
+    export function create(workspace: string, path?: string): vscode.Uri {
+        return vscode.Uri.parse(`${SCHEME}:///${workspace}${path ? '/' + path : ''}`);
+    }
+
+}
+
 export class CollaborationFileSystemProvider implements vscode.FileSystemProvider {
 
     private connection: ProtocolBroadcastConnection;

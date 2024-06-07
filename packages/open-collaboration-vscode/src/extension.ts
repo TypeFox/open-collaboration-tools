@@ -5,6 +5,7 @@ import { WebSocket } from 'ws';
 import { CollaborationInstance } from './collaboration-instance';
 import fetch from 'node-fetch';
 import { createRoom, joinRoom } from './collaboration-connection';
+import { CollaborationUri } from './collaboration-file-system';
 
 (global as any).WebSocket = WebSocket;
 
@@ -20,7 +21,13 @@ export async function activate(context: vscode.ExtensionContext) {
     statusBarItem.command = 'oct.enter';
     statusBarItem.show();
 
-    initializeConnection(context).then(value => instance = value);
+    initializeConnection(context).then(value => {
+        if (value) {
+            instance = value;
+        } else {
+            removeWorkspaceFolders();
+        }
+    });
 
     context.subscriptions.push(vscode.workspace.onDidChangeConfiguration((event) => {
         if (event.affectsConfiguration('oct.serverUrl')) {
@@ -43,7 +50,7 @@ export async function activate(context: vscode.ExtensionContext) {
                 const items: vscode.QuickPickItem[] = [
                     { label: '$(close) Close Current Session' },
                 ];
-                if(instance.host) {
+                if (instance.host) {
                     items.push({ label: '$(copy) Copy Room Token' });
                 }
                 quickPick.items = items;
@@ -130,4 +137,17 @@ function createConnectionProvider(url: string): ConnectionProvider {
         userToken,
         fetch
     });
+}
+
+function removeWorkspaceFolders() {
+    const workspaceFolders = vscode.workspace.workspaceFolders ?? [];
+    if (workspaceFolders.length > 0) {
+        const newFolders: vscode.WorkspaceFolder[] = [];
+        for (const folder of workspaceFolders) {
+            if (folder.uri.scheme !== CollaborationUri.SCHEME) {
+                newFolders.push(folder);
+            }
+        }
+        vscode.workspace.updateWorkspaceFolders(0, workspaceFolders.length, ...newFolders);
+    }
 }
