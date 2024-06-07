@@ -30,7 +30,7 @@
 			],
             "sourceMaps": true,
 			"outFiles": [
-				"${workspaceFolder}/packages/open-collaboration-vscode/lib/**/*.js"
+				"${workspaceFolder}/packages/open-collaboration-vscode/dist/**/*.js"
 			]
 		}
     ]
