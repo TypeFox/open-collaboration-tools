@@ -4,23 +4,19 @@ import * as Y from 'yjs';
 import * as awarenessProtocol from 'y-protocols/awareness';
 import * as types from 'open-collaboration-protocol';
 import { CollaborationFileSystemProvider } from "./collaboration-file-system";
-import { Deferred } from "open-collaboration-rpc";
+import { Deferred, DisposableCollection } from "open-collaboration-rpc";
 import * as paths from 'path';
-import { OpenCollaborationYjsProvider } from 'open-collaboration-yjs';
+import { LOCAL_ORIGIN, OpenCollaborationYjsProvider } from 'open-collaboration-yjs';
 import { createMutex } from 'lib0/mutex';
 import throttle from 'lodash/throttle';
 
 export class DisposablePeer implements vscode.Disposable {
-    
-    private peer: types.Peer;
+
+    readonly peer: types.Peer;
     private disposables: vscode.Disposable[] = [];
     private yjsAwareness: awarenessProtocol.Awareness;
-    
-    readonly decoration: ClientTextEditorDecorationType;
 
-    get id(): string {
-        return this.peer.id;
-    }
+    readonly decoration: ClientTextEditorDecorationType;
 
     get clientId(): number | undefined {
         const states = this.yjsAwareness.getStates() as Map<number, types.ClientAwareness>;
@@ -96,7 +92,7 @@ export class DisposablePeer implements vscode.Disposable {
             before: options
         });
     }
-    
+
     dispose() {
         for (const disposable of this.disposables) {
             disposable.dispose();
@@ -161,13 +157,14 @@ export class CollaborationInstance implements vscode.Disposable {
     private yjs: Y.Doc = new Y.Doc();
     private yjsAwareness = new awarenessProtocol.Awareness(this.yjs);
     private identity = new Deferred<types.Peer>();
-    private toDispose: vscode.Disposable[] = [];
+    private toDispose = new DisposableCollection();
     protected yjsProvider: OpenCollaborationYjsProvider;
     private yjsMutex = createMutex();
     private updates = new Set<string>();
-    private documentDisposables = new Map<string, vscode.Disposable[]>();
+    private documentDisposables = new Map<string, DisposableCollection>();
     private peers = new Map<string, DisposablePeer>();
     private throttles = new Map<string, () => void>();
+    private following = false;
 
     constructor(connection: ProtocolBroadcastConnection, public host: boolean, public roomToken?: string) {
         this.connection = connection;
@@ -194,7 +191,7 @@ export class CollaborationInstance implements vscode.Disposable {
                 workspace: {
                     name: vscode.workspace.name ?? 'Collaboration',
                     folders: roots.map(e => e.name)
-                } 
+                }
             } : undefined;
         });
         connection.room.onJoin(async (_, peer) => {
@@ -220,7 +217,7 @@ export class CollaborationInstance implements vscode.Disposable {
             const response: types.InitResponse = {
                 protocol: '0.0.1',
                 host: await this.identity.promise,
-                guests: [],
+                guests: Array.from(this.peers.values()).map(e => e.peer),
                 capabilities: {},
                 permissions: { readonly: false },
                 workspace: {
@@ -278,15 +275,15 @@ export class CollaborationInstance implements vscode.Disposable {
     dispose() {
         this.peers.forEach(e => e.dispose());
         this.peers.clear();
-        this.documentDisposables.forEach(e => e.forEach(d => d.dispose()));
+        this.documentDisposables.forEach(e => e.dispose());
         this.documentDisposables.clear();
-        this.toDispose.forEach(e => e.dispose());
+        this.toDispose.dispose();
     }
 
     private pushDocumentDisposable(path: string, disposable: vscode.Disposable) {
         let disposables = this.documentDisposables.get(path);
         if (!disposables) {
-            disposables = [];
+            disposables = new DisposableCollection();
             this.documentDisposables.set(path, disposables);
         }
         disposables.push(disposable);
@@ -312,7 +309,7 @@ export class CollaborationInstance implements vscode.Disposable {
 
         this.toDispose.push(vscode.workspace.onDidCloseTextDocument(document => {
             const uri = document.uri.toString();
-            this.documentDisposables.get(uri)?.forEach(e => e.dispose());
+            this.documentDisposables.get(uri)?.dispose();
             this.documentDisposables.delete(uri);
         }));
 
@@ -325,13 +322,48 @@ export class CollaborationInstance implements vscode.Disposable {
 
         let awarenessTimeout: NodeJS.Timeout | undefined;
 
-        this.yjsAwareness.on('change', () => {
-            this.rerenderPresence();
-            clearTimeout(awarenessTimeout);
-            awarenessTimeout = setTimeout(() => {
+        this.yjsAwareness.on('change', async (_: any, origin: string) => {
+            if (origin !== LOCAL_ORIGIN) {
+                this.updateFollow();
                 this.rerenderPresence();
-            }, 2000);
+                clearTimeout(awarenessTimeout);
+                awarenessTimeout = setTimeout(() => {
+                    this.rerenderPresence();
+                }, 2000);
+            }
         });
+    }
+
+    protected updateFollow(): void {
+        if (this.following) {
+            let hostState: types.ClientAwareness | undefined = undefined;
+            const states = this.yjsAwareness.getStates() as Map<number, types.ClientAwareness>;
+            for (const state of states.values()) {
+                const peer = this.peers.get(state.peer);
+                if (peer?.peer.host) {
+                    hostState = state;
+                }
+            }
+            if (hostState) {
+                if (types.ClientTextSelection.is(hostState.selection)) {
+                    this.followSelection(hostState.selection);
+                }
+            }
+        }
+    }
+
+    protected async followSelection(selection: types.ClientTextSelection): Promise<void> {
+        const uri = this.getResourceUri(selection.path);
+        if (uri && selection.visibleRanges && selection.visibleRanges.length > 0) {
+            let editor = vscode.window.visibleTextEditors.find(e => e.document.uri.toString() === uri.toString());
+            if (!editor) {
+                const document = await vscode.workspace.openTextDocument(uri);
+                editor = await vscode.window.showTextDocument(document);
+            }
+            const visibleRange = selection.visibleRanges[0];
+            const range = new vscode.Range(visibleRange.start.line, visibleRange.start.character, visibleRange.end.line, visibleRange.end.character);
+            editor.revealRange(range);
+        }
     }
 
     protected updateTextSelection(editor: vscode.TextEditor): void {
@@ -600,5 +632,4 @@ export class CollaborationInstance implements vscode.Disposable {
             return undefined;
         }
     }
-
 }

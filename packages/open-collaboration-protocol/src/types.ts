@@ -151,7 +151,10 @@ export interface ClientTextSelection extends ClientSelection {
 }
 
 export namespace ClientTextSelection {
-    export function is(selection: ClientSelection): selection is ClientTextSelection {
+    export function is(selection?: ClientSelection): selection is ClientTextSelection {
+        if (!selection) {
+            return false;
+        }
         const textSelection = selection as ClientTextSelection;
         return Array.isArray(textSelection.textSelections);
     }
