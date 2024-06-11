@@ -26,6 +26,7 @@ export async function activate(context: vscode.ExtensionContext) {
             instance = value;
         } else {
             removeWorkspaceFolders();
+            closeSharedEditors();
         }
     });
 
@@ -150,4 +151,12 @@ function removeWorkspaceFolders() {
         }
         vscode.workspace.updateWorkspaceFolders(0, workspaceFolders.length, ...newFolders);
     }
+}
+
+function closeSharedEditors() {
+    vscode.window.tabGroups.close(
+        vscode.window.tabGroups.all
+            .flatMap(group => group.tabs)
+            .filter(tab => (tab.input as { uri: vscode.Uri })?.uri?.scheme === CollaborationUri.SCHEME)
+    )
 }
