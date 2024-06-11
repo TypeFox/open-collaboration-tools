@@ -25,8 +25,8 @@ export async function activate(context: vscode.ExtensionContext) {
         if (value) {
             instance = value;
         } else {
-            removeWorkspaceFolders();
             closeSharedEditors();
+            removeWorkspaceFolders();
         }
     });
 
@@ -86,9 +86,11 @@ export async function activate(context: vscode.ExtensionContext) {
     );
 }
 
-export function deactivate() {
+export async function deactivate(): Promise<void> {
     instance?.dispose();
     statusBarItem.dispose();
+    await closeSharedEditors();
+    removeWorkspaceFolders();
 }
 
 function showQuickPick(quickPick: vscode.QuickPick<vscode.QuickPickItem>): Promise<number> {
@@ -154,7 +156,7 @@ function removeWorkspaceFolders() {
 }
 
 function closeSharedEditors() {
-    vscode.window.tabGroups.close(
+    return vscode.window.tabGroups.close(
         vscode.window.tabGroups.all
             .flatMap(group => group.tabs)
             .filter(tab => (tab.input as { uri: vscode.Uri })?.uri?.scheme === CollaborationUri.SCHEME)
