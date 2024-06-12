@@ -50,7 +50,7 @@ export class DisposablePeer implements vscode.Disposable {
         const color = createColor();
         const colorCss = typeof color === 'string' ? `var(--vscode-${color.replaceAll('.', '-')})` : `rgb(${color[0]}, ${color[1]}, ${color[2]})`
         const selection: vscode.DecorationRenderOptions = {
-            backgroundColor: `rgba(${typeof color === 'string' ? colorCss : `${color[0]}, ${color[1]}, ${color[2]}`}, 0.35)`,
+            backgroundColor: `color-mix(in srgb, ${colorCss} 25%, transparent)`,
             borderRadius: '0.1em'
         };
         const cursor: vscode.ThemableDecorationAttachmentRenderOptions = {
@@ -82,7 +82,7 @@ export class DisposablePeer implements vscode.Disposable {
     private createNameTag(color: string, textDecoration?: string): vscode.TextEditorDecorationType {
         const options: vscode.ThemableDecorationAttachmentRenderOptions = {
             contentText: this.peer.name,
-            backgroundColor:color,
+            backgroundColor: color,
             textDecoration: `none; position: absolute; border-radius: 0.15rem; padding:0px 0.5ch; display: inline-block; 
                                 pointer-events: none; color: #000; font-size: 0.7rem; z-index: 10; font-weight: bold;${textDecoration ?? ''}`
         }
