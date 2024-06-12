@@ -205,7 +205,7 @@ async function followPeer(peer?: DisposablePeer) {
         return;
     }
 
-    instance.following = peer.peer.id;
+    instance.followUser(peer.peer.id);
     viewDataProvider.updateAllPeers();
 }
 
@@ -214,6 +214,6 @@ async function unfollowPeer() {
         return
     }
 
-    instance.following = undefined;
+    instance.followUser(undefined);
     viewDataProvider.updateAllPeers();
 }

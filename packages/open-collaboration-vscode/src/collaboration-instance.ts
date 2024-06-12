@@ -169,7 +169,11 @@ export class CollaborationInstance implements vscode.Disposable {
     private documentDisposables = new Map<string, DisposableCollection>();
     private peers = new Map<string, DisposablePeer>();
     private throttles = new Map<string, () => void>();
-    following?: string;
+
+    private _following?: string;
+    get following(): string | undefined {
+        return this._following;
+    }
 
     private readonly onUsersChangedEmitter: vscode.EventEmitter<void> = new vscode.EventEmitter<void>();
     readonly onUsersChanged: vscode.Event<void> = this.onUsersChangedEmitter.event;
@@ -352,13 +356,20 @@ export class CollaborationInstance implements vscode.Disposable {
         });
     }
 
+    followUser(id?: string) {
+        this._following = id;
+        if(id) {
+            this.updateFollow();
+        }
+    }
+
     protected updateFollow(): void {
-        if (this.following) {
+        if (this._following) {
             let userState: types.ClientAwareness | undefined = undefined;
             const states = this.yjsAwareness.getStates() as Map<number, types.ClientAwareness>;
             for (const state of states.values()) {
                 const peer = this.peers.get(state.peer);
-                if (peer?.peer.id === this.following) {
+                if (peer?.peer.id === this._following) {
                     userState = state;
                 }
             }
