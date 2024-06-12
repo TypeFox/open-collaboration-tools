@@ -2,10 +2,11 @@ import * as vscode from 'vscode';
 import { ConnectionProvider } from 'open-collaboration-protocol';
 import { JsonMessageEncoding, WebSocketTransportProvider } from 'open-collaboration-rpc';
 import { WebSocket } from 'ws';
-import { CollaborationInstance } from './collaboration-instance';
+import { CollaborationInstance, DisposablePeer } from './collaboration-instance';
 import fetch from 'node-fetch';
 import { createRoom, joinRoom } from './collaboration-connection';
 import { CollaborationUri } from './collaboration-file-system';
+import { CollaborationStatusViewDataProvider } from './collaboration-status-view';
 
 (global as any).WebSocket = WebSocket;
 
@@ -13,22 +14,31 @@ let connectionProvider: ConnectionProvider | undefined;
 let userToken: string | undefined;
 let instance: CollaborationInstance | undefined;
 let statusBarItem: vscode.StatusBarItem;
+let viewDataProvider: CollaborationStatusViewDataProvider
 
 export async function activate(context: vscode.ExtensionContext) {
-
     statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 5);
     statusBarItem.text = '$(live-share) OCT';
     statusBarItem.command = 'oct.enter';
     statusBarItem.show();
 
+    viewDataProvider = new CollaborationStatusViewDataProvider();
+    vscode.window.registerTreeDataProvider('oct-room-view', viewDataProvider);
+
     initializeConnection(context).then(value => {
         if (value) {
             instance = value;
+            viewDataProvider.onConnection(instance);
+            initializeContextValues();
         } else {
             closeSharedEditors();
             removeWorkspaceFolders();
+            initializeContextValues();        
         }
     });
+
+    vscode.commands.registerCommand('oct.followPeer', followPeer);
+    vscode.commands.registerCommand('oct.stopFollowPeer', unfollowPeer);
 
     context.subscriptions.push(vscode.workspace.onDidChangeConfiguration((event) => {
         if (event.affectsConfiguration('oct.serverUrl')) {
@@ -60,6 +70,7 @@ export async function activate(context: vscode.ExtensionContext) {
                     instance.dispose();
                     statusBarItem.text = '$(live-share) OCT';
                     instance = undefined;
+                    setContext('oct.connection', false);
                     vscode.workspace.updateWorkspaceFolders(0, vscode.workspace.workspaceFolders?.length ?? 0);
                 } else if(index === 1) {
                     vscode.env.clipboard.writeText(instance.roomToken ?? '');
@@ -77,6 +88,8 @@ export async function activate(context: vscode.ExtensionContext) {
                 if (index === 0) {
                     if (instance = await createRoom(context, connectionProvider)) {
                         statusBarItem.text = '$(broadcast) OCT Shared';
+                        viewDataProvider.onConnection(instance);
+                        initializeContextValues();    
                     }
                 } else if (index === 1) {
                     await joinRoom(context, connectionProvider);
@@ -161,4 +174,46 @@ function closeSharedEditors() {
             .flatMap(group => group.tabs)
             .filter(tab => (tab.input as { uri: vscode.Uri })?.uri?.scheme === CollaborationUri.SCHEME)
     )
+}
+
+function setContext(key: string, value: any) {
+    vscode.commands.executeCommand(
+        'setContext',
+        key,
+        value
+      );
+}
+
+async function initializeContextValues() {
+    setContext('oct.connection', !!instance);
+    setContext('oct.roomName', instance?.roomToken);
+}
+
+async function followPeer(peer?: DisposablePeer) {
+    if (!instance) {
+        return
+    }
+
+    if(!peer) {
+        const quickPick = vscode.window.createQuickPick();
+        const users = instance.connectedUsers
+        quickPick.items = users.map(user => ({ label: user.peer.name, detail: user.peer.id}));
+        peer = users[(await showQuickPick(quickPick))]; 
+    }
+
+    if (!peer) {
+        return;
+    }
+
+    instance.following = peer.peer.id;
+    viewDataProvider.updateAllPeers();
+}
+
+async function unfollowPeer() {
+    if (!instance) {
+        return
+    }
+
+    instance.following = undefined;
+    viewDataProvider.updateAllPeers();
 }

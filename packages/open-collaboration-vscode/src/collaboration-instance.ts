@@ -48,13 +48,13 @@ export class DisposablePeer implements vscode.Disposable {
 
     private createDecorationType(name: string): ClientTextEditorDecorationType {
         const color = createColor();
-        const colorCss = `${color[0]}, ${color[1]}, ${color[2]}`
+        const colorCss = typeof color === 'string' ? `var(--vscode-${color.replaceAll('.', '-')})` : `rgb(${color[0]}, ${color[1]}, ${color[2]})`
         const selection: vscode.DecorationRenderOptions = {
-            backgroundColor: `rgba(${colorCss}, 0.35)`,
+            backgroundColor: `rgba(${typeof color === 'string' ? colorCss : `${color[0]}, ${color[1]}, ${color[2]}`}, 0.35)`,
             borderRadius: '0.1em'
         };
         const cursor: vscode.ThemableDecorationAttachmentRenderOptions = {
-            color: `rgb(${colorCss})`,
+            color: colorCss,
             contentText: 'ᛙ',
             margin: '0px 0px 0px -0.25ch',
             fontWeight: 'bold',
@@ -76,18 +76,18 @@ export class DisposablePeer implements vscode.Disposable {
         return new ClientTextEditorDecorationType(before, after, {
             default: beforeNameTag,
             inverted: beforeInvertedNameTag
-        });
+        }, color);
     }
 
     private createNameTag(color: string, textDecoration?: string): vscode.TextEditorDecorationType {
         const options: vscode.ThemableDecorationAttachmentRenderOptions = {
             contentText: this.peer.name,
-            backgroundColor: `rgb(${color})`,
+            backgroundColor:color,
             textDecoration: `none; position: absolute; border-radius: 0.15rem; padding:0px 0.5ch; display: inline-block; 
                                 pointer-events: none; color: #000; font-size: 0.7rem; z-index: 10; font-weight: bold;${textDecoration ?? ''}`
         }
         return vscode.window.createTextEditorDecorationType({
-            backgroundColor: `rgb(${color})`,
+            backgroundColor: color,
             rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
             before: options
         });
@@ -102,13 +102,13 @@ export class DisposablePeer implements vscode.Disposable {
 }
 
 let colorIndex = 0;
-const defaultColors: [number, number, number][] = [
-    [255, 185, 0], // Yellow 
-    [16, 124, 16], // Green
-    [180, 0, 158], // Magenta
-    [186, 216, 10], // Light green
-    [255, 140, 0], // Light orange
-    [227, 0, 140], // Light magenta
+const defaultColors: ([number, number, number] | string)[] = [
+    'oct.user.yellow', // Yellow 
+    'oct.user.green', // Green
+    'oct.user.magenta', // Magenta
+    'oct.user.lightGreen', // Light green
+    'oct.user.lightOrange', // Light orange
+    'oct.user.lightMagenta', // Light magenta
     [92, 45, 145], // Purple
     [0, 178, 148], // Light teal
     [255, 241, 0], // Light yellow
@@ -116,7 +116,7 @@ const defaultColors: [number, number, number][] = [
 ];
 
 const knownColors = new Set<string>();
-function createColor(): [number, number, number] {
+function createColor(): [number, number, number] | string {
     if (colorIndex < defaultColors.length) {
         return defaultColors[colorIndex++];
     }
@@ -137,7 +137,8 @@ export class ClientTextEditorDecorationType implements vscode.Disposable {
         readonly nameTags: {
             default: vscode.TextEditorDecorationType,
             inverted: vscode.TextEditorDecorationType
-        }
+        },
+        readonly color: [number, number, number] | string
     ) {
         this.toDispose = vscode.Disposable.from(
             before, after,
@@ -148,6 +149,10 @@ export class ClientTextEditorDecorationType implements vscode.Disposable {
 
     dispose(): void {
         this.toDispose.dispose();
+    }
+
+    getThemeColor(): vscode.ThemeColor | undefined {
+        return typeof this.color === 'string' ?  new vscode.ThemeColor(this.color) : undefined;
     }
 }
 
@@ -164,7 +169,18 @@ export class CollaborationInstance implements vscode.Disposable {
     private documentDisposables = new Map<string, DisposableCollection>();
     private peers = new Map<string, DisposablePeer>();
     private throttles = new Map<string, () => void>();
-    private following = false;
+    following?: string;
+
+    private readonly onUsersChangedEmitter: vscode.EventEmitter<void> = new vscode.EventEmitter<void>();
+    readonly onUsersChanged: vscode.Event<void> = this.onUsersChangedEmitter.event;
+
+    get connectedUsers(): DisposablePeer[] {
+        return Array.from(this.peers.values());
+    }
+
+    get ownUserData(): Promise<types.Peer> {
+        return this.identity.promise;
+    }
 
     constructor(connection: ProtocolBroadcastConnection, public host: boolean, public roomToken?: string) {
         this.connection = connection;
@@ -196,12 +212,14 @@ export class CollaborationInstance implements vscode.Disposable {
         });
         connection.room.onJoin(async (_, peer) => {
             this.peers.set(peer.id, new DisposablePeer(this.yjsAwareness, peer));
+            this.onUsersChangedEmitter.fire();
         });
         connection.room.onLeave(async (_, peer) => {
             const disposable = this.peers.get(peer.id);
             if (disposable) {
                 disposable.dispose();
                 this.peers.delete(peer.id);
+                this.onUsersChangedEmitter.fire();
             }
             this.rerenderPresence();
         });
@@ -336,17 +354,17 @@ export class CollaborationInstance implements vscode.Disposable {
 
     protected updateFollow(): void {
         if (this.following) {
-            let hostState: types.ClientAwareness | undefined = undefined;
+            let userState: types.ClientAwareness | undefined = undefined;
             const states = this.yjsAwareness.getStates() as Map<number, types.ClientAwareness>;
             for (const state of states.values()) {
                 const peer = this.peers.get(state.peer);
-                if (peer?.peer.host) {
-                    hostState = state;
+                if (peer?.peer.id === this.following) {
+                    userState = state;
                 }
             }
-            if (hostState) {
-                if (types.ClientTextSelection.is(hostState.selection)) {
-                    this.followSelection(hostState.selection);
+            if (userState) {
+                if (types.ClientTextSelection.is(userState.selection)) {
+                    this.followSelection(userState.selection);
                 }
             }
         }
