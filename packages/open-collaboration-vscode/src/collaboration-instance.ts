@@ -8,7 +8,7 @@ import { Deferred, DisposableCollection } from "open-collaboration-rpc";
 import * as paths from 'path';
 import { LOCAL_ORIGIN, OpenCollaborationYjsProvider } from 'open-collaboration-yjs';
 import { createMutex } from 'lib0/mutex';
-import throttle from 'lodash/throttle';
+import debounce from 'lodash/debounce';
 
 export class DisposablePeer implements vscode.Disposable {
 
@@ -344,14 +344,16 @@ export class CollaborationInstance implements vscode.Disposable {
 
         let awarenessTimeout: NodeJS.Timeout | undefined;
 
+        let awarenessDebounce = debounce(() => {
+            this.rerenderPresence();
+        }, 2000);
+
         this.yjsAwareness.on('change', async (_: any, origin: string) => {
             if (origin !== LOCAL_ORIGIN) {
                 this.updateFollow();
                 this.rerenderPresence();
                 clearTimeout(awarenessTimeout);
-                awarenessTimeout = setTimeout(() => {
-                    this.rerenderPresence();
-                }, 2000);
+                awarenessDebounce();
             }
         });
     }
@@ -507,7 +509,7 @@ export class CollaborationInstance implements vscode.Disposable {
     private getOrCreateThrottle(path: string, document: vscode.TextDocument): () => void {
         let value = this.throttles.get(path);
         if (!value) {
-            value = throttle(() => {
+            value = debounce(() => {
                 this.yjsMutex(async () => {
                     const yjsText = this.yjs.getText(path);
                     const newContent = yjsText.toString();
