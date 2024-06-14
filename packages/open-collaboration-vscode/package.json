@@ -6,16 +6,43 @@
   "engines": {
     "vscode": "^1.89.0"
   },
-  "categories": [
-    "Other"
-  ],
   "activationEvents": [
     "onStartupFinished"
   ],
   "main": "./dist/extension.js",
+  "publisher": "typefox",
+  "categories": [
+    "Other"
+  ],
+  "keywords": [
+    "collaboration",
+    "share",
+    "liveshare",
+    "Co-Edit"
+  ],
+  "preview": true,
+  "license": "MIT",
+  "icon": "data/oct-logo.png",
+  "galleryBanner": {
+    "color": "#262626",
+    "theme": "dark"
+  },
+  "homepage": "https://open-collab.tools",
+  "bugs": {
+    "url": "https://github.com/TypeFox/open-collaboration-tools/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/TypeFox/open-collaboration-tools.git",
+    "directory": "packages/open-collaboration-vscode"
+  },
+  "author": {
+    "name": "TypeFox",
+    "url": "https://www.typefox.io"
+  },
   "capabilities": {
     "untrustedWorkspaces": {
-        "supported": true
+      "supported": true
     }
   },
   "contributes": {
@@ -42,12 +69,12 @@
       "view/item/context": [
         {
           "command": "oct.followPeer",
-          "when": "viewItem == peer", 
+          "when": "viewItem == peer",
           "group": "inline"
         },
         {
           "command": "oct.stopFollowPeer",
-          "when": "viewItem == followedPeer", 
+          "when": "viewItem == followedPeer",
           "group": "inline"
         }
       ]
@@ -64,7 +91,8 @@
         "title": "Stop Follow Peer",
         "category": "OCT",
         "icon": "$(circle-slash)"
-      }],
+      }
+    ],
     "colors": [
       {
         "id": "oct.user.yellow",
@@ -123,9 +151,11 @@
     "check-types": "tsc --noEmit"
   },
   "dependencies": {
+    "open-collaboration-yjs": "0.0.1",
+    "open-collaboration-rpc": "0.0.6",
+    "open-collaboration-protocol": "0.0.7",
     "lodash.debounce": "^4.0.8",
     "node-fetch": "^2.0.0",
-    "open-collaboration-protocol": "0.0.7",
     "ws": "^8.17.0"
   },
   "devDependencies": {

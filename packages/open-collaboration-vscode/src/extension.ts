@@ -87,7 +87,7 @@ export async function activate(context: vscode.ExtensionContext) {
                 const index = await showQuickPick(quickPick);
                 if (index === 0) {
                     if (instance = await createRoom(context, connectionProvider)) {
-                        statusBarItem.text = '$(broadcast) OCT Shared';
+                        statusBarItem.text = '$(broadcast) OCT Sharing';
                         viewDataProvider.onConnection(instance);
                         initializeContextValues();    
                     }

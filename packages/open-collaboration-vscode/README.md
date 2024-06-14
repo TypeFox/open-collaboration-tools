@@ -1,3 +1,3 @@
-# oct-live-collaboration
+# Open Collaboration for VS Code
 
-Hello World!
+This extension contributes support for the [Open Collaboration Protocol](https://open-collab.tools).
