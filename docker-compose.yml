@@ -3,12 +3,7 @@ services:
     build:
       dockerfile: ./Dockerfile
       context: .
-    environment:
-      - JWT_PRIVATE_KEY=secret
-    command: [
-      "bash", "-c", "npm run start"
-    ]
+    image: oct/oct-server
     ports:
       - 8100:8100
-    working_dir: /home/app
     container_name: oct-server
