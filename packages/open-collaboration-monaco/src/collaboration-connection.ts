@@ -1,7 +1,9 @@
 import { ConnectionProvider } from "open-collaboration-protocol";
 import { CollaborationInstance } from "./collaboration-instance";
+import { MonacoCollabCallbacks } from "./monaco-api";
+import * as monaco from 'monaco-editor';
 
-export async function createRoom(connectionProvider: ConnectionProvider): Promise<CollaborationInstance | undefined> {
+export async function createRoom(connectionProvider: ConnectionProvider, callbacks: MonacoCollabCallbacks, editor: monaco.editor.IStandaloneCodeEditor): Promise<CollaborationInstance | undefined> {
     if (!connectionProvider) {
         return undefined;
     }
@@ -13,7 +15,7 @@ export async function createRoom(connectionProvider: ConnectionProvider): Promis
         // await context.secrets.store('oct.userToken', userToken);
     }
     const connection = await connectionProvider.connect(roomClaim.roomToken);
-    const instance = new CollaborationInstance(connection, true, roomClaim.roomId);
+    const instance = new CollaborationInstance(connection, true, callbacks, editor, roomClaim.roomId);
     connection.onDisconnect(() => {
         instance?.dispose();
     });

@@ -8,6 +8,14 @@
 </head>
 <body>
     <div id="container" style="width:800px;height:600px;"></div>
+    <div>
+        <!-- button to create a room and a readonly textfield which shows the room token from response -->
+        <button id="create">Create Room</button>
+        <input type="text" id="token" readonly>
+        <!-- textfield and button to type in a room number and join a room -->
+        <input type="text" id="room" placeholder="Room Number">
+        <button id="join">Join Room</button>
+    </div>
     <script type="module">
         import "./src/example.ts"
     </script>
