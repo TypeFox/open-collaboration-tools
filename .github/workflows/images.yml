@@ -1,4 +1,4 @@
-name: Build
+name: Build container images
 
 on:
   push:
@@ -11,7 +11,7 @@ env:
   IMAGE_NAME: ${{ github.repository }}/oct-server
 
 jobs:
-  build:
+  images:
     name: oct-server image deploy
     runs-on: ubuntu-latest
 
