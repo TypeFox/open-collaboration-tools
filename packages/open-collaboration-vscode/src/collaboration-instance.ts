@@ -9,6 +9,7 @@ import * as paths from 'path';
 import { LOCAL_ORIGIN, OpenCollaborationYjsProvider } from 'open-collaboration-yjs';
 import { createMutex } from 'lib0/mutex';
 import debounce from 'lodash/debounce';
+import { inject, injectable, postConstruct } from "inversify";
 
 export class DisposablePeer implements vscode.Disposable {
 
@@ -42,11 +43,11 @@ export class DisposablePeer implements vscode.Disposable {
     constructor(yAwareness: awarenessProtocol.Awareness, peer: types.Peer) {
         this.peer = peer;
         this.yjsAwareness = yAwareness;
-        this.decoration = this.createDecorationType(peer.name);
+        this.decoration = this.createDecorationType();
         this.disposables.push(this.decoration);
     }
 
-    private createDecorationType(name: string): ClientTextEditorDecorationType {
+    private createDecorationType(): ClientTextEditorDecorationType {
         const color = createColor();
         const colorCss = typeof color === 'string' ? `var(--vscode-${color.replaceAll('.', '-')})` : `rgb(${color[0]}, ${color[1]}, ${color[2]})`
         const selection: vscode.DecorationRenderOptions = {
@@ -156,9 +157,23 @@ export class ClientTextEditorDecorationType implements vscode.Disposable {
     }
 }
 
+export const CollaborationInstanceFactory = Symbol('CollaborationInstanceFactory');
+
+export const CollaborationInstanceOptions = Symbol('CollaborationInstanceOptions');
+
+export interface CollaborationInstanceOptions {
+    connection: ProtocolBroadcastConnection;
+    host: boolean;
+    roomId: string;
+}
+
+export type CollaborationInstanceFactory = (options: CollaborationInstanceOptions) => CollaborationInstance;
+
+@injectable()
 export class CollaborationInstance implements vscode.Disposable {
 
-    private connection: ProtocolBroadcastConnection;
+    static Current: CollaborationInstance | undefined;
+    
     private yjs: Y.Doc = new Y.Doc();
     private yjsAwareness = new awarenessProtocol.Awareness(this.yjs);
     private identity = new Deferred<types.Peer>();
@@ -175,8 +190,11 @@ export class CollaborationInstance implements vscode.Disposable {
         return this._following;
     }
 
-    private readonly onUsersChangedEmitter: vscode.EventEmitter<void> = new vscode.EventEmitter<void>();
-    readonly onUsersChanged: vscode.Event<void> = this.onUsersChangedEmitter.event;
+    private readonly onDidUsersChangeEmitter: vscode.EventEmitter<void> = new vscode.EventEmitter<void>();
+    readonly onDidUsersChange: vscode.Event<void> = this.onDidUsersChangeEmitter.event;
+    
+    private readonly onDidDisposeEmitter: vscode.EventEmitter<void> = new vscode.EventEmitter<void>();
+    readonly onDidDispose: vscode.Event<void> = this.onDidDisposeEmitter.event;
 
     get connectedUsers(): DisposablePeer[] {
         return Array.from(this.peers.values());
@@ -186,12 +204,27 @@ export class CollaborationInstance implements vscode.Disposable {
         return this.identity.promise;
     }
 
-    constructor(connection: ProtocolBroadcastConnection, public host: boolean, public roomToken?: string) {
-        this.connection = connection;
+    get host(): boolean {
+        return this.options.host;
+    }
+
+    get roomId(): string {
+        return this.options.roomId;
+    }
+
+    @inject(CollaborationInstanceOptions)
+    private readonly options: CollaborationInstanceOptions;
+
+    @postConstruct()
+    protected init(): void {
+        CollaborationInstance.Current = this;
+        const connection = this.options.connection;
         this.yjsProvider = new OpenCollaborationYjsProvider(connection, this.yjs, this.yjsAwareness);
         this.yjsProvider.connect();
-
         this.toDispose.push(connection);
+        this.toDispose.push(connection.onDisconnect(() => {
+            this.dispose();
+        }))
         this.toDispose.push(this.yjsProvider);
         this.toDispose.push({
             dispose: () => {
@@ -199,6 +232,8 @@ export class CollaborationInstance implements vscode.Disposable {
                 this.yjsAwareness.destroy();
             }
         });
+        this.toDispose.push(this.onDidUsersChangeEmitter);
+        this.toDispose.push(this.onDidDisposeEmitter);
 
         connection.peer.onJoinRequest(async (_, user) => {
             const result = await vscode.window.showInformationMessage(
@@ -216,14 +251,14 @@ export class CollaborationInstance implements vscode.Disposable {
         });
         connection.room.onJoin(async (_, peer) => {
             this.peers.set(peer.id, new DisposablePeer(this.yjsAwareness, peer));
-            this.onUsersChangedEmitter.fire();
+            this.onDidUsersChangeEmitter.fire();
         });
         connection.room.onLeave(async (_, peer) => {
             const disposable = this.peers.get(peer.id);
             if (disposable) {
                 disposable.dispose();
                 this.peers.delete(peer.id);
-                this.onUsersChangedEmitter.fire();
+                this.onDidUsersChangeEmitter.fire();
             }
             this.rerenderPresence();
         });
@@ -295,10 +330,12 @@ export class CollaborationInstance implements vscode.Disposable {
     }
 
     dispose() {
+        CollaborationInstance.Current = undefined;
         this.peers.forEach(e => e.dispose());
         this.peers.clear();
         this.documentDisposables.forEach(e => e.dispose());
         this.documentDisposables.clear();
+        this.onDidDisposeEmitter.fire();
         this.toDispose.dispose();
     }
 
@@ -342,8 +379,6 @@ export class CollaborationInstance implements vscode.Disposable {
             this.updateTextSelection(event.textEditor);
         }));
 
-        let awarenessTimeout: NodeJS.Timeout | undefined;
-
         let awarenessDebounce = debounce(() => {
             this.rerenderPresence();
         }, 2000);
@@ -352,7 +387,6 @@ export class CollaborationInstance implements vscode.Disposable {
             if (origin !== LOCAL_ORIGIN) {
                 this.updateFollow();
                 this.rerenderPresence();
-                clearTimeout(awarenessTimeout);
                 awarenessDebounce();
             }
         });
@@ -446,7 +480,7 @@ export class CollaborationInstance implements vscode.Disposable {
                     yjsText.insert(0, text);
                 });
             } else {
-                this.connection.editor.open('', path);
+                this.options.connection.editor.open('', path);
             }
             const ytextContent = yjsText.toString();
             if (text !== ytextContent) {
@@ -521,10 +555,7 @@ export class CollaborationInstance implements vscode.Disposable {
                         this.updates.delete(path);
                     }
                 });
-            }, 200, {
-                leading: false,
-                trailing: true
-            });
+            }, 200);
             this.throttles.set(path, value);
         }
         return value;
@@ -623,13 +654,13 @@ export class CollaborationInstance implements vscode.Disposable {
     }
 
     async initialize(): Promise<void> {
-        const response = await this.connection.peer.init('', {
+        const response = await this.options.connection.peer.init('', {
             protocol: '0.0.1'
         });
         for (const peer of [response.host, ...response.guests]) {
             this.peers.set(peer.id, new DisposablePeer(this.yjsAwareness, peer));
         }
-        this.toDispose.push(vscode.workspace.registerFileSystemProvider('oct', new CollaborationFileSystemProvider(this.connection, this.yjs)));
+        this.toDispose.push(vscode.workspace.registerFileSystemProvider('oct', new CollaborationFileSystemProvider(this.options.connection, this.yjs)));
     }
 
     getProtocolPath(uri?: vscode.Uri): string | undefined {

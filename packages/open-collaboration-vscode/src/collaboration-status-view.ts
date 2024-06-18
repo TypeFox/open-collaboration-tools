@@ -1,17 +1,22 @@
 import * as vscode from 'vscode';
 import { CollaborationInstance, DisposablePeer } from './collaboration-instance';
+import { injectable } from 'inversify';
 
+@injectable()
 export class CollaborationStatusViewDataProvider implements vscode.TreeDataProvider<DisposablePeer> {
 
-    
     private onDidChangeTreeDataEmitter = new vscode.EventEmitter<DisposablePeer[] | undefined>();
     onDidChangeTreeData = this.onDidChangeTreeDataEmitter.event;
     
-    instance: CollaborationInstance | undefined;
+    private instance: CollaborationInstance | undefined;
 
     onConnection(instance: CollaborationInstance) {
         this.instance = instance;
-        instance.onUsersChanged(() => {
+        instance.onDidUsersChange(() => {
+            this.onDidChangeTreeDataEmitter.fire(undefined);
+        });
+        instance.onDidDispose(() => {
+            this.instance = undefined;
             this.onDidChangeTreeDataEmitter.fire(undefined);
         });
         this.onDidChangeTreeDataEmitter.fire(undefined);
@@ -36,7 +41,7 @@ export class CollaborationStatusViewDataProvider implements vscode.TreeDataProvi
         return []
     }
 
-    updateAllPeers() {
+    update() {
         this.onDidChangeTreeDataEmitter.fire(undefined);
     }
 
