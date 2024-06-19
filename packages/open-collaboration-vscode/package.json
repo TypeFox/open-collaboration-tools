@@ -1,15 +1,8 @@
 {
-  "name": "oct-live-collaboration",
-  "displayName": "OCT Live Collaboration",
-  "description": "Connect with others and share your code in real-time collaboration sessions",
+  "name": "open-collaboration-tools",
+  "displayName": "Open Collaboration Tools",
+  "description": "Connect with others and live-share your code in real-time collaboration sessions",
   "version": "0.0.1",
-  "engines": {
-    "vscode": "^1.89.0"
-  },
-  "activationEvents": [
-    "onStartupFinished"
-  ],
-  "main": "./dist/extension.js",
   "publisher": "typefox",
   "categories": [
     "Other"
@@ -17,29 +10,39 @@
   "keywords": [
     "collaboration",
     "share",
-    "liveshare",
-    "Co-Edit"
+    "live-share",
+    "real-time",
+    "team",
+    "co-edit",
+    "pair-programming"
   ],
   "preview": true,
   "license": "MIT",
   "icon": "data/oct-logo.png",
   "galleryBanner": {
-    "color": "#262626",
+    "color": "#031021",
     "theme": "dark"
   },
-  "homepage": "https://open-collab.tools",
+  "homepage": "https://www.open-collab.tools",
   "bugs": {
     "url": "https://github.com/TypeFox/open-collaboration-tools/issues"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/TypeFox/open-collaboration-tools.git",
+    "url": "https://github.com/TypeFox/open-collaboration-tools",
     "directory": "packages/open-collaboration-vscode"
   },
   "author": {
     "name": "TypeFox",
     "url": "https://www.typefox.io"
   },
+  "main": "./dist/extension.js",
+  "engines": {
+    "vscode": "^1.89.0"
+  },
+  "activationEvents": [
+    "onStartupFinished"
+  ],
   "capabilities": {
     "untrustedWorkspaces": {
       "supported": true
