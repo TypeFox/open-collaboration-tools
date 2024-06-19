@@ -7,18 +7,31 @@
         {
             "type": "node",
             "request": "launch",
-            "name": "Launch Program",
+            "name": "Launch Server",
             "skipFiles": [
                 "<node_internals>/**"
             ],
             "program": "${workspaceFolder}/packages/open-collaboration-server/lib/app.js",
             "args": [
-                "start"
+                "start",
+                "--hostname=0.0.0.0"
             ],
             "sourceMaps": true,
             "outFiles": [
                 "${workspaceFolder}/packages/open-collaboration-server/lib/**/*.js"
             ]
-        }
+        },
+        {
+			"name": "Run VS Code Extension",
+			"type": "extensionHost",
+			"request": "launch",
+			"args": [
+				"--extensionDevelopmentPath=${workspaceFolder}/packages/open-collaboration-vscode"
+			],
+            "sourceMaps": true,
+			"outFiles": [
+				"${workspaceFolder}/packages/open-collaboration-vscode/dist/**/*.js"
+			]
+		}
     ]
 }

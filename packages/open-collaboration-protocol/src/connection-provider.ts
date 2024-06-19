@@ -6,36 +6,38 @@
 
 import { MessageEncoding, MessageTransportProvider } from "open-collaboration-rpc";
 import { ProtocolBroadcastConnection, createConnection } from "./connection";
+import * as types from './types';
+
+export type Fetch = (url: string, options?: FetchRequestOptions) => Promise<FetchResponse>;
 
 export interface ConnectionProviderOptions {
     url: string;
     userToken?: string;
-    fetch?: typeof fetch;
+    fetch: Fetch;
     opener: (url: string) => void;
     transports: MessageTransportProvider[];
     encodings: MessageEncoding[];
 }
 
-export interface ProtocolServerMetaData {
-    owner: string;
-    version: string;
-    transports: string[];
-    encodings: string[];
+export interface FetchRequestOptions {
+    method?: string;
+    headers?: Record<string, string>;
 }
 
-export interface ConnectionRoomClaim {
-    roomToken: string;
-    loginToken?: string;
+export interface FetchResponse {
+    status?: number;
+    json(): Promise<any>;
+    text(): Promise<string>;
 }
 
 export class ConnectionProvider {
 
     private options: ConnectionProviderOptions;
-    private fetch: typeof fetch;
+    private fetch: Fetch;
 
     constructor(options: ConnectionProviderOptions) {
         this.options = options;
-        this.fetch = options.fetch ?? fetch;
+        this.fetch = options.fetch ?? ((url, options) => fetch(url, options));
         this.userAuthToken = options.userToken;
     }
 
@@ -47,7 +49,15 @@ export class ConnectionProvider {
     }
 
     protected getUrl(path: string): string {
-        return `${this.options.url}${path}`;
+        // Remove trailing slashes from the base URL
+        let url = this.options.url;
+        if (url.endsWith('/')) {
+            url = url.slice(0, -1);
+        }
+        if (path.startsWith('/')) {
+            path = path.slice(1);
+        }
+        return `${url}/${path}`;
     }
 
     async login(): Promise<string> {
@@ -81,7 +91,7 @@ export class ConnectionProvider {
         }
     }
 
-    async createRoom(): Promise<ConnectionRoomClaim> {
+    async createRoom(): Promise<types.CreateRoomResponse> {
         const valid = await this.validate();
         let loginToken: string | undefined;
         if (!valid) {
@@ -93,43 +103,45 @@ export class ConnectionProvider {
                 'x-jwt': this.userAuthToken!
             }
         });
-        const body = await response.json();
-        this.roomAuthToken = body.token;
+        const body: types.CreateRoomResponse = await response.json();
         return {
             loginToken,
-            roomToken: body.room
+            roomId: body.roomId,
+            roomToken: body.roomToken
         };
     }
 
-    async joinRoom(roomToken: string): Promise<ConnectionRoomClaim> {
+    async joinRoom(roomId: string): Promise<types.JoinRoomResponse> {
         const valid = await this.validate();
         let loginToken: string | undefined;
         if (!valid) {
             loginToken = await this.login();
         }
-        const response = await this.fetch(this.getUrl(`/api/session/join/${roomToken}`), {
+        const response = await this.fetch(this.getUrl(`/api/session/join/${roomId}`), {
             method: 'POST',
             headers: {
                 'x-jwt': this.userAuthToken!
             }
         });
-        const body = await response.json();
-        this.roomAuthToken = body.token;
+        const body: types.JoinRoomResponse = await response.json();
+        const roomAuthToken = body.roomToken;
         return {
             loginToken,
-            roomToken
+            roomId,
+            workspace: body.workspace,
+            roomToken: roomAuthToken
         };
     }
 
-    async connect(): Promise<ProtocolBroadcastConnection> {
+    async connect(roomAuthToken: string): Promise<ProtocolBroadcastConnection> {
         const metadata = await this.fetch(this.getUrl('/api/meta'));
-        const metadataBody = await metadata.json() as ProtocolServerMetaData;
+        const metadataBody = await metadata.json() as types.ProtocolServerMetaData;
         const transportIndex = this.findFitting(metadataBody.transports, this.options.transports.map(t => t.id));
         const encodingIndex = this.findFitting(metadataBody.encodings, this.options.encodings.map(e => e.encoding));
         const transportProvider = this.options.transports[transportIndex];
         const encoding = this.options.encodings[encodingIndex];
         const transport = transportProvider.createTransport(this.options.url, {
-            'x-jwt': this.roomAuthToken!,
+            'x-jwt': roomAuthToken,
             'x-encoding': encoding.encoding
         });
         const connection = createConnection(

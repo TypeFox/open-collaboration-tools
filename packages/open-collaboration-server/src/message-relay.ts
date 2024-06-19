@@ -60,15 +60,16 @@ export class MessageRelay {
     }
 
     sendBroadcast(origin: Peer, message: BroadcastMessage): void {
-        const room = origin.room;
-        if (!room) {
-            throw new Error("Origin peer doesn't belong to any room");
-        }
-        message.origin = origin.id;
-        for (const peer of room.peers) {
-            if (peer !== origin) {
-                peer.channel.sendMessage(message);
+        try {
+            const room = origin.room;
+            message.origin = origin.id;
+            for (const peer of room.peers) {
+                if (peer !== origin) {
+                    peer.channel.sendMessage(message);
+                }
             }
+        } catch (err) {
+            console.error(err);
         }
     }
 

@@ -10,7 +10,7 @@ import { BroadcastType, RequestType, NotificationType } from 'open-collaboration
 export namespace Messages {
 
     export namespace Peer {
-        export const Join = new RequestType<[types.User], boolean>('peer/join');
+        export const Join = new RequestType<[types.User], types.JoinResponse | undefined>('peer/join');
         export const Info = new NotificationType<[types.Peer]>('peer/info');
         export const Init = new RequestType<[types.InitRequest], types.InitResponse>('peer/init');
     }
@@ -38,7 +38,7 @@ export namespace Messages {
     export namespace FileSystem {
         export const Stat = new RequestType<[types.Path], types.FileSystemStat>('fileSystem/stat');
         export const Mkdir = new RequestType<[types.Path], undefined>('fileSystem/mkdir');
-        export const ReadFile = new RequestType<[types.Path], string>('fileSystem/readFile');
+        export const ReadFile = new RequestType<[types.Path], types.FileData>('fileSystem/readFile');
         export const WriteFile = new RequestType<[types.Path, string], undefined>('fileSystem/writeFile');
         export const ReadDir = new RequestType<[types.Path], Record<string, types.FileType>>('fileSystem/readDir');
         export const Delete = new RequestType<[types.Path], undefined>('fileSystem/delete');

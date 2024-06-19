@@ -13,6 +13,8 @@ export interface AwarenessChange {
     removed: number[];
 }
 
+export const LOCAL_ORIGIN = 'local';
+
 export class OpenCollaborationYjsProvider extends ObservableV2<string> {
 
     private connection: types.ProtocolBroadcastConnection;

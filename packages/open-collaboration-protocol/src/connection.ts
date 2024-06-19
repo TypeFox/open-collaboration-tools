@@ -17,7 +17,7 @@ export interface RoomHandler {
 }
 
 export interface PeerHandler {
-    onJoinRequest(handler: Handler<[types.User], boolean>): void;
+    onJoinRequest(handler: Handler<[types.User], types.JoinResponse | undefined>): void;
     onInfo(handler: Handler<[types.Peer]>): void;
     onInit(handler: Handler<[types.InitRequest], types.InitResponse>): void;
     init(target: MessageTarget, request: types.InitRequest): Promise<types.InitResponse>;
@@ -31,20 +31,20 @@ export interface EditorHandler {
 }
 
 export interface FileSystemHandler {
-    onReadFile(handler: Handler<[string], string>): void;
-    readFile(target: MessageTarget, path: string): Promise<string>;
-    onWriteFile(handler: Handler<[string, string]>): void;
-    writeFile(target: MessageTarget, path: string, content: string): Promise<void>;
-    onStat(handler: Handler<[string], types.FileSystemStat>): void;
-    stat(target: MessageTarget, path: string): Promise<types.FileSystemStat>;
-    onMkdir(handler: Handler<[string]>): void;
-    mkdir(target: MessageTarget, path: string): Promise<void>;
-    onReaddir(handler: Handler<[string], types.FileSystemDirectory>): void;
-    readdir(target: MessageTarget, path: string): Promise<types.FileSystemDirectory>;
-    onDelete(handler: Handler<[string]>): void;
-    delete(target: MessageTarget, path: string): Promise<void>;
-    onRename(handler: Handler<[string, string]>): void;
-    rename(target: MessageTarget, from: string, to: string): Promise<void>;
+    onReadFile(handler: Handler<[types.Path], types.FileData>): void;
+    readFile(target: MessageTarget, path: types.Path): Promise<types.FileData>;
+    onWriteFile(handler: Handler<[types.Path, string]>): void;
+    writeFile(target: MessageTarget, path: types.Path, content: string): Promise<void>;
+    onStat(handler: Handler<[types.Path], types.FileSystemStat>): void;
+    stat(target: MessageTarget, path: types.Path): Promise<types.FileSystemStat>;
+    onMkdir(handler: Handler<[types.Path]>): void;
+    mkdir(target: MessageTarget, path: types.Path): Promise<void>;
+    onReaddir(handler: Handler<[types.Path], types.FileSystemDirectory>): void;
+    readdir(target: MessageTarget, path: types.Path): Promise<types.FileSystemDirectory>;
+    onDelete(handler: Handler<[types.Path]>): void;
+    delete(target: MessageTarget, path: types.Path): Promise<void>;
+    onRename(handler: Handler<[types.Path, types.Path]>): void;
+    rename(target: MessageTarget, from: types.Path, to: types.Path): Promise<void>;
     onChange(handler: Handler<[types.FileChangeEvent]>): void;
     change(event: types.FileChangeEvent): void;
 }

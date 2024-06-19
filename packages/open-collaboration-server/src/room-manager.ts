@@ -9,7 +9,7 @@ import { BroadcastMessage, NotificationMessage, RequestMessage, isObject } from 
 import { CredentialsManager } from './credentials-manager';
 import { MessageRelay } from './message-relay';
 import { Peer, Room, User, isUser } from './types';
-import { Messages } from 'open-collaboration-protocol';
+import { JoinResponse, Messages } from 'open-collaboration-protocol';
 
 export interface PreparedRoom {
     id: string
@@ -124,18 +124,21 @@ export class RoomManager {
         return this.peers.get(id);
     }
 
-    async requestJoin(room: Room, user: User): Promise<string> {
+    async requestJoin(room: Room, user: User): Promise<{ jwt: string, response: JoinResponse }> {
         try {
             const response = await this.messageRelay.sendRequest(
                 room.host,
                 RequestMessage.create(Messages.Peer.Join, this.credentials.secureId(), '', room.host.id, [user])
-            ) as boolean;
+            ) as JoinResponse | undefined;
             if (response) {
                 const claim: RoomClaim = {
                     room: room.id,
                     user: { ...user }
                 };
-                return this.credentials.generateJwt(claim);
+                return {
+                    jwt: await this.credentials.generateJwt(claim),
+                    response
+                };
             } else {
                 throw new Error('Join request has been rejected');
             }

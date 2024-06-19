@@ -9,7 +9,7 @@ import * as http from 'http';
 import * as path from 'path';
 import { Server } from 'socket.io';
 import * as ws from 'ws';
-import * as express from 'express';
+import express from 'express';
 import { Channel, SocketIoChannel, WebSocketChannel } from './channel';
 import { PeerFactory } from './peer';
 import { RoomManager, isRoomClaim } from './room-manager';
@@ -18,7 +18,7 @@ import { CredentialsManager } from './credentials-manager';
 import { User } from './types';
 import { ErrorMessage, MessageEncoding } from 'open-collaboration-rpc';
 import { EncodingProvider } from './encoding-provider';
-import { ProtocolServerMetaData } from 'open-collaboration-protocol';
+import * as types from 'open-collaboration-protocol';
 
 @injectable()
 export class CollaborationServer {
@@ -192,7 +192,7 @@ export class CollaborationServer {
             }
         });
         app.get('/api/meta', async (_, res) => {
-            const data: ProtocolServerMetaData = {
+            const data: types.ProtocolServerMetaData = {
                 owner: '',
                 version: '',
                 transports: [
@@ -213,10 +213,13 @@ export class CollaborationServer {
                 if (!room) {
                     throw new Error(`Room with requested id ${roomId} does not exist`);
                 }
-                const jwt = await this.roomManager.requestJoin(room, user!);
-                res.send({
-                    token: jwt
-                });
+                const result = await this.roomManager.requestJoin(room, user!);
+                const response: types.JoinRoomResponse = {
+                    roomId: room.id,
+                    roomToken: result.jwt,
+                    workspace: result.response.workspace
+                };
+                res.send(response);
             } catch (err) {
                 console.error(err);
                 res.status(400);
@@ -227,10 +230,11 @@ export class CollaborationServer {
             try {
                 const user = await this.getUserFromAuth(req);
                 const room = await this.roomManager.prepareRoom(user!);
-                res.send({
-                    room: room.id,
-                    token: room.jwt
-                });
+                const response: types.CreateRoomResponse = {
+                    roomId: room.id,
+                    roomToken: room.jwt
+                };
+                res.send(response);
             } catch (err) {
                 console.error(err);
                 res.status(400);
