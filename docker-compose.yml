@@ -1,0 +1,9 @@
+services:
+  oct-server:
+    build:
+      dockerfile: ./Dockerfile
+      context: .
+    image: oct/oct-server
+    ports:
+      - 8100:8100
+    container_name: oct-server
