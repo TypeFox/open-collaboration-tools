@@ -225,6 +225,9 @@ export class CollaborationInstance implements vscode.Disposable {
         this.toDispose.push(connection.onDisconnect(() => {
             this.dispose();
         }))
+        this.toDispose.push(connection.onConnectionError(message => {
+            vscode.window.showErrorMessage('Connection error: ' + message);
+        }));
         this.toDispose.push(this.yjsProvider);
         this.toDispose.push({
             dispose: () => {
@@ -263,7 +266,11 @@ export class CollaborationInstance implements vscode.Disposable {
             this.rerenderPresence();
         });
         connection.room.onClose(async () => {
-            vscode.workspace.updateWorkspaceFolders(0, vscode.workspace.workspaceFolders?.length ?? 0);
+            if (!this.options.host) {
+                vscode.window.showInformationMessage('Collaboration room closed');
+                vscode.workspace.updateWorkspaceFolders(0, vscode.workspace.workspaceFolders?.length ?? 0);
+                this.dispose();
+            }
         });
         connection.peer.onInfo((_, peer) => {
             this.yjsAwareness.setLocalStateField('peer', peer.id);

@@ -60,7 +60,7 @@ export class Commands {
                         vscode.workspace.updateWorkspaceFolders(0, vscode.workspace.workspaceFolders?.length ?? 0);
                     } else if (index === 1) {
                         vscode.env.clipboard.writeText(instance.roomId ?? '');
-                        vscode.window.showInformationMessage(`Room Token ${instance.roomId} copied to clipboard`);
+                        vscode.window.showInformationMessage(`Room ID ${instance.roomId} copied to clipboard`);
                     }
                 } else {
                     const quickPick = vscode.window.createQuickPick();

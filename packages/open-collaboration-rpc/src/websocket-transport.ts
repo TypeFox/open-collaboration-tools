@@ -15,8 +15,8 @@ export const WebSocketTransportProvider: MessageTransportProvider = {
         } else if (url.startsWith('http')) {
             url = url.replace('http', 'ws');
         }
-        const protocols = Object.entries(headers).map(([key, value]) => `${key}+${value}`);
-        const socket = new WebSocket(url + '/websocket', protocols);
+        const query = Object.entries(headers).map(([key, value]) => `${key}=${value}`).join('&');
+        const socket = new WebSocket(url + '/websocket' + (query ? '?' + query : ''));
         socket.binaryType = 'arraybuffer';
         const transport = new WebSocketTransport(socket);
         return transport;
@@ -28,14 +28,20 @@ export class WebSocketTransport implements MessageTransport {
     readonly id = 'websocket';
 
     private onDisconnectEmitter = new Emitter<void>();
+    private onErrorEmitter = new Emitter<string>();
     private ready = new Deferred();
 
     get onDisconnect(): Event<void> {
         return this.onDisconnectEmitter.event;
     }
 
+    get onError(): Event<string> {
+        return this.onErrorEmitter.event;
+    }
+
     constructor(protected socket: WebSocket) {
         this.socket.onclose = () => this.onDisconnectEmitter.fire();
+        this.socket.onerror = () => this.onErrorEmitter.fire('Websocket connection closed unexpectedly.');
         this.socket.onopen = () => this.ready.resolve();
     }
 

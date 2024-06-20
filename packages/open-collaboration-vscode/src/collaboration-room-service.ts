@@ -59,7 +59,6 @@ export class CollaborationRoomService {
             host: true,
             roomId: roomClaim.roomId
         });
-        await instance.initialize();
         vscode.window.showInformationMessage(`Room ID: ${roomClaim.roomId}`, 'Copy to Clipboard').then(value => { 
             if (value === 'Copy to Clipboard') {
                 vscode.env.clipboard.writeText(roomClaim.roomId);

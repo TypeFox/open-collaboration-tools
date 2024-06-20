@@ -20,4 +20,5 @@ export interface MessageTransport {
     read: ConnectionReader;
     dispose(): void;
     onDisconnect: Event<void>;
+    onError: Event<string>;
 }

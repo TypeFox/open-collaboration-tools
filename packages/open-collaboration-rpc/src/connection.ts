@@ -30,6 +30,7 @@ export interface BroadcastConnection {
     sendBroadcast<P extends unknown[]>(type: BroadcastType<P>, ...parameters: P): void;
     dispose(): void;
     onDisconnect: Event<void>;
+    onConnectionError: Event<string>;
 }
 
 export interface RelayedRequest {
@@ -43,6 +44,7 @@ export class AbstractBroadcastConnection implements BroadcastConnection {
     protected messageHandlers = new Map<string, Handler<any[], any>>();
     protected onErrorEmitter = new Emitter<string>();
     protected onDisconnectEmitter = new Emitter<void>();
+    protected onConnectionErrorEmitter = new Emitter<string>();
 
     get onError(): Event<string> {
         return this.onErrorEmitter.event;
@@ -52,12 +54,20 @@ export class AbstractBroadcastConnection implements BroadcastConnection {
         return this.onDisconnectEmitter.event;
     }
 
+    get onConnectionError(): Event<string> {
+        return this.onConnectionErrorEmitter.event;
+    }
+
     protected requestMap = new Map<string | number, RelayedRequest>();
     protected requestId = 1;
 
     constructor(readonly encoding: MessageEncoding, readonly transport: MessageTransport) {
         transport.read((data: ArrayBuffer) => this.handleMessage(this.encoding.decode(data)));
         transport.onDisconnect(() => this.dispose());
+        transport.onError(message => {
+            this.onConnectionErrorEmitter.fire(message);
+            this.dispose();
+        });
     }
 
     dispose(): void {

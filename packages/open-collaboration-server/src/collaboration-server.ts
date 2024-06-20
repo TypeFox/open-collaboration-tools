@@ -47,9 +47,9 @@ export class CollaborationServer {
             server: httpServer
         });
         wsServer.on('connection', async (socket, req) => {
-            const protocolHeader = req.headers['sec-websocket-protocol'] ?? '';
-            const headers = protocolHeader.split(',').reduce((acc, cur) => {
-                const [key, value] = cur.split('+');
+            const query = req.url?.split('?')[1] ?? '';
+            const headers = query.split('&').reduce((acc, cur) => {
+                const [key, value] = cur.split('=');
                 if (typeof key === 'string' && typeof value === 'string') {
                     acc[key.trim()] = value.trim();
                 }
