@@ -1,7 +1,11 @@
 FROM  node
 
-COPY . /home/app
-RUN cd /home/app && npm i
+RUN mkdir -p /home \
+    && cd home \
+    && git clone https://github.com/TypeFox/open-collaboration-tools.git app \
+    && cd app \
+    && npm i \
+    && npm run build
 
 EXPOSE 8100
 WORKDIR /home/app
