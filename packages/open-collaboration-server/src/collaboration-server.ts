@@ -47,19 +47,20 @@ export class CollaborationServer {
             server: httpServer
         });
         wsServer.on('connection', async (socket, req) => {
-            const query = req.url?.split('?')[1] ?? '';
-            const headers = query.split('&').reduce((acc, cur) => {
-                const [key, value] = cur.split('=');
-                if (typeof key === 'string' && typeof value === 'string') {
-                    acc[key.trim()] = value.trim();
-                }
-                return acc;
-            }, {} as Record<string, string>);
             try {
+                const query = req.url?.split('?')[1] ?? '';
+                const headers = query.split('&').reduce((acc, cur) => {
+                    const [key, value] = cur.split('=');
+                    if (typeof key === 'string' && typeof value === 'string') {
+                        acc[key.trim()] = value.trim();
+                    }
+                    return acc;
+                }, {} as Record<string, string>);
+                console.log('User attempting to connect with:', headers);
                 await this.connectChannel(headers, encoding => new WebSocketChannel(socket, encoding));
             } catch (err) {
-                socket.close();
-                console.log(err);
+                socket.close(undefined, 'Failed to join room');
+                console.error('Web socket connection failed', err);
             }
         });
         const io = new Server(httpServer, {
@@ -75,7 +76,7 @@ export class CollaborationServer {
             } catch (err) {
                 socket.send(ErrorMessage.create('Failed to join room'));
                 socket.disconnect(true);
-                console.log(err);
+                console.error('Socket IO connection failed', err);
             }
         });
         httpServer.listen(Number(args.port), String(args.hostname));
