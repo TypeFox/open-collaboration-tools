@@ -4,9 +4,9 @@ import * as monaco from 'monaco-editor';
 import * as awarenessProtocol from 'y-protocols/awareness';
 import * as types from 'open-collaboration-protocol';
 import { Deferred, DisposableCollection } from "open-collaboration-rpc";
-import * as paths from 'path';
-import { LOCAL_ORIGIN, OpenCollaborationYjsProvider } from 'open-collaboration-yjs';
-import { createMutex } from 'lib0/mutex';
+import { MonacoOCTYjsProvider } from "./monaco-oct-yjs-provider";
+import { LOCAL_ORIGIN } from 'open-collaboration-yjs';
+// import { createMutex } from 'lib0/mutex';
 import debounce from 'lodash/debounce';
 import { MonacoCollabCallbacks } from "./monaco-api";
 
@@ -87,7 +87,7 @@ export class DisposablePeer implements Disposable {
     //     const options: vscode.ThemableDecorationAttachmentRenderOptions = {
     //         contentText: this.peer.name,
     //         backgroundColor: color,
-    //         textDecoration: `none; position: absolute; border-radius: 0.15rem; padding:0px 0.5ch; display: inline-block; 
+    //         textDecoration: `none; position: absolute; border-radius: 0.15rem; padding:0px 0.5ch; display: inline-block;
     //                             pointer-events: none; color: #000; font-size: 0.7rem; z-index: 10; font-weight: bold;${textDecoration ?? ''}`
     //     }
     //     return vscode.window.createTextEditorDecorationType({
@@ -105,33 +105,33 @@ export class DisposablePeer implements Disposable {
 
 }
 
-let colorIndex = 0;
-const defaultColors: ([number, number, number] | string)[] = [
-    'oct.user.yellow', // Yellow 
-    'oct.user.green', // Green
-    'oct.user.magenta', // Magenta
-    'oct.user.lightGreen', // Light green
-    'oct.user.lightOrange', // Light orange
-    'oct.user.lightMagenta', // Light magenta
-    [92, 45, 145], // Purple
-    [0, 178, 148], // Light teal
-    [255, 241, 0], // Light yellow
-    [180, 160, 255] // Light purple
-];
+// let colorIndex = 0;
+// const defaultColors: ([number, number, number] | string)[] = [
+//     'oct.user.yellow', // Yellow
+//     'oct.user.green', // Green
+//     'oct.user.magenta', // Magenta
+//     'oct.user.lightGreen', // Light green
+//     'oct.user.lightOrange', // Light orange
+//     'oct.user.lightMagenta', // Light magenta
+//     [92, 45, 145], // Purple
+//     [0, 178, 148], // Light teal
+//     [255, 241, 0], // Light yellow
+//     [180, 160, 255] // Light purple
+// ];
 
-const knownColors = new Set<string>();
-function createColor(): [number, number, number] | string {
-    if (colorIndex < defaultColors.length) {
-        return defaultColors[colorIndex++];
-    }
-    const o = Math.round, r = Math.random, s = 255;
-    let color: [number, number, number];
-    do {
-        color = [o(r() * s), o(r() * s), o(r() * s)];
-    } while (knownColors.has(JSON.stringify(color)));
-    knownColors.add(JSON.stringify(color));
-    return color;
-}
+// const knownColors = new Set<string>();
+// function createColor(): [number, number, number] | string {
+//     if (colorIndex < defaultColors.length) {
+//         return defaultColors[colorIndex++];
+//     }
+//     const o = Math.round, r = Math.random, s = 255;
+//     let color: [number, number, number];
+//     do {
+//         color = [o(r() * s), o(r() * s), o(r() * s)];
+//     } while (knownColors.has(JSON.stringify(color)));
+//     knownColors.add(JSON.stringify(color));
+//     return color;
+// }
 
 // export class ClientTextEditorDecorationType implements vscode.Disposable {
 //     protected readonly toDispose: vscode.Disposable;
@@ -167,12 +167,12 @@ export class CollaborationInstance implements Disposable {
     private yjsAwareness = new awarenessProtocol.Awareness(this.yjs);
     private identity = new Deferred<types.Peer>();
     private toDispose = new DisposableCollection();
-    protected yjsProvider: OpenCollaborationYjsProvider;
-    private yjsMutex = createMutex();
-    private updates = new Set<string>();
+    protected yjsProvider: MonacoOCTYjsProvider;
+    // private yjsMutex = createMutex();
+    // private updates = new Set<string>();
     private documentDisposables = new Map<string, DisposableCollection>();
     private peers = new Map<string, DisposablePeer>();
-    private throttles = new Map<string, () => void>();
+    // private throttles = new Map<string, () => void>();
 
     private _following?: string;
     get following(): string | undefined {
@@ -187,9 +187,9 @@ export class CollaborationInstance implements Disposable {
         return this.identity.promise;
     }
 
-    constructor(connection: ProtocolBroadcastConnection, public host: boolean, protected callbacks: MonacoCollabCallbacks, protected editor: monaco.editor.IStandaloneCodeEditor, public roomToken?: string) {
+    constructor(connection: ProtocolBroadcastConnection, public host: boolean, protected callbacks: MonacoCollabCallbacks, protected editor: monaco.editor.IStandaloneCodeEditor, public roomToken: string) {
         this.connection = connection;
-        this.yjsProvider = new OpenCollaborationYjsProvider(connection, this.yjs, this.yjsAwareness);
+        this.yjsProvider = new MonacoOCTYjsProvider(connection, this.yjs, this.yjsAwareness);
         this.yjsProvider.connect();
 
         this.toDispose.push(connection);
@@ -204,11 +204,15 @@ export class CollaborationInstance implements Disposable {
         connection.peer.onJoinRequest(async (_, user) => {
             const result = await this.callbacks.onUserRequestsAccess(user);
             return result ? {
+                accessGranted: true,
                 workspace: {
                     name: 'Collaboration ' + this.roomToken,
                     folders: []
                 }
-            } : undefined;
+            } : {
+                accessGranted: false,
+                reason: 'Access denied'
+            };
         });
         connection.room.onJoin(async (_, peer) => {
             this.peers.set(peer.id, new DisposablePeer(this.yjsAwareness, peer));
@@ -298,14 +302,14 @@ export class CollaborationInstance implements Disposable {
         this.toDispose.dispose();
     }
 
-    private pushDocumentDisposable(path: string, disposable: Disposable) {
-        let disposables = this.documentDisposables.get(path);
-        if (!disposables) {
-            disposables = new DisposableCollection();
-            this.documentDisposables.set(path, disposables);
-        }
-        disposables.push(disposable);
-    }
+    // private pushDocumentDisposable(path: string, disposable: Disposable) {
+    //     let disposables = this.documentDisposables.get(path);
+    //     if (!disposables) {
+    //         disposables = new DisposableCollection();
+    //         this.documentDisposables.set(path, disposables);
+    //     }
+    //     disposables.push(disposable);
+    // }
 
     private registerEditorEvents() {
 
@@ -586,9 +590,9 @@ export class CollaborationInstance implements Disposable {
         }
     }
 
-    private setSharedSelection(selection?: types.ClientSelection): void {
-        this.yjsAwareness.setLocalStateField('selection', selection);
-    }
+    // private setSharedSelection(selection?: types.ClientSelection): void {
+    //     this.yjsAwareness.setLocalStateField('selection', selection);
+    // }
 
     protected createSelectionFromRelative(selection: types.RelativeTextSelection, model: monaco.editor.ITextModel): monaco.Selection | undefined {
         const start = Y.createAbsolutePositionFromRelativePosition(selection.start, this.yjs);

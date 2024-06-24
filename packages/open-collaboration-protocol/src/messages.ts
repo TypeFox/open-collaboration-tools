@@ -10,7 +10,7 @@ import { BroadcastType, RequestType, NotificationType } from './messaging';
 export namespace Messages {
 
     export namespace Peer {
-        export const Join = new RequestType<[types.User], types.JoinResponse | undefined>('peer/join');
+        export const Join = new RequestType<[types.User], types.JoinGrantedResponse | undefined>('peer/join');
         export const Info = new NotificationType<[types.Peer]>('peer/info');
         export const Init = new NotificationType<[types.InitData]>('peer/init');
     }

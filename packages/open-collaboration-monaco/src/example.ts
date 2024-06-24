@@ -1,5 +1,6 @@
 import * as monaco from "monaco-editor";
 import { monacoCollab } from "./monaco-api";
+import { User } from "open-collaboration-protocol";
 
 // import "../node_modules/monaco-editor/min/vs/editor/editor.main.css";
 
@@ -17,7 +18,7 @@ if(container) {
 	const monacoCollabApi = monacoCollab(myEditor, {
 		serverUrl: 'http://0.0.0.0:8100',
 		callbacks: {
-			onUserRequestsAccess: (user) => {
+			onUserRequestsAccess: (user: User) => {
 				console.log('User requests access', user);
 				return Promise.resolve(true);
 			},
@@ -27,9 +28,7 @@ if(container) {
 		}
 	});
 
-	monacoCollabApi.createRoom().then(instance => {
-		console.log(instance);
-	});
+
 
 	// on click of button with id create create room, call createRoom, take the value from response and set it in textfield with id token
 	const createRoomButton = document.getElementById("create");
@@ -46,8 +45,12 @@ if(container) {
 	const joinRoomButton = document.getElementById("join");
 	joinRoomButton?.addEventListener("click", () => {
 		const roomToken = (document.getElementById("room") as HTMLInputElement).value;
-		monacoCollabApi.joinRoom(roomToken).then(() => {
-			console.log('Joined room');
+		monacoCollabApi.joinRoom(roomToken).then(state => {
+            if(state && state.accessGranted) {
+			    console.log('Joined room');
+            } else if(state)  {
+                console.log('Access denied:', state.reason);
+            }
 		}
 );	});
 

@@ -245,11 +245,17 @@ export class CollaborationServer {
                     res.status(400);
                     res.send(result);
                 } else {
-                    const response: types.JoinRoomResponse = {
+                    const response: types.JoinRoomResponse | types.JoinDeniedResponse = result.response.accessGranted ?
+                    {
+                        accessGranted: true,
                         roomId: room.id,
                         roomToken: result.jwt,
                         workspace: result.response.workspace,
                         host: room.host.toProtocol()
+                    } :
+                    {
+                        accessGranted: false,
+                        reason: result.response.reason
                     };
                     res.send(response);
                 }

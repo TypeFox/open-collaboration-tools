@@ -84,7 +84,7 @@ export class DisposablePeer implements vscode.Disposable {
         const options: vscode.ThemableDecorationAttachmentRenderOptions = {
             contentText: this.peer.name,
             backgroundColor: color,
-            textDecoration: `none; position: absolute; border-radius: 0.15rem; padding:0px 0.5ch; display: inline-block; 
+            textDecoration: `none; position: absolute; border-radius: 0.15rem; padding:0px 0.5ch; display: inline-block;
                                 pointer-events: none; color: #000; font-size: 0.7rem; z-index: 10; font-weight: bold;${textDecoration ?? ''}`
         }
         return vscode.window.createTextEditorDecorationType({
@@ -104,7 +104,7 @@ export class DisposablePeer implements vscode.Disposable {
 
 let colorIndex = 0;
 const defaultColors: ([number, number, number] | string)[] = [
-    'oct.user.yellow', // Yellow 
+    'oct.user.yellow', // Yellow
     'oct.user.green', // Green
     'oct.user.magenta', // Magenta
     'oct.user.lightGreen', // Light green
@@ -256,11 +256,15 @@ export class CollaborationInstance implements vscode.Disposable {
             );
             const roots = vscode.workspace.workspaceFolders ?? [];
             return result === 'Allow' ? {
+                accessGranted: true,
                 workspace: {
                     name: vscode.workspace.name ?? 'Collaboration',
                     folders: roots.map(e => e.name)
                 }
-            } : undefined;
+            } : {
+                accessGranted: false,
+                reason: 'Access denied'
+            };
         });
         connection.peer.onInit(async (_, initData) => {
             await this.initialize(initData);

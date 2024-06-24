@@ -8,7 +8,7 @@ import { inject, injectable } from 'inversify';
 import { CredentialsManager } from './credentials-manager';
 import { MessageRelay } from './message-relay';
 import { Peer, Room, User, isUser } from './types';
-import { JoinResponse, Messages, BroadcastMessage, Encryption, NotificationMessage, RequestMessage, ResponseMessage, isObject } from 'open-collaboration-protocol';
+import { JoinResponse, JoinDeniedResponse, JoinGrantedResponse, Messages, BroadcastMessage, Encryption, NotificationMessage, RequestMessage, ResponseMessage, isObject } from 'open-collaboration-protocol';
 import { Logger, LoggerSymbol } from './utils/logging';
 
 export interface PreparedRoom {
@@ -167,7 +167,7 @@ export class RoomManager {
         return this.peers.get(id);
     }
 
-    async requestJoin(room: Room, user: User): Promise<{ jwt: string, response: JoinResponse } | string> {
+    async requestJoin(room: Room, user: User): Promise<string | { jwt: string, response: JoinGrantedResponse | JoinDeniedResponse }> {
         try {
         	this.logger.info(`Request to join room [id: '${room.id}'] by user [id: '${user.id}' | name: '${user.name}' | email: '${user.email ?? '<none>'}']`);
             const symmetricKey = await this.credentials.getSymmetricKey();
@@ -179,6 +179,7 @@ export class RoomManager {
                 encryptedRequest
             );
             const decryptedResponse = await Encryption.decrypt(response, { privateKey });
+
             if (ResponseMessage.is(decryptedResponse)) {
                 const joinResponse = decryptedResponse.content as JoinResponse;
                 if (joinResponse === undefined) {

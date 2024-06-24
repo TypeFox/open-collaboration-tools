@@ -141,8 +141,7 @@ export class ConnectionProvider {
         };
     }
 
-    async joinRoom(roomId: string): Promise<types.JoinRoomResponse> {
-        await this.ensureCompatibility();
+    async joinRoom(roomId: string): Promise<types.JoinRoomResponse | types.JoinDeniedResponse> {
         const valid = await this.validate();
         let loginToken: string | undefined;
         if (!valid) {
@@ -157,9 +156,16 @@ export class ConnectionProvider {
         if (!response.ok) {
             throw new Error(await this.readError(response));
         }
-        const body: types.JoinRoomResponse = await response.json();
+        const body: types.JoinRoomResponse | types.JoinDeniedResponse = await response.json();
+        if(body.accessGranted === false) {
+            return {
+                accessGranted: false,
+                reason: body.reason
+            }
+        }
         const roomAuthToken = body.roomToken;
         return {
+            accessGranted: true,
             loginToken,
             roomId,
             roomToken: roomAuthToken,

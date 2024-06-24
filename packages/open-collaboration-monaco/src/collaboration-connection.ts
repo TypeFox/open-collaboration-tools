@@ -1,4 +1,4 @@
-import { ConnectionProvider } from "open-collaboration-protocol";
+import { ConnectionProvider, CreateRoomResponse, JoinResponse, JoinRoomResponse } from "open-collaboration-protocol";
 import { CollaborationInstance } from "./collaboration-instance";
 import { MonacoCollabCallbacks } from "./monaco-api";
 import * as monaco from 'monaco-editor';
@@ -14,48 +14,48 @@ export async function createRoom(connectionProvider: ConnectionProvider, callbac
         // TODO store user token somewhere
         // await context.secrets.store('oct.userToken', userToken);
     }
-    const connection = await connectionProvider.connect(roomClaim.roomToken);
-    const instance = new CollaborationInstance(connection, true, callbacks, editor, roomClaim.roomId);
-    connection.onDisconnect(() => {
-        instance?.dispose();
-    });
 
     console.log('Room ID:', roomClaim.roomId);
-    // TODO show room ID in a notification and offer possibility to copy it to clipboard
-    // vscode.window.showInformationMessage(`Room ID: ${roomClaim.roomId}`, 'Copy to Clipboard').then(value => { 
-    //     if (value === 'Copy to Clipboard') {
-    //         vscode.env.clipboard.writeText(roomClaim.roomId);
-    //     }
-    // });
-
-    return instance;
+    return await connectToRoom(connectionProvider, roomClaim, true, callbacks, editor);
 }
 
-export async function joinRoom(connectionProvider: ConnectionProvider, roomId?: string): Promise<void> {
+export async function joinRoom(connectionProvider: ConnectionProvider, callbacks: MonacoCollabCallbacks, editor: monaco.editor.IStandaloneCodeEditor, roomId?: string): Promise<JoinResponse | undefined> {
     if (!roomId) {
         console.log('No room ID provided');
         // TODO show input box to enter the room ID
         // roomId = await vscode.window.showInputBox({ placeHolder: 'Enter the room ID' })
     }
-    // vscode.window.withProgress({location: vscode.ProgressLocation.Notification, title: 'Joining Room'}, async () => {
-        if (roomId && connectionProvider) {
-            const roomClaim = await connectionProvider.joinRoom(roomId);
-            if (roomClaim.loginToken) {
-                const userToken = roomClaim.loginToken;
-                console.log('joinRoom -> User Token:', userToken);
-                // TODO store user token somewhere
-                // await context.secrets.store('oct.userToken', userToken);
-            }
-            // TODO store room token somewhere
-            // await context.secrets.store('oct.roomToken', roomClaim.roomToken);
-            // const workspaceFolders = (vscode.workspace.workspaceFolders ?? []);
-            const workspace = roomClaim.workspace;
-            // const newFolders = workspace.folders.map(folder => ({
-            //     name: folder,
-            //     uri: URL.parse(workspace.name, folder)
-            // }));
-            console.log('Workspace:', workspace);
-            // vscode.workspace.updateWorkspaceFolders(0, workspaceFolders.length, ...newFolders);
+    if (roomId && connectionProvider) {
+        const roomClaim = await connectionProvider.joinRoom(roomId);
+        if(roomClaim.accessGranted === false) {
+            console.log('Access denied:', roomClaim.reason);
+            // TODO show notification with the reason
+            return {
+                    accessGranted: false,
+                    reason: roomClaim.reason
+            };
         }
-    // });
+        const instance = await connectToRoom(connectionProvider, roomClaim, false, callbacks, editor);
+        if (!instance) {
+            console.log('No collaboration instance found');
+            return;
+        }
+        const workspace = roomClaim.workspace;
+        console.log('Workspace:', workspace);
+        return {
+            accessGranted: true,
+            workspace: workspace
+        };
+    }
+    return;
+}
+
+async function connectToRoom(connectionProvider: ConnectionProvider, joinRes: CreateRoomResponse | JoinRoomResponse, isHost: boolean, callbacks: MonacoCollabCallbacks, editor: monaco.editor.IStandaloneCodeEditor) {
+    const connection = await connectionProvider.connect(joinRes.roomToken);
+    const instance = new CollaborationInstance(connection, isHost, callbacks, editor, joinRes.roomId);
+    connection.onDisconnect(() => {
+        instance?.dispose();
+    });
+    await instance.initialize();
+    return instance;
 }

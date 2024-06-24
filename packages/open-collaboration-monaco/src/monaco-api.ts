@@ -25,18 +25,11 @@ export type MonacoCollabOptions = {
 
 export type MonacoCollabApi = {
     createRoom: () => Promise<CollaborationInstance | undefined>
-    joinRoom: (roomToken: string) => Promise<void>
+    joinRoom: (roomToken: string) => Promise<types.JoinResponse | undefined>
 }
 
 export function monacoCollab(editor: monaco.editor.IStandaloneCodeEditor, options: MonacoCollabOptions): MonacoCollabApi {
-    initializeConnection(options, editor).then(value => {
-        if (value) {
-            instance = value;
-            enter();
-        } else {
-            // removeWorkspaceFolders();
-        }
-    });
+    initializeConnection(options);
 
     const _createRoom = async () => {
         console.log('Creating room');
@@ -46,7 +39,7 @@ export function monacoCollab(editor: monaco.editor.IStandaloneCodeEditor, option
             return;
         }
 
-        return createRoom(connectionProvider, options.callbacks, editor);
+        return await createRoom(connectionProvider, options.callbacks, editor);
     }
 
     const _joinRoom = async (roomToken: string) => {
@@ -57,7 +50,13 @@ export function monacoCollab(editor: monaco.editor.IStandaloneCodeEditor, option
             return;
         }
 
-        return joinRoom(connectionProvider, roomToken);
+        const res = await joinRoom(connectionProvider, options.callbacks, editor, roomToken);
+        if(!res || res.accessGranted === false) {
+            console.log('Access denied:', res?.reason ?? 'No reason provided');
+            return res;
+        }
+
+        return res;
     }
 
     return {
@@ -72,66 +71,13 @@ export function deactivate() {
     instance?.dispose();
 }
 
-function enter () {
-    if (!connectionProvider) {
-        console.log('No OCT Server configured.');
-    } else if (instance) {
-        // const quickPick = vscode.window.createQuickPick();
-        // quickPick.placeholder = 'Select collaboration option';
-        // const items: vscode.QuickPickItem[] = [
-        //     { label: '$(close) Close Current Session' },
-        // ];
-        // if (instance.host) {
-        //     items.push({ label: '$(copy) Copy Room Token' });
-        // }
-        // quickPick.items = items;
-        // const index = await showQuickPick(quickPick);
-        // if(index === 0) {
-        //     instance.dispose();
-        //     statusBarItem.text = '$(live-share) OCT';
-        //     instance = undefined;
-        //     vscode.workspace.updateWorkspaceFolders(0, vscode.workspace.workspaceFolders?.length ?? 0);
-        // } else if(index === 1) {
-            // vscode.env.clipboard.writeText(instance.roomToken ?? '');
-            // vscode.window.showInformationMessage(`Room Token ${instance.roomToken} copied to clipboard`);
-        // }
-    } else {
-        // const quickPick = vscode.window.createQuickPick();
-        // quickPick.placeholder = 'Select collaboration option';
-        // quickPick.items = [
-        //     { label: '$(add) Create New Collaboration Session' },
-        //     { label: '$(vm-connect) Join Collaboration Session' }
-        // ];
-        // const index = await showQuickPick(quickPick);
-        // if (index === 0) {
-        //     if (instance = await createRoom(context, connectionProvider)) {
-        //         statusBarItem.text = '$(broadcast) OCT Shared';
-        //     }
-        // } else if (index === 1) {
-        //     await joinRoom(context, connectionProvider);
-        // }
-    }
-}
-
-async function initializeConnection(options: MonacoCollabOptions, editor: monaco.editor.IStandaloneCodeEditor): Promise<CollaborationInstance | undefined> {
+async function initializeConnection(options: MonacoCollabOptions) {
     const serverUrl = options.serverUrl;
     userToken = options.userToken;
     if (serverUrl) {
         connectionProvider = createConnectionProvider(serverUrl);
-        const roomToken = options.roomToken;
-        if (roomToken) {
-            const connection = await connectionProvider.connect(roomToken);
-            const instance = new CollaborationInstance(connection, false, options.callbacks, editor);
-            connection.onDisconnect(() => {
-                instance?.dispose();
-            });
-            await instance.initialize();
-            return instance;
-        }
     }
-    return undefined;
 }
-
 
 function createConnectionProvider(url: string): ConnectionProvider {
     return new ConnectionProvider({

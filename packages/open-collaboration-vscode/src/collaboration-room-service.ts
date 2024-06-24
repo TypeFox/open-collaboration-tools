@@ -82,6 +82,10 @@ export class CollaborationRoomService {
         await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: 'Joining Room' }, async () => {
             if (roomId && connectionProvider) {
                 const roomClaim = await connectionProvider.joinRoom(roomId);
+                if(roomClaim.accessGranted === false) {
+                    vscode.window.showErrorMessage(`Access denied: ${roomClaim.reason}`);
+                    return;
+                }
                 if (roomClaim.loginToken) {
                     const userToken = roomClaim.loginToken;
                     await this.context.secrets.store(OCT_USER_TOKEN, userToken);
