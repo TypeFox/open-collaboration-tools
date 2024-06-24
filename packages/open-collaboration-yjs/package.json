@@ -4,8 +4,8 @@
     "description": "Open Collaboration Yjs Integration",
     "dependencies": {
         "lib0": "^0.2.94",
-        "open-collaboration-protocol": "0.0.7",
-        "open-collaboration-rpc": "0.0.6",
+        "open-collaboration-protocol": "0.0.8",
+        "open-collaboration-rpc": "0.0.7",
         "y-protocols": "^1.0.6"
     },
     "peerDependencies": {

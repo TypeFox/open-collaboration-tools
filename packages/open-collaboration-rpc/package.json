@@ -1,6 +1,6 @@
 {
   "name": "open-collaboration-rpc",
-  "version": "0.0.6",
+  "version": "0.0.7",
   "description": "Open Collaboration RPC Implementation",
   "files": [
     "lib",

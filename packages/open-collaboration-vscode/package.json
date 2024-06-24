@@ -157,8 +157,8 @@
     "inversify": "^6.0.2",
     "reflect-metadata": "^0.2.2",
     "open-collaboration-yjs": "0.0.1",
-    "open-collaboration-rpc": "0.0.6",
-    "open-collaboration-protocol": "0.0.7",
+    "open-collaboration-rpc": "0.0.7",
+    "open-collaboration-protocol": "0.0.8",
     "lodash.debounce": "^4.0.8",
     "node-fetch": "^2.0.0",
     "ws": "^8.17.0"
