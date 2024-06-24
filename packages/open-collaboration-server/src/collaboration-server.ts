@@ -56,7 +56,6 @@ export class CollaborationServer {
                     }
                     return acc;
                 }, {} as Record<string, string>);
-                console.log('User attempting to connect with:', headers);
                 await this.connectChannel(headers, encoding => new WebSocketChannel(socket, encoding));
             } catch (err) {
                 socket.close(undefined, 'Failed to join room');

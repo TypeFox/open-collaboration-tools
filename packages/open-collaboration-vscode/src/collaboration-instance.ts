@@ -10,6 +10,7 @@ import { LOCAL_ORIGIN, OpenCollaborationYjsProvider } from 'open-collaboration-y
 import { createMutex } from 'lib0/mutex';
 import debounce from 'lodash/debounce';
 import { inject, injectable, postConstruct } from "inversify";
+import { removeWorkspaceFolders } from "./utils/workspace";
 
 export class DisposablePeer implements vscode.Disposable {
 
@@ -268,7 +269,7 @@ export class CollaborationInstance implements vscode.Disposable {
         connection.room.onClose(async () => {
             if (!this.options.host) {
                 vscode.window.showInformationMessage('Collaboration room closed');
-                vscode.workspace.updateWorkspaceFolders(0, vscode.workspace.workspaceFolders?.length ?? 0);
+                removeWorkspaceFolders();
                 this.dispose();
             }
         });

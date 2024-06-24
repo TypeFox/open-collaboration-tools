@@ -10,7 +10,9 @@ export function removeWorkspaceFolders() {
                 newFolders.push(folder);
             }
         }
-        vscode.workspace.updateWorkspaceFolders(0, workspaceFolders.length, ...newFolders);
+        if (newFolders.length !== workspaceFolders.length) {
+            vscode.workspace.updateWorkspaceFolders(0, workspaceFolders.length, ...newFolders);
+        }
     }
 }
 

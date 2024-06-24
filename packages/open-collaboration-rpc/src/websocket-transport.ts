@@ -15,6 +15,9 @@ export const WebSocketTransportProvider: MessageTransportProvider = {
         } else if (url.startsWith('http')) {
             url = url.replace('http', 'ws');
         }
+        if (url.endsWith('/')) {
+            url = url.slice(0, -1);
+        }
         const query = Object.entries(headers).map(([key, value]) => `${key}=${value}`).join('&');
         const socket = new WebSocket(url + '/websocket' + (query ? '?' + query : ''));
         socket.binaryType = 'arraybuffer';

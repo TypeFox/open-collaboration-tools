@@ -8,6 +8,7 @@ import { showQuickPick } from './utils/quick-pick';
 import { ContextKeyService } from './context-key-service';
 import { CollaborationRoomService } from './collaboration-room-service';
 import { CollaborationStatusService } from './collaboration-status-service';
+import { closeSharedEditors, removeWorkspaceFolders } from './utils/workspace';
 
 @injectable()
 export class Commands {
@@ -57,7 +58,10 @@ export class Commands {
                     if (index === 0) {
                         instance.dispose();
                         this.contextKeyService.setConnection(undefined);
-                        vscode.workspace.updateWorkspaceFolders(0, vscode.workspace.workspaceFolders?.length ?? 0);
+                        if (!instance.host) {
+                            await closeSharedEditors();
+                            removeWorkspaceFolders();
+                        }
                     } else if (index === 1) {
                         vscode.env.clipboard.writeText(instance.roomId ?? '');
                         vscode.window.showInformationMessage(`Room ID ${instance.roomId} copied to clipboard`);
