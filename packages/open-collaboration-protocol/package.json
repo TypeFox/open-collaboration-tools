@@ -1,27 +1,33 @@
 {
   "name": "open-collaboration-protocol",
   "version": "0.0.8",
-  "description": "Open Collaboration Protocol Implementation",
-  "dependencies": {
-    "open-collaboration-rpc": "0.0.7"
-  },
-  "publishConfig": {
-    "access": "public"
-  },
-  "main": "./lib/index.js",
-  "types": "./lib/index.d.ts",
-  "keywords": [],
-  "license": "MIT",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/TypeFox/open-collaboration-server.git"
-  },
-  "bugs": {
-    "url": "https://github.com/TypeFox/open-collaboration-server/issues"
-  },
-  "homepage": "https://github.com/TypeFox/open-collaboration-server",
+  "description": "Open Collaboration Protocol implementation, part of the Open Collaboration Tools project",
   "files": [
     "lib",
     "src"
-  ]
+  ],
+  "main": "./lib/index.js",
+  "types": "./lib/index.d.ts",
+  "dependencies": {
+    "open-collaboration-rpc": "0.0.7"
+  },
+  "keywords": [
+    "collaboration",
+    "live-share",
+    "protocol"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/TypeFox/open-collaboration-tools",
+    "directory": "packages/open-collaboration-protocol"
+  },
+  "bugs": {
+    "url": "https://github.com/TypeFox/open-collaboration-tools/issues"
+  },
+  "homepage": "https://www.open-collab.tools/",
+  "author": {
+    "name": "TypeFox",
+    "url": "https://www.typefox.io/"
+  }
 }

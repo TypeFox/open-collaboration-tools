@@ -1,5 +1,5 @@
-# Change Log of `oct-live-collaboration`
+# Change Log of `open-collaboration-tools`
 
-## v0.0.1 (Jun. 2024)
+## v0.1.0 (Jun. 2024)
 
 - Initial preview release

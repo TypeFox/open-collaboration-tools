@@ -1,24 +1,30 @@
 {
   "name": "open-collaboration-rpc",
   "version": "0.0.7",
-  "description": "Open Collaboration RPC Implementation",
+  "description": "Open Collaboration RPC implementation, part of the Open Collaboration Tools project",
   "files": [
     "lib",
     "src"
   ],
-  "publishConfig": {
-    "access": "public"
-  },
   "main": "./lib/index.js",
   "types": "./lib/index.d.ts",
-  "keywords": [],
+  "keywords": [
+    "collaboration",
+    "live-share",
+    "rpc"
+  ],
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/TypeFox/open-collaboration-server.git"
+    "url": "https://github.com/TypeFox/open-collaboration-tools",
+    "directory": "packages/open-collaboration-rpc"
   },
   "bugs": {
-    "url": "https://github.com/TypeFox/open-collaboration-server/issues"
+    "url": "https://github.com/TypeFox/open-collaboration-tools/issues"
   },
-  "homepage": "https://github.com/TypeFox/open-collaboration-server"
+  "homepage": "https://www.open-collab.tools/",
+  "author": {
+    "name": "TypeFox",
+    "url": "https://www.typefox.io/"
+  }
 }

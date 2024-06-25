@@ -1,7 +1,18 @@
 {
   "name": "open-collaboration-server",
   "version": "0.0.5",
-  "description": "Open Collaboration Server Implementation",
+  "description": "Open Collaboration Server implementation, part of the Open Collaboration Tools project",
+  "files": [
+    "bin",
+    "lib",
+    "src"
+  ],
+  "bin": {
+    "oct-server": "./bin/server"
+  },
+  "scripts": {
+    "start": "node lib/app.js start --hostname=0.0.0.0"
+  },
   "dependencies": {
     "open-collaboration-protocol": "0.0.8",
     "open-collaboration-rpc": "0.0.7",
@@ -19,28 +30,23 @@
     "@types/ws": "^8.5.10",
     "@types/yargs": "^17.0.32"
   },
-  "files": [
-    "bin",
-    "lib",
-    "src"
+  "keywords": [
+    "collaboration",
+    "live-share",
+    "server"
   ],
-  "bin": {
-    "ocp-server": "./bin/server"
-  },
-  "publishConfig": {
-    "access": "public"
-  },
-  "scripts": {
-    "start": "node lib/app.js start --hostname=0.0.0.0"
-  },
-  "keywords": [],
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/TypeFox/open-collaboration-server.git"
+    "url": "https://github.com/TypeFox/open-collaboration-tools",
+    "directory": "packages/open-collaboration-server"
   },
   "bugs": {
-    "url": "https://github.com/TypeFox/open-collaboration-server/issues"
+    "url": "https://github.com/TypeFox/open-collaboration-tools/issues"
   },
-  "homepage": "https://github.com/TypeFox/open-collaboration-server"
+  "homepage": "https://www.open-collab.tools/",
+  "author": {
+    "name": "TypeFox",
+    "url": "https://www.typefox.io/"
+  }
 }
