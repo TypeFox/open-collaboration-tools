@@ -4,6 +4,7 @@ import { CollaborationRoomService } from './collaboration-room-service';
 import { CollaborationStatusViewDataProvider } from './collaboration-status-view';
 import { ExtensionContext } from './inversify';
 import { ContextKeyService } from './context-key-service';
+import { closeSharedEditors, removeWorkspaceFolders } from './utils/workspace';
 
 export enum StatusBarState {
     Idle,
@@ -37,6 +38,10 @@ export class CollaborationStatusService {
             instance.onDidDispose(() => {
                 this.setState(StatusBarState.Idle);
                 this.contextKeyService.setConnection(undefined);
+                if (!instance.host) {
+                    closeSharedEditors();
+                    removeWorkspaceFolders();
+                }
             });
         });
         this.context.subscriptions.push(
@@ -57,10 +62,10 @@ export class CollaborationStatusService {
                 this.statusBarItem.text = '$(live-share) Share';
                 break;
             case StatusBarState.Sharing:
-                this.statusBarItem.text = '$(live-share) Sharing';
+                this.statusBarItem.text = '$(broadcast) Sharing';
                 break;
             case StatusBarState.Connected:
-                this.statusBarItem.text = '$(live-share) Connected';
+                this.statusBarItem.text = '$(broadcast) Connected';
                 break;
         }
     }

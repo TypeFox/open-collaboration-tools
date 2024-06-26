@@ -4,7 +4,7 @@
 // terms of the MIT License, which is available in the project root.
 // ******************************************************************************
 
-import { AbstractBroadcastConnection, BroadcastConnection, Handler, MessageEncoding, MessageTarget, MessageTransport } from 'open-collaboration-rpc';
+import { AbstractBroadcastConnection, BroadcastConnection, Handler, MessageTarget, MessageTransport } from 'open-collaboration-rpc';
 import type * as types from './types';
 import { Messages } from './messages';
 
@@ -50,12 +50,12 @@ export interface FileSystemHandler {
 }
 
 export interface SyncHandler {
-    onDataUpdate(handler: Handler<[string]>): void;
-    dataUpdate(data: string): void;
-    dataUpdate(target: MessageTarget, data: string): void;
-    onAwarenessUpdate(handler: Handler<[string]>): void;
-    awarenessUpdate(data: string): void;
-    awarenessUpdate(target: MessageTarget, data: string): void;
+    onDataUpdate(handler: Handler<[types.Binary]>): void;
+    dataUpdate(data: types.Binary): void;
+    dataUpdate(target: MessageTarget, data: types.Binary): void;
+    onAwarenessUpdate(handler: Handler<[types.Binary]>): void;
+    awarenessUpdate(data: types.Binary): void;
+    awarenessUpdate(target: MessageTarget, data: types.Binary): void;
     onAwarenessQuery(handler: Handler<[]>): void;
     awarenessQuery(): void;
 }
@@ -68,16 +68,32 @@ export interface ProtocolBroadcastConnection extends BroadcastConnection {
     sync: SyncHandler;
 }
 
-export function createConnection(transport: MessageTransport, encoding: MessageEncoding): ProtocolBroadcastConnection {
-    return new ProtocolBroadcastConnectionImpl(encoding, transport);
+export interface ProtocolBroadcastConnectionOptions {
+    privateKey: string;
+    publicServerKey: string;
+    host?: types.Peer;
+    transport: MessageTransport;
+}
+
+export function createConnection(options: ProtocolBroadcastConnectionOptions): ProtocolBroadcastConnection {
+    return new ProtocolBroadcastConnectionImpl(options);
 }
 
 export class ProtocolBroadcastConnectionImpl extends AbstractBroadcastConnection {
 
     room: RoomHandler = {
-        onJoin: handler => this.onBroadcast(Messages.Room.Joined, handler),
-        onLeave: handler => this.onBroadcast(Messages.Room.Left, handler),
-        onClose: handler => this.onBroadcast(Messages.Room.Closed, handler),
+        onJoin: handler => this.onBroadcast(Messages.Room.Joined, (origin, peer) => {
+            this.onDidJoinRoom(peer);
+            handler(origin, peer);
+        }),
+        onLeave: handler => this.onBroadcast(Messages.Room.Left, (origin, peer) => {
+            this.onDidLeaveRoom(peer);
+            handler(origin, peer);
+        }),
+        onClose: handler => this.onBroadcast(Messages.Room.Closed, (origin) => {
+            this.onDidClose();
+            handler(origin);
+        }),
         onPermissions: handler => this.onBroadcast(Messages.Room.PermissionsUpdated, handler),
         updatePermissions: permissions => this.sendBroadcast(Messages.Room.PermissionsUpdated, permissions)
     };
@@ -85,7 +101,11 @@ export class ProtocolBroadcastConnectionImpl extends AbstractBroadcastConnection
     peer: PeerHandler = {
         onJoinRequest: handler => this.onRequest(Messages.Peer.Join, handler),
         onInfo: handler => this.onNotification(Messages.Peer.Info, handler),
-        onInit: handler => this.onRequest(Messages.Peer.Init, handler),
+        onInit: handler => this.onRequest(Messages.Peer.Init, async (origin, request) => {
+            const response = await handler(origin, request);
+            this.onDidInit(response);
+            return response;
+        }),
         init: (target, request) => this.sendRequest(Messages.Peer.Init, target, request)
     };
 
@@ -120,8 +140,8 @@ export class ProtocolBroadcastConnectionImpl extends AbstractBroadcastConnection
             this.onBroadcast(Messages.Sync.DataUpdate, handler);
             this.onNotification(Messages.Sync.DataNotify, handler);
         },
-        dataUpdate: (target: string, data?: string) => {
-            if (data === undefined) {
+        dataUpdate: (target: string | undefined | types.Binary, data?: types.Binary) => {
+            if (typeof target === 'object') {
                 this.sendBroadcast(Messages.Sync.DataUpdate, target);
             } else {
                 this.sendNotification(Messages.Sync.DataNotify, target, data);
@@ -131,8 +151,8 @@ export class ProtocolBroadcastConnectionImpl extends AbstractBroadcastConnection
             this.onBroadcast(Messages.Sync.AwarenessUpdate, handler);
             this.onNotification(Messages.Sync.AwarenessNotify, handler);
         },
-        awarenessUpdate: (target: string, data?: string) => {
-            if (data === undefined) {
+        awarenessUpdate: (target: string | undefined | types.Binary, data?: types.Binary) => {
+            if (typeof target === 'object') {
                 this.sendBroadcast(Messages.Sync.AwarenessUpdate, target);
             } else {
                 this.sendNotification(Messages.Sync.AwarenessNotify, target, data);
@@ -141,4 +161,50 @@ export class ProtocolBroadcastConnectionImpl extends AbstractBroadcastConnection
         onAwarenessQuery: handler => this.onBroadcast(Messages.Sync.AwarenessQuery, handler),
         awarenessQuery: () => this.sendBroadcast(Messages.Sync.AwarenessQuery)
     };
+
+    private peers = new Map<string, types.Peer>();
+
+    constructor(options: ProtocolBroadcastConnectionOptions) {
+        super({
+            privateKey: options.privateKey,
+            publicKey: options.publicServerKey
+        }, options.transport);
+        if (options.host) {
+            this.onDidJoinRoom(options.host);
+        }
+    }
+
+    protected override getPublicKey(origin: string): string {
+        if (origin === '') {
+            return this.keys.publicKey;
+        }
+        const peer = this.peers.get(origin);
+        if (peer) {
+            return peer.publicKey;
+        } else {
+            throw new Error('No public key found for origin ' + origin);
+        }
+    }
+
+    private onDidJoinRoom(peer: types.Peer): void {
+        this.peers.set(peer.id, peer);
+    }
+
+    private onDidLeaveRoom(peer: types.Peer): void {
+        this.peers.delete(peer.id);
+    }
+
+    private onDidClose(): void {
+        this.peers.clear();
+    }
+
+    private onDidInit(response: types.InitResponse): void {
+        for (const peer of [response.host, ...response.guests]) {
+            this.peers.set(peer.id, peer);
+        }
+    }
+
+    protected override getPublicKeys(): string[] {
+        return Array.from(this.peers.values()).map(peer => peer.publicKey);
+    }
 }

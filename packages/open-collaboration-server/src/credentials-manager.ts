@@ -9,7 +9,7 @@ import { User, isUser } from './types';
 import { UserManager } from './user-manager';
 import jose = require('jose');
 import { nanoid } from 'nanoid';
-import { Deferred } from 'open-collaboration-rpc';
+import { Deferred, Encryption } from 'open-collaboration-rpc';
 
 export interface DelayedAuth {
     deferred: Deferred<string>
@@ -30,6 +30,18 @@ export class CredentialsManager {
         if (process.env.JWT_PRIVATE_KEY === undefined) {
             console.warn('JWT_PRIVATE_KEY env variable is not set. Using a static key for development purposes.');
         }
+    }
+
+    private keyPair = Encryption.generateKeyPair();
+
+    async getPublicKey(): Promise<string> {
+        const keys = await this.keyPair;
+        return keys.publicKey;
+    }
+
+    async getPrivateKey(): Promise<string> {
+        const keys = await this.keyPair;
+        return keys.privateKey;
     }
 
     async confirmUser(confirmToken: string, user: Omit<User, 'id'>): Promise<string> {

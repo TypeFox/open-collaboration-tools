@@ -5,6 +5,7 @@
 // ******************************************************************************
 
 export * from './encoding';
+export * from './encryption';
 export * from './transport';
 export * from './utils';
 export * from './messages';

@@ -4,7 +4,7 @@ import * as Y from 'yjs';
 import * as awarenessProtocol from 'y-protocols/awareness';
 import * as types from 'open-collaboration-protocol';
 import { CollaborationFileSystemProvider } from "./collaboration-file-system";
-import { Deferred, DisposableCollection } from "open-collaboration-rpc";
+import { Deferred, DisposableCollection, VERSION } from "open-collaboration-rpc";
 import * as paths from 'path';
 import { LOCAL_ORIGIN, OpenCollaborationYjsProvider } from 'open-collaboration-yjs';
 import { createMutex } from 'lib0/mutex';
@@ -154,7 +154,7 @@ export class ClientTextEditorDecorationType implements vscode.Disposable {
     }
 
     getThemeColor(): vscode.ThemeColor | undefined {
-        return typeof this.color === 'string' ?  new vscode.ThemeColor(this.color) : undefined;
+        return typeof this.color === 'string' ? new vscode.ThemeColor(this.color) : undefined;
     }
 }
 
@@ -165,6 +165,7 @@ export const CollaborationInstanceOptions = Symbol('CollaborationInstanceOptions
 export interface CollaborationInstanceOptions {
     connection: ProtocolBroadcastConnection;
     host: boolean;
+    hostId?: string;
     roomId: string;
 }
 
@@ -174,7 +175,7 @@ export type CollaborationInstanceFactory = (options: CollaborationInstanceOption
 export class CollaborationInstance implements vscode.Disposable {
 
     static Current: CollaborationInstance | undefined;
-    
+
     private yjs: Y.Doc = new Y.Doc();
     private yjsAwareness = new awarenessProtocol.Awareness(this.yjs);
     private identity = new Deferred<types.Peer>();
@@ -193,7 +194,7 @@ export class CollaborationInstance implements vscode.Disposable {
 
     private readonly onDidUsersChangeEmitter: vscode.EventEmitter<void> = new vscode.EventEmitter<void>();
     readonly onDidUsersChange: vscode.Event<void> = this.onDidUsersChangeEmitter.event;
-    
+
     private readonly onDidDisposeEmitter: vscode.EventEmitter<void> = new vscode.EventEmitter<void>();
     readonly onDidDispose: vscode.Event<void> = this.onDidDisposeEmitter.event;
 
@@ -320,7 +321,7 @@ export class CollaborationInstance implements vscode.Disposable {
             if (uri) {
                 const content = await vscode.workspace.fs.readFile(uri);
                 return {
-                    content: Buffer.from(content).toString('base64')
+                    content
                 };
             } else {
                 throw new Error('Could not read file');
@@ -402,9 +403,7 @@ export class CollaborationInstance implements vscode.Disposable {
 
     followUser(id?: string) {
         this._following = id;
-        if(id) {
-            this.updateFollow();
-        }
+        this.updateFollow();
     }
 
     protected updateFollow(): void {
@@ -488,7 +487,7 @@ export class CollaborationInstance implements vscode.Disposable {
                     yjsText.insert(0, text);
                 });
             } else {
-                this.options.connection.editor.open('', path);
+                this.options.connection.editor.open(this.options.hostId, path);
             }
             const ytextContent = yjsText.toString();
             if (text !== ytextContent) {
@@ -662,13 +661,16 @@ export class CollaborationInstance implements vscode.Disposable {
     }
 
     async initialize(): Promise<void> {
-        const response = await this.options.connection.peer.init('', {
-            protocol: '0.0.1'
+        if (!this.options.hostId) {
+            throw new Error('Host user needs to be known to initialize the collaboration');
+        }
+        const response = await this.options.connection.peer.init(this.options.hostId, {
+            protocol: VERSION
         });
         for (const peer of [response.host, ...response.guests]) {
             this.peers.set(peer.id, new DisposablePeer(this.yjsAwareness, peer));
         }
-        this.toDispose.push(vscode.workspace.registerFileSystemProvider('oct', new CollaborationFileSystemProvider(this.options.connection, this.yjs)));
+        this.toDispose.push(vscode.workspace.registerFileSystemProvider('oct', new CollaborationFileSystemProvider(this.options.connection, this.yjs, response.host)));
     }
 
     getProtocolPath(uri?: vscode.Uri): string | undefined {

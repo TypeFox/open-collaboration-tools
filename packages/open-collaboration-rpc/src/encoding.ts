@@ -4,14 +4,13 @@
 // terms of the MIT License, which is available in the project root.
 // ******************************************************************************
 
-export interface MessageEncoding {
-    readonly encoding: string;
-    encode(message: unknown): ArrayBuffer;
-    decode(data: ArrayBuffer): unknown;
-}
+import * as msgpack from 'msgpackr';
 
-export const JsonMessageEncoding: MessageEncoding = {
-    encoding: 'json',
-    encode: message => new TextEncoder().encode(JSON.stringify(message)),
-    decode: data => JSON.parse(new TextDecoder().decode(data))
-};
+export namespace Encoding {
+    export function encode(message: unknown): Uint8Array {
+        return msgpack.encode(message);
+    }
+    export function decode(data: Uint8Array): unknown {
+        return msgpack.decode(data);
+    }
+}

@@ -35,19 +35,19 @@ export class OpenCollaborationYjsProvider extends ObservableV2<string> {
         connection.sync.onAwarenessQuery(this.ocpAwarenessQueryHandler.bind(this));
     }
 
-    private ocpDataUpdateHandler(origin: string, update: string): void {
-        const decoder = this.decodeBase64(update);
+    private ocpDataUpdateHandler(origin: string, update: types.Binary): void {
+        const decoder = this.decode(update);
         const encoder = encoding.createEncoder();
         const syncMessageType = syncProtocol.readSyncMessage(decoder, encoder, this.doc, origin);
         if (syncMessageType === syncProtocol.messageYjsSyncStep2 && !this.synced) {
             // todo handle room syncing (might not be necessary)
         } else if (syncMessageType === syncProtocol.messageYjsSyncStep1) {
-            this.connection.sync.dataUpdate(origin, this.encodeBase64(encoder));
+            this.connection.sync.dataUpdate(origin, this.encode(encoder));
         }
     }
 
-    private ocpAwarenessUpdateHandler(origin: string, update: string): void {
-        const decoder = this.decodeBase64(update);
+    private ocpAwarenessUpdateHandler(origin: string, update: types.Binary): void {
+        const decoder = this.decode(update);
         awarenessProtocol.applyAwarenessUpdate(this.awareness, decoding.readVarUint8Array(decoder), origin);
     }
 
@@ -57,14 +57,14 @@ export class OpenCollaborationYjsProvider extends ObservableV2<string> {
             encoder,
             awarenessProtocol.encodeAwarenessUpdate(this.awareness, Array.from(this.awareness.getStates().keys()))
         );
-        this.connection.sync.awarenessUpdate(origin, this.encodeBase64(encoder));
+        this.connection.sync.awarenessUpdate(origin, this.encode(encoder));
     }
 
     private yjsUpdateHandler(update: Uint8Array, origin: unknown): void {
         if (origin !== this) {
             const encoder = encoding.createEncoder();
             syncProtocol.writeUpdate(encoder, update);
-            this.connection.sync.dataUpdate(this.encodeBase64(encoder));
+            this.connection.sync.dataUpdate(this.encode(encoder));
         }
     }
 
@@ -72,18 +72,18 @@ export class OpenCollaborationYjsProvider extends ObservableV2<string> {
         const changedClients = changed.added.concat(changed.updated).concat(changed.removed);
         const encoder = encoding.createEncoder();
         encoding.writeVarUint8Array(encoder, awarenessProtocol.encodeAwarenessUpdate(this.awareness, changedClients));
-        this.connection.sync.awarenessUpdate(this.encodeBase64(encoder));
+        this.connection.sync.awarenessUpdate(this.encode(encoder));
     }
 
     connect(): void {
         // write sync step 1
         const encoderSync = encoding.createEncoder();
         syncProtocol.writeSyncStep1(encoderSync, this.doc);
-        this.connection.sync.dataUpdate(this.encodeBase64(encoderSync));
+        this.connection.sync.dataUpdate(this.encode(encoderSync));
         // broadcast local state
         const encoderState = encoding.createEncoder();
         syncProtocol.writeSyncStep2(encoderState, this.doc);
-        this.connection.sync.dataUpdate(this.encodeBase64(encoderState));
+        this.connection.sync.dataUpdate(this.encode(encoderState));
         // query awareness info
         this.connection.sync.awarenessQuery();
         // broadcast local awareness info
@@ -94,18 +94,18 @@ export class OpenCollaborationYjsProvider extends ObservableV2<string> {
                 this.doc.clientID
             ])
         );
-        this.connection.sync.awarenessUpdate(this.encodeBase64(encoderAwareness));
+        this.connection.sync.awarenessUpdate(this.encode(encoderAwareness));
     }
 
     dispose(): void {
         awarenessProtocol.removeAwarenessStates(this.awareness, [this.doc.clientID], 'client disconnected');
     }
 
-    private encodeBase64(encoder: encoding.Encoder): string {
-        return Buffer.from(encoding.toUint8Array(encoder)).toString('base64');
+    private encode(encoder: encoding.Encoder): types.Binary {
+        return encoding.toUint8Array(encoder);
     }
 
-    private decodeBase64(data: string): decoding.Decoder {
-        return decoding.createDecoder(Buffer.from(data, 'base64'));
+    private decode(data: types.Binary): decoding.Decoder {
+        return decoding.createDecoder(data);
     }
 }
