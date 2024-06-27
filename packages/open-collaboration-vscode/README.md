@@ -20,28 +20,37 @@ This extension contributes support for the [Open Collaboration Protocol](https:/
 ## Quickstart
 
 The extension adds a new "Share" item to the Status bar at the bottom of vscode, which allows managing your current sessions.  
-// Insert Image
+<img src="https://github.com/TypeFox/open-collaboration-tools/assets/34068281/9f9fb97b-3ccb-46bf-b77b-7ef0d4d5e9f0" alt="share-icon" width="200"/>
 
 ### Hosting a session
 
 1. Click on the share item in the status bar
 2. A quickpick will open at the top where you should select "Create New Collaboration Session"
-3. If you are not already authenticated with the configured server, your browser should open with an authentication page. Follow the steps to authenticate yourself
-4. When the authentication was successful a message should appear in the bottom right with a room token. Share that with whoever you wish to join your session
-5. should you need to copy the token again click the "Sharing" item in the bottom toolbar again. A quickpick will open again allowing you to copy the token again or close the current session
-6. When a user requests to join a message will appear at the bottom prompting you to allow or decline the join request
+<img src="https://github.com/TypeFox/open-collaboration-tools/assets/34068281/ae09888e-e22f-424e-b863-b5d5bdd628de" alt="share popup" width="600"/>
+
+4. If you are not already authenticated with the configured server, your browser should open with an authentication page. Follow the steps to authenticate yourself
+5. When the authentication was successful a message will appear in the bottom right with an invite code. Share that with whoever you wish to join your session
+<img src="https://github.com/TypeFox/open-collaboration-tools/assets/34068281/c74d1618-9846-4919-8342-716f91c77f9a" alt="share popup" width="400"/>
+
+7. Should you need to copy the token again click the "Sharing" item in the bottom toolbar again. A quickpick will open allowing you to copy the token or close the current session
+8. When a user requests to join a message will appear at the bottom prompting you to allow or decline the join request
+<img src="https://github.com/TypeFox/open-collaboration-tools/assets/34068281/dcae527f-ccfe-466d-a27a-9bf37c978165" alt="join request" width="400"/>
+
 
 ### Joining
 
-1. After you aquired a room token, click on the share item in the status bar
-2. A quickpick will open prompting you to input 
-3. If you are not already authenticated with configured server your browser should open with an authentication page. Follow the steps to authenticate yourself
-4. That's it! After that VSCode will connect to the hosts session
-5. If you want to leave the session, click the "Connected" item in the status bar and select "Close Current Session" to leave the session.
+1. After you aquired an invite code, click on the share item in the status bar and select
+<img src="https://github.com/TypeFox/open-collaboration-tools/assets/34068281/ae09888e-e22f-424e-b863-b5d5bdd628de" alt="share popup" width="600"/>
+3. A quickpick will open prompting you to input the invite code you aquired previously
+4. If you are not already authenticated with configured server your browser should open with an authentication page. Follow the steps to authenticate yourself
+5. That's it! After that VSCode will connect to the hosts session
+6. If you want to leave the session, click the "Connected" item in the status bar and select "Close Current Session" to leave the session.
 
 ### Session UI
 
 After joining or hosting a session you will find a new "Current Collaboration Session" widget in the explorer tab. 
+<img src="https://github.com/TypeFox/open-collaboration-tools/assets/34068281/14ffa64f-edc1-4487-a055-1135a3c0fbfe" alt="share popup" width="400"/>
+
 This widget lists all joined users and their respecive cursor colors. 
 
 Through the follwo icon you can jump to another user and automaticly follow them when they the active file file 
