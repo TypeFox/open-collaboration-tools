@@ -26,11 +26,11 @@ The extension adds a new "Share" item to the Status bar at the bottom of vscode,
 ### Hosting a session
 
 1. Click on the share item in the status bar
-2. A quickpick will open at the top where you should select "Create New Collaboration Session"
+2. A quickpick will open at the top where you will select "Create New Collaboration Session"
 
 <img src="https://github.com/TypeFox/open-collaboration-tools/assets/34068281/ae09888e-e22f-424e-b863-b5d5bdd628de" alt="share popup" width="600"/>
 
-3. If you are not already authenticated with the configured server, your browser should open with an authentication page. Follow the steps to authenticate yourself
+3. If you are not already authenticated with configured server vscode will try to open the authentication page in your browser. Follow the steps to authenticate yourself
 4. When the authentication was successful a message will appear in the bottom right with an invite code. Share that with whoever you wish to join your session
 
 <img src="https://github.com/TypeFox/open-collaboration-tools/assets/34068281/c74d1618-9846-4919-8342-716f91c77f9a" alt="share popup" width="400"/>
@@ -48,7 +48,7 @@ The extension adds a new "Share" item to the Status bar at the bottom of vscode,
 <img src="https://github.com/TypeFox/open-collaboration-tools/assets/34068281/ae09888e-e22f-424e-b863-b5d5bdd628de" alt="share popup" width="600"/>
 
 2. A quickpick will open prompting you to input the invite code you aquired previously
-3. If you are not already authenticated with configured server your browser should open with an authentication page. Follow the steps to authenticate yourself
+3. If you are not already authenticated with configured server vscode will try to open the authentication page in your browser. Follow the steps to authenticate yourself
 4. That's it! After that VSCode will connect to the hosts session
 5. If you want to leave the session, click the "Connected" item in the status bar and select "Close Current Session" to leave the session.
 
