@@ -20,7 +20,9 @@ process.on('unhandledRejection', (reason, promise) => {
 
 const command = yargs.version('0.0.1').command<{
     port: number,
-    hostname: string
+    hostname: string,
+    enableLogging: boolean,
+    debugLogging: boolean
 }>({
     command: 'start',
     describe: 'Start the server',
