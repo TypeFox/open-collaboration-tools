@@ -59,13 +59,13 @@ export class CollaborationStatusService {
     setState(state: StatusBarState) {
         switch (state) {
             case StatusBarState.Idle:
-                this.statusBarItem.text = '$(live-share) Share';
+                this.statusBarItem.text = '$(git-compare) Collaborate';
                 break;
             case StatusBarState.Sharing:
                 this.statusBarItem.text = '$(broadcast) Sharing';
                 break;
             case StatusBarState.Connected:
-                this.statusBarItem.text = '$(broadcast) Connected';
+                this.statusBarItem.text = '$(broadcast) Collaborating';
                 break;
         }
     }

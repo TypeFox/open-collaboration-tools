@@ -21,7 +21,7 @@ export namespace Encryption {
             userIDs: {
                 name: v4()
             },
-            curve: 'p256', // p256 curve is integrated natively in JS runtimes, marking it pretty quick
+            curve: 'p256', // p256 curve is integrated natively in JS runtimes, making it pretty quick
             format: 'armored' // base64 encoded keys
         });
         const { publicKey, privateKey } = keys;

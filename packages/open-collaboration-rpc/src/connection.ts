@@ -224,7 +224,7 @@ export abstract class AbstractBroadcastConnection implements BroadcastConnection
         if (publicKeys.length > 0) {
             // Don't actually send the broadcast if there are no other peers
             // Encryption will fail if we don't provide at least one public key
-            const encryptedMessage = await Encryption.encrypt(message, ...this.getPublicKeys());
+            const encryptedMessage = await Encryption.encrypt(message, ...publicKeys);
             this.write(encryptedMessage);
         }
     }

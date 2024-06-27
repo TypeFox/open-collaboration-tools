@@ -162,6 +162,7 @@ export class ProtocolBroadcastConnectionImpl extends AbstractBroadcastConnection
         awarenessQuery: () => this.sendBroadcast(Messages.Sync.AwarenessQuery)
     };
 
+    // Track peers manually for their public encryption keys
     private peers = new Map<string, types.Peer>();
 
     constructor(options: ProtocolBroadcastConnectionOptions) {
