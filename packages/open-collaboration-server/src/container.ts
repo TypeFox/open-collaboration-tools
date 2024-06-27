@@ -12,7 +12,6 @@ import { PeerFactory, PeerImpl } from './peer';
 import { RoomManager } from './room-manager';
 import { PeerInfo } from './types';
 import { UserManager } from './user-manager';
-import { EncodingProvider } from './encoding-provider';
 
 export default new ContainerModule(bind => {
     bind(CollaborationServer).toSelf().inSingletonScope();
@@ -20,7 +19,6 @@ export default new ContainerModule(bind => {
     bind(CredentialsManager).toSelf().inSingletonScope();
     bind(UserManager).toSelf().inSingletonScope();
     bind(MessageRelay).toSelf().inSingletonScope();
-    bind(EncodingProvider).toSelf().inSingletonScope();
     bind(PeerImpl).toSelf().inTransientScope();
     bind(PeerFactory).toFactory(context => (peerInfo: PeerInfo) => {
         const child = new Container();

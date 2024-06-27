@@ -9,6 +9,15 @@
   "publishConfig": {
     "access": "public"
   },
+  "dependencies": {
+    "msgpackr": "^1.10.2",
+    "openpgp": "^5.11.2",
+    "uuid": "^10.0.0"
+  },
+  "devDependencies": {
+    "@types/uuid": "^10.0.0",
+    "@openpgp/web-stream-tools": "0.0.11-patch-1"
+  },
   "main": "./lib/index.js",
   "types": "./lib/index.d.ts",
   "keywords": [],

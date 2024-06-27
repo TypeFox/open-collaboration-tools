@@ -14,27 +14,27 @@ export class FollowService {
         if (!CollaborationInstance.Current) {
             return;
         }
-    
+
         if (!peer) {
             const quickPick = vscode.window.createQuickPick();
             const users = CollaborationInstance.Current.connectedUsers
             quickPick.items = users.map(user => ({ label: user.peer.name, detail: user.peer.id }));
             peer = users[(await showQuickPick(quickPick))];
         }
-    
+
         if (!peer) {
             return;
         }
-    
+
         CollaborationInstance.Current.followUser(peer.peer.id);
         this.viewDataProvider.update();
     }
-    
+
     async unfollowPeer() {
         if (!CollaborationInstance.Current) {
             return;
         }
-    
+
         CollaborationInstance.Current.followUser(undefined);
         this.viewDataProvider.update();
     }

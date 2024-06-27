@@ -4,7 +4,7 @@
 // terms of the MIT License, which is available in the project root.
 // ******************************************************************************
 
-import { MessageEncoding, MessageTransportProvider } from "open-collaboration-rpc";
+import { Encryption, MessageTransportProvider } from "open-collaboration-rpc";
 import { ProtocolBroadcastConnection, createConnection } from "./connection";
 import * as types from './types';
 
@@ -16,7 +16,6 @@ export interface ConnectionProviderOptions {
     fetch: Fetch;
     opener: (url: string) => void;
     transports: MessageTransportProvider[];
-    encodings: MessageEncoding[];
 }
 
 export interface FetchRequestOptions {
@@ -128,25 +127,29 @@ export class ConnectionProvider {
         return {
             loginToken,
             roomId,
+            roomToken: roomAuthToken,
             workspace: body.workspace,
-            roomToken: roomAuthToken
+            host: body.host
         };
     }
 
-    async connect(roomAuthToken: string): Promise<ProtocolBroadcastConnection> {
+    async connect(roomAuthToken: string, host?: types.Peer): Promise<ProtocolBroadcastConnection> {
         const metadata = await this.fetch(this.getUrl('/api/meta'));
         const metadataBody = await metadata.json() as types.ProtocolServerMetaData;
         const transportIndex = this.findFitting(metadataBody.transports, this.options.transports.map(t => t.id));
-        const encodingIndex = this.findFitting(metadataBody.encodings, this.options.encodings.map(e => e.encoding));
         const transportProvider = this.options.transports[transportIndex];
-        const encoding = this.options.encodings[encodingIndex];
+        const keyPair = await Encryption.generateKeyPair();
         const transport = transportProvider.createTransport(this.options.url, {
             'x-jwt': roomAuthToken,
-            'x-encoding': encoding.encoding
+            'x-public-key': keyPair.publicKey
         });
         const connection = createConnection(
-            transport,
-            encoding
+            {
+                privateKey: keyPair.privateKey,
+                publicServerKey: metadataBody.publicKey,
+                transport,
+                host
+            }
         );
         return connection;
     }

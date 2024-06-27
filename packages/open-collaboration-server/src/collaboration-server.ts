@@ -16,8 +16,7 @@ import { RoomManager, isRoomClaim } from './room-manager';
 import { UserManager } from './user-manager';
 import { CredentialsManager } from './credentials-manager';
 import { User } from './types';
-import { ErrorMessage, MessageEncoding } from 'open-collaboration-rpc';
-import { EncodingProvider } from './encoding-provider';
+import { ErrorMessage } from 'open-collaboration-rpc';
 import * as types from 'open-collaboration-protocol';
 
 @injectable()
@@ -31,9 +30,6 @@ export class CollaborationServer {
 
     @inject(CredentialsManager)
     protected readonly credentials: CredentialsManager;
-
-    @inject(EncodingProvider)
-    protected readonly encodingProvider: EncodingProvider;
 
     @inject(PeerFactory)
     protected readonly peerFactory: PeerFactory;
@@ -52,11 +48,11 @@ export class CollaborationServer {
                 const headers = query.split('&').reduce((acc, cur) => {
                     const [key, value] = cur.split('=');
                     if (typeof key === 'string' && typeof value === 'string') {
-                        acc[key.trim()] = value.trim();
+                        acc[decodeURIComponent(key.trim())] = decodeURIComponent(value.trim());
                     }
                     return acc;
                 }, {} as Record<string, string>);
-                await this.connectChannel(headers, encoding => new WebSocketChannel(socket, encoding));
+                await this.connectChannel(headers, new WebSocketChannel(socket));
             } catch (err) {
                 socket.close(undefined, 'Failed to join room');
                 console.error('Web socket connection failed', err);
@@ -71,7 +67,7 @@ export class CollaborationServer {
         io.on('connection', async socket => {
             const headers = socket.request.headers as Record<string, string>;
             try {
-                await this.connectChannel(headers, encoding => new SocketIoChannel(socket, encoding));
+                await this.connectChannel(headers, new SocketIoChannel(socket));
             } catch (err) {
                 socket.send(ErrorMessage.create('Failed to join room'));
                 socket.disconnect(true);
@@ -82,21 +78,20 @@ export class CollaborationServer {
         console.log('Open Collaboration Server listening on ' + args.hostname + ':' + args.port);
     }
 
-    protected async connectChannel(headers: Record<string, string>, channelProvider: (encoding: MessageEncoding) => Channel): Promise<void> {
+    protected async connectChannel(headers: Record<string, string>, channel: Channel): Promise<void> {
         const jwt = headers['x-jwt'] as string;
         if (!jwt) {
             throw new Error('No JWT auth token set');
         }
-        let encoding = headers['x-encoding'] as string;
-        if (!encoding) {
-            encoding = 'json';
+        const publicKey = headers['x-public-key'] as string;
+        if (!publicKey) {
+            throw new Error('No encryption key set');
         }
-        const messageEncoding = this.encodingProvider.getEncoding(encoding);
         const roomClaim = await this.credentials.verifyJwt(jwt, isRoomClaim);
-        const channel = channelProvider(messageEncoding);
         const peer = this.peerFactory({
             user: roomClaim.user,
             host: roomClaim.host ?? false,
+            publicKey,
             channel
         });
         await this.roomManager.join(peer, roomClaim.room);
@@ -199,9 +194,7 @@ export class CollaborationServer {
                     'websocket',
                     'socket.io'
                 ],
-                encodings: [
-                    'json'
-                ]
+                publicKey: await this.credentials.getPublicKey()
             };
             res.send(data);
         });
@@ -217,7 +210,8 @@ export class CollaborationServer {
                 const response: types.JoinRoomResponse = {
                     roomId: room.id,
                     roomToken: result.jwt,
-                    workspace: result.response.workspace
+                    workspace: result.response.workspace,
+                    host: room.host.toProtocol()
                 };
                 res.send(response);
             } catch (err) {

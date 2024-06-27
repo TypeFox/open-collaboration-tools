@@ -87,13 +87,13 @@
         "command": "oct.followPeer",
         "title": "Follow Peer",
         "category": "OCT",
-        "icon": "$(go-to-file)"
+        "icon": "$(eye)"
       },
       {
         "command": "oct.stopFollowPeer",
-        "title": "Stop Follow Peer",
+        "title": "Stop Following Peer",
         "category": "OCT",
-        "icon": "$(circle-slash)"
+        "icon": "$(eye-closed)"
       }
     ],
     "colors": [

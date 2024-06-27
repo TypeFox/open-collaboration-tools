@@ -1,4 +1,4 @@
-import { ConnectionProvider } from "open-collaboration-protocol";
+import { ConnectionProvider, Peer } from "open-collaboration-protocol";
 import * as vscode from 'vscode';
 import { CollaborationInstance, CollaborationInstanceFactory } from "./collaboration-instance";
 import { CollaborationUri } from "./utils/uri";
@@ -6,8 +6,14 @@ import { inject, injectable } from "inversify";
 import { ExtensionContext } from "./inversify";
 import { CollaborationConnectionProvider } from "./collaboration-connection-provider";
 
-export const OCT_ROOM_ID = 'oct.roomId';
+export const OCT_ROOM_DATA = 'oct.roomData';
 export const OCT_USER_TOKEN = 'oct.userToken';
+
+interface RoomData {
+    roomToken: string;
+    roomId: string;
+    host: Peer;
+}
 
 @injectable()
 export class CollaborationRoomService {
@@ -25,17 +31,19 @@ export class CollaborationRoomService {
     readonly onDidJoinRoom = this.onDidJoinRoomEmitter.event;
 
     async tryConnect(): Promise<CollaborationInstance | undefined> {
-        const roomId = await this.context.secrets.get(OCT_ROOM_ID);
+        const roomDataJson = await this.context.secrets.get(OCT_ROOM_DATA);
         // Instantly delete the room token - it will become invalid after the first connection attempt
-        await this.context.secrets.delete(OCT_ROOM_ID);
+        await this.context.secrets.delete(OCT_ROOM_DATA);
         const connectionProvider = await this.connectionProvider.createConnection();
 
-        if (connectionProvider && roomId) {
-            const connection = await connectionProvider.connect(roomId);
+        if (connectionProvider && roomDataJson) {
+            const roomData: RoomData = JSON.parse(roomDataJson);
+            const connection = await connectionProvider.connect(roomData.roomToken, roomData.host);
             const instance = this.instanceFactory({
                 connection,
                 host: false,
-                roomId: ''
+                roomId: roomData.roomId,
+                hostId: roomData.host.id
             });
             await instance.initialize();
             this.onDidJoinRoomEmitter.fire(instance);
@@ -60,7 +68,7 @@ export class CollaborationRoomService {
             roomId: roomClaim.roomId
         });
         await vscode.env.clipboard.writeText(roomClaim.roomId);
-        vscode.window.showInformationMessage(`Joined room '${roomClaim.roomId}'. ID was automatically written to clipboard.`, 'Copy to Clipboard').then(value => { 
+        vscode.window.showInformationMessage(`Joined room '${roomClaim.roomId}'. ID was automatically written to clipboard.`, 'Copy to Clipboard').then(value => {
             if (value === 'Copy to Clipboard') {
                 vscode.env.clipboard.writeText(roomClaim.roomId);
             }
@@ -68,19 +76,25 @@ export class CollaborationRoomService {
         this.onDidJoinRoomEmitter.fire(instance);
         return instance;
     }
-    
+
     async joinRoom(connectionProvider: ConnectionProvider, roomId?: string): Promise<void> {
         if (!roomId) {
             roomId = await vscode.window.showInputBox({ placeHolder: 'Enter the room ID' })
         }
-        vscode.window.withProgress({location: vscode.ProgressLocation.Notification, title: 'Joining Room'}, async () => {
+        vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: 'Joining Room' }, async () => {
             if (roomId && connectionProvider) {
                 const roomClaim = await connectionProvider.joinRoom(roomId);
                 if (roomClaim.loginToken) {
                     const userToken = roomClaim.loginToken;
                     await this.context.secrets.store(OCT_USER_TOKEN, userToken);
                 }
-                await this.context.secrets.store(OCT_ROOM_ID, roomClaim.roomToken);
+                const roomData: RoomData = {
+                    roomToken: roomClaim.roomToken,
+                    roomId: roomClaim.roomId,
+                    host: roomClaim.host
+                }
+                const roomDataJson = JSON.stringify(roomData);
+                await this.context.secrets.store(OCT_ROOM_DATA, roomDataJson);
                 const workspaceFolders = (vscode.workspace.workspaceFolders ?? []);
                 const workspace = roomClaim.workspace;
                 const newFolders = workspace.folders.map(folder => ({

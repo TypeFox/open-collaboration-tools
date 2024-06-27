@@ -5,7 +5,7 @@
 // ******************************************************************************
 
 import { inject, injectable } from 'inversify';
-import { BroadcastMessage, NotificationMessage, RequestMessage, isObject } from 'open-collaboration-rpc';
+import { BroadcastMessage, Encryption, NotificationMessage, RequestMessage, isObject } from 'open-collaboration-rpc';
 import { CredentialsManager } from './credentials-manager';
 import { MessageRelay } from './message-relay';
 import { Peer, Room, User, isUser } from './types';
@@ -38,10 +38,12 @@ export class RoomManager {
     @inject(CredentialsManager)
     protected readonly credentials: CredentialsManager;
 
-    closeRoom(id: string): void {
+    async closeRoom(id: string): Promise<void> {
         const room = this.rooms.get(id);
         if (room) {
-            this.messageRelay.sendBroadcast(room.host, BroadcastMessage.create(Messages.Room.Closed, room.host.id));
+            const broadcastMessage = BroadcastMessage.create(Messages.Room.Closed, room.host.id);
+            const encryptedMessage = await Encryption.encrypt(broadcastMessage, room.host.publicKey);
+            this.messageRelay.sendBroadcast(room.host, encryptedMessage);
             for (const peer of room.peers) {
                 this.peers.delete(peer.id);
                 peer.channel.close();
@@ -83,35 +85,47 @@ export class RoomManager {
             if (!room) {
                 throw new Error('Could not find room to join');
             }
+            const broadcastMessage = BroadcastMessage.create(Messages.Room.Joined, '', [peer.toProtocol()]);
+            const allKeys = [room.host, ...room.guests].map(peer => peer.publicKey);
             this.peers.set(peer.id, room);
             room.guests.push(peer);
-            this.messageRelay.sendBroadcast(
-                peer,
-                BroadcastMessage.create(
-                    Messages.Room.Joined,
-                    peer.id,
-                    [peer.toProtocol()]
-                )
-            );
-            peer.channel.onClose(() => {
-                this.messageRelay.sendBroadcast(
-                    peer,
-                    BroadcastMessage.create(
-                        Messages.Room.Left,
-                        peer.id,
-                        [peer.toProtocol()]
-                    )
-                );
+            if (allKeys.length > 0) {
+                try {
+                    const encryptedMessage = await Encryption.encrypt(broadcastMessage, ...allKeys);
+                    this.messageRelay.sendBroadcast(
+                        peer,
+                        encryptedMessage
+                    );
+                } catch (err) {
+                    console.error('Failed to send join broadcast', err);
+                }
+            }
+            peer.channel.onClose(async () => {
+                const allPeerKeys = [room.host, ...room.guests].map(peer => peer.publicKey);
+                if (allPeerKeys.length > 0) {
+                    try {
+                        const broadcastMessage = BroadcastMessage.create(Messages.Room.Left, '', [peer.toProtocol()]);
+                        const encryptedMessage = await Encryption.encrypt(broadcastMessage, ...allPeerKeys);
+                        this.messageRelay.sendBroadcast(
+                            peer,
+                            encryptedMessage
+                        );
+                    } catch (err) {
+                        console.error('Failed to send leave broadcast', err);
+                    }
+                }
             });
         }
+        const infoNotification = NotificationMessage.create(
+            Messages.Peer.Info,
+            '',
+            peer.id,
+            [peer.toProtocol()]
+        );
+        const encryptedInfo = await Encryption.encrypt(infoNotification, peer.publicKey);
         this.messageRelay.sendNotification(
             peer,
-            NotificationMessage.create(
-                Messages.Peer.Info,
-                '',
-                peer.id,
-                [peer.toProtocol()]
-            )
+            encryptedInfo
         );
         return room;
     }
@@ -126,18 +140,23 @@ export class RoomManager {
 
     async requestJoin(room: Room, user: User): Promise<{ jwt: string, response: JoinResponse }> {
         try {
+            const privateKey = await this.credentials.getPrivateKey();
+            const requestMessage = RequestMessage.create(Messages.Peer.Join, this.credentials.secureId(), '', room.host.id, [user]);
+            const encryptedRequest = await Encryption.encrypt(requestMessage, room.host.publicKey);
             const response = await this.messageRelay.sendRequest(
                 room.host,
-                RequestMessage.create(Messages.Peer.Join, this.credentials.secureId(), '', room.host.id, [user])
-            ) as JoinResponse | undefined;
-            if (response) {
+                encryptedRequest
+            );
+            const decryptedResponse = await Encryption.decrypt({ content: response }, privateKey);
+            if (decryptedResponse.content) {
+                const joinResponse = decryptedResponse.content as JoinResponse;
                 const claim: RoomClaim = {
                     room: room.id,
                     user: { ...user }
                 };
                 return {
                     jwt: await this.credentials.generateJwt(claim),
-                    response
+                    response: joinResponse
                 };
             } else {
                 throw new Error('Join request has been rejected');

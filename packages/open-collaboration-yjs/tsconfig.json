@@ -6,6 +6,8 @@
   },
   "references": [{
     "path": "../open-collaboration-rpc/tsconfig.json"
+  }, {
+    "path": "../open-collaboration-protocol/tsconfig.json"
   }],
   "include": [
     "src/**/*.ts"

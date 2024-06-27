@@ -6,12 +6,11 @@
 
 import { Socket } from 'socket.io';
 import * as ws from 'ws';
-import { Disposable, Emitter, Event, Message, MessageEncoding } from 'open-collaboration-rpc';
+import { Disposable, Emitter, Encoding, EncryptedMessage, Event } from 'open-collaboration-rpc';
 
 export interface Channel {
-    readonly encoding: MessageEncoding;
-    onMessage(cb: (message: Message) => void): Disposable;
-    sendMessage(message: Message): void;
+    onMessage(cb: (message: EncryptedMessage) => void): Disposable;
+    sendMessage(message: EncryptedMessage): void;
     close(): void;
     onClose: Event<void>;
 }
@@ -23,24 +22,18 @@ export class WebSocketChannel implements Channel {
         return this.onDidCloseEmitter.event;
     }
 
-    private _encoding: MessageEncoding;
     private _socket: ws.WebSocket;
 
-    get encoding(): MessageEncoding {
-        return this._encoding;
-    }
-
-    constructor(socket: ws.WebSocket, encoding: MessageEncoding) {
-        this._encoding = encoding;
+    constructor(socket: ws.WebSocket) {
         this._socket = socket;
         this._socket.onclose = () => {
             this.onDidCloseEmitter.fire();
         };
     }
 
-    onMessage(cb: (message: Message) => void): Disposable {
+    onMessage(cb: (message: EncryptedMessage) => void): Disposable {
         const decode = (message: ArrayBuffer) => {
-            const data = this.encoding.decode(message) as Message;
+            const data = Encoding.decode(new Uint8Array(message)) as EncryptedMessage;
             cb(data);
         };
         this._socket.on('message', decode);
@@ -49,8 +42,8 @@ export class WebSocketChannel implements Channel {
         });
     }
 
-    sendMessage(message: Message): void {
-        const buffer = this.encoding.encode(message);
+    sendMessage(message: EncryptedMessage): void {
+        const buffer = Encoding.encode(message);
         this._socket.send(buffer);
     }
 
@@ -69,24 +62,18 @@ export class SocketIoChannel implements Channel {
         return this.onDidCloseEmitter.event;
     }
 
-    private _encoding: MessageEncoding;
     private _socket: Socket;
 
-    get encoding(): MessageEncoding {
-        return this._encoding;
-    }
-
-    constructor(socket: Socket, encoding: MessageEncoding) {
-        this._encoding = encoding;
+    constructor(socket: Socket) {
         this._socket = socket;
         this._socket.on('disconnect', () => {
             this.onDidCloseEmitter.fire();
         });
     }
 
-    onMessage(cb: (message: Message) => void): Disposable {
+    onMessage(cb: (message: EncryptedMessage) => void): Disposable {
         const decode = (message: ArrayBuffer) => {
-            const data = this.encoding.decode(message) as Message;
+            const data = Encoding.decode(new Uint8Array(message)) as EncryptedMessage;
             cb(data);
         };
         this._socket.on('message', decode);
@@ -95,8 +82,8 @@ export class SocketIoChannel implements Channel {
         });
     }
 
-    sendMessage(message: Message): void {
-        const buffer = this.encoding.encode(message);
+    sendMessage(message: EncryptedMessage): void {
+        const buffer = Encoding.encode(message);
         this._socket.send(buffer);
     }
 

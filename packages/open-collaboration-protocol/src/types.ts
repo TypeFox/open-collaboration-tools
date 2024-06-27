@@ -7,6 +7,7 @@
 export type Path = string;
 export type Token = string;
 export type Id = string;
+export type Binary = Uint8Array;
 
 // HTTP API
 
@@ -20,14 +21,15 @@ export interface JoinRoomResponse {
     roomId: Id;
     roomToken: Token;
     loginToken?: Token;
-    workspace: Workspace
+    workspace: Workspace;
+    host: Peer;
 }
 
 export interface ProtocolServerMetaData {
     owner: string;
     version: string;
     transports: string[];
-    encodings: string[];
+    publicKey: string;
 }
 
 // Transport based API
@@ -45,6 +47,7 @@ export interface Peer {
     id: Id
     host: boolean
     name: string
+    publicKey: string
     email?: string
 }
 
@@ -95,10 +98,7 @@ export interface FileSystemDirectory {
 }
 
 export interface FileData {
-    /**
-     * Base64 encoded content.
-     */
-    content: string
+    content: Binary
 }
 
 export enum FilePermission {

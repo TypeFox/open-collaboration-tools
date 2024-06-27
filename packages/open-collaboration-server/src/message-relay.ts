@@ -5,13 +5,13 @@
 // ******************************************************************************
 
 import { injectable } from 'inversify';
-import { BroadcastMessage, Deferred, NotificationMessage, RequestMessage, ResponseErrorMessage, ResponseMessage } from 'open-collaboration-rpc';
+import { Deferred, EncryptedBroadcastMessage, EncryptedNotificationMessage, EncryptedRequestMessage, EncryptedResponseErrorMessage, EncryptedResponseMessage, ResponseMessage } from 'open-collaboration-rpc';
 import { Peer } from './types';
 import { nanoid } from 'nanoid';
 
 export interface RelayedRequest {
     id: string | number;
-    response: Deferred<unknown>
+    response: Deferred<Uint8Array>
     dispose(): void;
 }
 
@@ -20,20 +20,20 @@ export class MessageRelay {
 
     protected requestMap = new Map<string, RelayedRequest>();
 
-    pushResponse(receiver: Peer, message: ResponseMessage | ResponseErrorMessage): void {
+    pushResponse(receiver: Peer, message: EncryptedResponseMessage | EncryptedResponseErrorMessage): void {
         const relayedRequest = this.requestMap.get(message.id.toString());
         if (relayedRequest) {
             if (ResponseMessage.is(message)) {
-                relayedRequest.response.resolve(message.response);
+                relayedRequest.response.resolve(message.content);
             } else {
-                relayedRequest.response.reject(new Error(message.message));
+                relayedRequest.response.reject(message.content);
             }
             relayedRequest.dispose();
         }
     }
 
-    sendRequest(target: Peer, message: RequestMessage): Promise<unknown> {
-        const deferred = new Deferred<unknown>();
+    sendRequest(target: Peer, message: EncryptedRequestMessage): Promise<Uint8Array> {
+        const deferred = new Deferred<Uint8Array>();
         const messageId = message.id;
         const key = nanoid(24);
         const dispose = () => {
@@ -47,7 +47,7 @@ export class MessageRelay {
             response: deferred,
             dispose
         });
-        const targetMessage: RequestMessage = {
+        const targetMessage: EncryptedRequestMessage = {
             ...message,
             id: key
         };
@@ -55,11 +55,11 @@ export class MessageRelay {
         return deferred.promise;
     }
 
-    sendNotification(target: Peer, message: NotificationMessage): void {
+    sendNotification(target: Peer, message: EncryptedNotificationMessage): void {
         target.channel.sendMessage(message);
     }
 
-    sendBroadcast(origin: Peer, message: BroadcastMessage): void {
+    sendBroadcast(origin: Peer, message: EncryptedBroadcastMessage): void {
         try {
             const room = origin.room;
             message.origin = origin.id;

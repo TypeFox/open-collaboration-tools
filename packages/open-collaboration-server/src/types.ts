@@ -37,6 +37,7 @@ export const PeerInfo = Symbol('PeerInfo');
 export interface PeerInfo {
     user: User;
     host: boolean;
+    publicKey: string;
     channel: Channel;
 }
 
@@ -44,6 +45,7 @@ export interface Peer {
     id: string;
     host: boolean;
     user: User;
+    publicKey: string;
     channel: Channel;
     room: Room;
     toProtocol(): protocol.Peer
