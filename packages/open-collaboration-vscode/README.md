@@ -21,7 +21,7 @@ This extension contributes support for the [Open Collaboration Protocol](https:/
 
 The extension adds a new "Share" item to the Status bar at the bottom of vscode, which allows managing your current sessions.  
 
-<img src="https://github.com/TypeFox/open-collaboration-tools/assets/34068281/9f9fb97b-3ccb-46bf-b77b-7ef0d4d5e9f0" alt="share-icon" width="200"/>
+<img src="https://github.com/TypeFox/open-collaboration-tools/assets/34068281/bf5769ab-508b-4a6a-a91e-48e9efa8d4a6" alt="share-icon" width="300"/>
 
 ### Hosting a session
 
