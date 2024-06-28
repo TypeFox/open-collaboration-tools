@@ -54,9 +54,9 @@ The extension adds a new "Share" item to the Status bar at the bottom of vscode,
 
 ### Session UI
 
-After joining or hosting a session, you will find a new "Current Collaboration Session" widget in the explorer tab. 
+<img src="https://github.com/TypeFox/open-collaboration-tools/assets/34068281/096c5ddd-026d-455c-9608-5c0febfca6d8" alt="share popup" width="400"/>
 
-<img src="https://github.com/TypeFox/open-collaboration-tools/assets/34068281/14ffa64f-edc1-4487-a055-1135a3c0fbfe" alt="share popup" width="400"/>
+After joining or hosting a session, you will find a new "Current Collaboration Session" widget in the explorer tab. 
 
 This widget lists all joined users and their respecive cursor colors. 
 
