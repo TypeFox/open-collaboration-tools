@@ -18,7 +18,8 @@
             ],
             "sourceMaps": true,
             "outFiles": [
-                "${workspaceFolder}/packages/open-collaboration-server/lib/**/*.js"
+                "${workspaceFolder}/packages/open-collaboration-server/lib/**/*.js",
+                "${workspaceFolder}/packages/open-collaboration-server-oauth/lib/**/*.js"
             ]
         },
         {

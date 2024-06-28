@@ -115,7 +115,7 @@ export class CollaborationServer {
         }
     }
 
-    protected setupApiRoute(): express.Application {
+    protected setupApiRoute(): express.Express {
         const app = express();
         app.use(express.json());
         app.use((_, res, next) => {
