@@ -4,6 +4,8 @@
 // terms of the MIT License, which is available in the project root.
 // ******************************************************************************
 
+import type { CompressionAlgorithm } from "open-collaboration-rpc";
+
 export type Path = string;
 export type Token = string;
 export type Id = string;
@@ -47,15 +49,28 @@ export interface Peer {
     id: Id
     host: boolean
     name: string
-    publicKey: string
     email?: string
+    metadata: PeerMetaData
+}
+
+export interface PeerMetaData {
+    encryption: EncryptionMetaData
+    compression: CompressionMetaData;
+}
+
+export interface EncryptionMetaData {
+    publicKey: string;
+}
+
+export interface CompressionMetaData {
+    supported: CompressionAlgorithm[];
 }
 
 export interface InitRequest {
     protocol: string;
 }
 
-export interface InitResponse {
+export interface InitData {
     protocol: string
     host: Peer
     guests: Peer[]

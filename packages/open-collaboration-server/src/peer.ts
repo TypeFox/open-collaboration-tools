@@ -7,11 +7,12 @@
 import { inject, injectable, postConstruct } from 'inversify';
 import { nanoid } from 'nanoid';
 import * as protocol from 'open-collaboration-protocol';
-import { BroadcastMessage, EncryptedResponseMessage, Encryption, Message, NotificationMessage, RequestMessage, ResponseErrorMessage, ResponseMessage } from 'open-collaboration-rpc';
+import { BroadcastMessage, Encryption, Message, NotificationMessage, RequestMessage, ResponseErrorMessage, ResponseMessage } from 'open-collaboration-rpc';
 import { Channel } from './channel';
 import { MessageRelay } from './message-relay';
 import { RoomManager } from './room-manager';
 import { Peer, PeerInfo, Room, User } from './types';
+import { CredentialsManager } from './credentials-manager';
 
 export const PeerFactory = Symbol('PeerFactory');
 export type PeerFactory = (info: PeerInfo) => Peer;
@@ -23,6 +24,10 @@ export class PeerImpl implements Peer {
 
     get publicKey(): string {
         return this.peerInfo.publicKey;
+    }
+
+    get supportedCompression(): string[] {
+        return this.peerInfo.supportedCompression;
     }
 
     get user(): User {
@@ -54,39 +59,38 @@ export class PeerImpl implements Peer {
     @inject(RoomManager)
     private readonly roomManager: RoomManager;
 
+    @inject(CredentialsManager)
+    private readonly credentials: CredentialsManager;
+
     @postConstruct()
     protected init(): void {
         this.channel.onMessage(message => this.receiveMessage(message));
     }
 
     private async receiveMessage(message: Message): Promise<void> {
-        if (ResponseMessage.isEncrypted(message) || ResponseErrorMessage.isEncrypted(message)) {
+        if (ResponseMessage.isBinary(message) || ResponseErrorMessage.isBinary(message)) {
             this.messageRelay.pushResponse(this, message);
-        } else if (RequestMessage.isEncrypted(message)) {
+        } else if (RequestMessage.isBinary(message)) {
             // Override whatever we know about the origin of the message
             message.origin = this.id;
             try {
                 const response = await this.messageRelay.sendRequest(this.getTargetPeer(message.target), message);
-                const responseMessage: EncryptedResponseMessage = {
-                    id: message.id,
-                    version: message.version,
-                    kind: 'response',
-                    content: response
-                };
-                this.channel.sendMessage(responseMessage);
+                // Adjust the response to the original message id
+                response.id = message.id;
+                this.channel.sendMessage(response);
             } catch (err) {
                 const errorResponseMessage = ResponseErrorMessage.create(message.id, 'Failed to retrieve the requested data.');
-                const encryptedError = await Encryption.encrypt(errorResponseMessage, this.publicKey);
+                const encryptedError = await Encryption.encrypt(errorResponseMessage, this.credentials.getSymmetricKey(), this.toEncryptionKey());
                 this.channel.sendMessage(encryptedError);
             }
-        } else if (NotificationMessage.isEncrypted(message)) {
+        } else if (NotificationMessage.isBinary(message)) {
             message.origin = this.id;
             try {
                 this.messageRelay.sendNotification(this.getTargetPeer(message.target), message);
             } catch (err) {
                 console.error(`Failed sending notification to: ${message.target}`, err);
             }
-        } else if (BroadcastMessage.isEncrypted(message)) {
+        } else if (BroadcastMessage.isBinary(message)) {
             this.messageRelay.sendBroadcast(this, message);
         }
     }
@@ -104,8 +108,23 @@ export class PeerImpl implements Peer {
             id: this.id,
             host: this.host,
             name: this.user.name,
+            email: this.user.email,
+            metadata: {
+                compression: {
+                    supported: this.peerInfo.supportedCompression
+                },
+                encryption: {
+                    publicKey: this.publicKey
+                }
+            }
+        };
+    }
+
+    toEncryptionKey(): Encryption.AsymmetricKey {
+        return {
             publicKey: this.publicKey,
-            email: this.user.email
+            peerId: this.id,
+            supportedCompression: this.supportedCompression
         };
     }
 }

@@ -15,9 +15,40 @@ export interface Message {
      */
     version: string;
     kind: string;
+    metadata: MessageMetadata;
 }
 
-export interface EncryptedMessage extends Message {
+export interface MessageMetadata {
+    encryption: MessageEncryption;
+    compression: MessageCompression;
+}
+
+export const DEFAULT_METADATA: MessageMetadata = {
+    encryption: {
+        keys: []
+    },
+    compression: {
+        algorithm: 'none'
+    }
+};
+
+export interface MessageEncryption {
+    keys: MessageContentKey[];
+}
+
+export interface MessageCompression {
+    algorithm: CompressionAlgorithm;
+}
+
+export interface MessageContentKey {
+    target: MessageTarget;
+    key: string;
+    iv: string;
+}
+
+export type CompressionAlgorithm = 'none' | 'gzip' | (string & {});
+
+export interface BinaryMessage extends Message {
     content: Uint8Array;
 }
 
@@ -30,8 +61,8 @@ export namespace Message {
         const message = item as Message;
         return typeof message === 'object' && message && typeof message.version === 'string' && typeof message.kind === 'string';
     }
-    export function isEncrypted(item: Message): item is EncryptedMessage {
-        return (item as EncryptedMessage).content instanceof Uint8Array;
+    export function isBinary(item: Message): item is BinaryMessage {
+        return (item as BinaryMessage).content instanceof Uint8Array;
     }
 }
 
@@ -45,26 +76,24 @@ export interface ErrorMessageContent {
 }
 
 export type ErrorMessage = AbstractErrorMessage<ErrorMessageContent>;
-export type EncryptedErrorMessage = AbstractErrorMessage<Uint8Array>;
+export type BinaryErrorMessage = AbstractErrorMessage<Uint8Array>;
 
 export namespace ErrorMessage {
     export function create(message: string): ErrorMessage {
         return {
             version: VERSION,
             kind: 'error',
+            metadata: DEFAULT_METADATA,
             content: {
                 message
             }
         };
     }
-    export function is(message: unknown): message is ErrorMessage | EncryptedErrorMessage {
+    export function is(message: unknown): message is ErrorMessage {
         return Message.is(message) && message.kind === 'error';
     }
-    export function isEncrypted(message: unknown): message is EncryptedErrorMessage {
+    export function isBinary(message: unknown): message is BinaryErrorMessage {
         return is(message) && message.content instanceof Uint8Array;
-    }
-    export function isDecrypted(message: unknown): message is ErrorMessage {
-        return is(message) && !isEncrypted(message);
     }
 }
 
@@ -103,7 +132,7 @@ export interface RequestMessageContent {
 }
 
 export type RequestMessage = AbstractRequestMessage<RequestMessageContent>;
-export type EncryptedRequestMessage = AbstractRequestMessage<Uint8Array>;
+export type BinaryRequestMessage = AbstractRequestMessage<Uint8Array>;
 
 export namespace RequestMessage {
     export function create(
@@ -116,6 +145,7 @@ export namespace RequestMessage {
         return {
             version: VERSION,
             id,
+            metadata: DEFAULT_METADATA,
             origin,
             target,
             kind: 'request',
@@ -125,14 +155,11 @@ export namespace RequestMessage {
             }
         };
     }
-    export function is(message: unknown): message is RequestMessage | EncryptedRequestMessage {
+    export function is(message: unknown): message is RequestMessage {
         return Message.is(message) && message.kind === 'request';
     }
-    export function isEncrypted(message: unknown): message is EncryptedRequestMessage {
+    export function isBinary(message: unknown): message is BinaryRequestMessage {
         return is(message) && message.content instanceof Uint8Array;
-    }
-    export function isDecrypted(message: unknown): message is RequestMessage {
-        return is(message) && !isEncrypted(message);
     }
 }
 
@@ -145,26 +172,24 @@ export interface AbstractResponseMessage<T> extends Message {
     content: T;
 }
 
-export type ResponseMessage = AbstractResponseMessage<unknown>;
-export type EncryptedResponseMessage = AbstractResponseMessage<Uint8Array>;
+export type ResponseMessage<T = unknown> = AbstractResponseMessage<T>;
+export type BinaryResponseMessage = AbstractResponseMessage<Uint8Array>;
 
 export namespace ResponseMessage {
-    export function create(id: number | string, response: unknown): ResponseMessage {
+    export function create<T extends object>(id: number | string, response: T): ResponseMessage<T> {
         return {
             kind: 'response',
             version: VERSION,
             id,
+            metadata: DEFAULT_METADATA,
             content: response
         };
     }
-    export function is(message: unknown): message is ResponseMessage | EncryptedResponseMessage {
+    export function is(message: unknown): message is ResponseMessage {
         return Message.is(message) && message.kind === 'response';
     }
-    export function isEncrypted(message: unknown): message is EncryptedResponseMessage {
+    export function isBinary(message: unknown): message is BinaryResponseMessage {
         return is(message) && message.content instanceof Uint8Array;
-    }
-    export function isDecrypted(message: unknown): message is ResponseMessage {
-        return is(message) && !isEncrypted(message);
     }
 }
 
@@ -182,27 +207,37 @@ export interface ResponseErrorMessageContent {
 }
 
 export type ResponseErrorMessage = AbstractResponseErrorMessage<ResponseErrorMessageContent>;
-export type EncryptedResponseErrorMessage = AbstractResponseErrorMessage<Uint8Array>;
+export type BinaryResponseErrorMessage = AbstractResponseErrorMessage<Uint8Array>;
 
 export namespace ResponseErrorMessage {
-    export function create(id: number | string, message: string): ResponseErrorMessage {
-        return {
-            kind: 'response-error',
-            version: VERSION,
-            id,
-            content: {
-                message
-            }
-        };
+    export function create(id: number | string, message: string): ResponseErrorMessage;
+    export function create(id: number | string, message: Uint8Array): BinaryResponseErrorMessage;
+    export function create(id: number | string, message: string | Uint8Array): ResponseErrorMessage | BinaryResponseErrorMessage {
+        if (typeof message === 'string') {
+            return {
+                kind: 'response-error',
+                version: VERSION,
+                metadata: DEFAULT_METADATA,
+                id,
+                content: {
+                    message
+                }
+            };
+        } else {
+            return {
+                kind: 'response-error',
+                version: VERSION,
+                metadata: DEFAULT_METADATA,
+                id,
+                content: message
+            };
+        }
     }
-    export function is(message: unknown): message is ResponseErrorMessage | EncryptedResponseErrorMessage {
+    export function is(message: unknown): message is ResponseErrorMessage {
         return Message.is(message) && message.kind === 'response-error';
     }
-    export function isEncrypted(message: unknown): message is EncryptedResponseErrorMessage {
+    export function isBinary(message: unknown): message is BinaryResponseErrorMessage {
         return is(message) && message.content instanceof Uint8Array;
-    }
-    export function isDecrypted(message: unknown): message is ResponseErrorMessage {
-        return is(message) && !isEncrypted(message);
     }
 }
 
@@ -231,14 +266,15 @@ export interface NotificationMessageContent {
 }
 
 export type NotificationMessage = AbstractNotificationMessage<NotificationMessageContent>;
-export type EncryptedNotificationMessage = AbstractNotificationMessage<Uint8Array>;
+export type BinaryNotificationMessage = AbstractNotificationMessage<Uint8Array>;
 
 export namespace NotificationMessage {
     export function create(signature: NotificationType<any> | string, origin: MessageOrigin, target: MessageTarget, params?: any[]): NotificationMessage {
         return {
             version: VERSION,
             kind: 'notification',
-            target: target,
+            metadata: DEFAULT_METADATA,
+            target,
             origin,
             content: {
                 method: typeof signature === 'string' ? signature : signature.method,
@@ -246,14 +282,11 @@ export namespace NotificationMessage {
             }
         };
     }
-    export function is(message: unknown): message is NotificationMessage | EncryptedNotificationMessage {
+    export function is(message: unknown): message is NotificationMessage {
         return Message.is(message) && message.kind === 'notification';
     }
-    export function isEncrypted(message: unknown): message is EncryptedNotificationMessage {
+    export function isBinary(message: unknown): message is BinaryNotificationMessage {
         return is(message) && message.content instanceof Uint8Array;
-    }
-    export function isDecrypted(message: unknown): message is NotificationMessage {
-        return is(message) && !isEncrypted(message);
     }
 }
 
@@ -269,28 +302,26 @@ export interface BroadcastMessageContent {
 }
 
 export type BroadcastMessage = AbstractBroadcastMessage<BroadcastMessageContent>;
-export type EncryptedBroadcastMessage = AbstractBroadcastMessage<Uint8Array>;
+export type BinaryBroadcastMessage = AbstractBroadcastMessage<Uint8Array>;
 
 export namespace BroadcastMessage {
     export function create(signature: BroadcastType<any> | string, origin: string, params?: any[]): BroadcastMessage {
         return {
             version: VERSION,
-            origin: origin,
             kind: 'broadcast',
+            metadata: DEFAULT_METADATA,
+            origin: origin,
             content: {
                 method: typeof signature === 'string' ? signature : signature.method,
                 params
             }
         };
     }
-    export function is(message: unknown): message is BroadcastMessage | EncryptedBroadcastMessage {
+    export function is(message: unknown): message is BroadcastMessage {
         return Message.is(message) && message.kind === 'broadcast';
     }
-    export function isEncrypted(message: unknown): message is EncryptedBroadcastMessage {
+    export function isBinary(message: unknown): message is BinaryBroadcastMessage {
         return is(message) && message.content instanceof Uint8Array;
-    }
-    export function isDecrypted(message: unknown): message is BroadcastMessage {
-        return is(message) && !isEncrypted(message);
     }
 }
 

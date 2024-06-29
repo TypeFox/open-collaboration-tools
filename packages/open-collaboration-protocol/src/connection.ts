@@ -4,7 +4,7 @@
 // terms of the MIT License, which is available in the project root.
 // ******************************************************************************
 
-import { AbstractBroadcastConnection, BroadcastConnection, Handler, MessageTarget, MessageTransport } from 'open-collaboration-rpc';
+import { AbstractBroadcastConnection, BroadcastConnection, Handler, MessageTarget, MessageTransport, Encryption } from 'open-collaboration-rpc';
 import type * as types from './types';
 import { Messages } from './messages';
 
@@ -19,8 +19,8 @@ export interface RoomHandler {
 export interface PeerHandler {
     onJoinRequest(handler: Handler<[types.User], types.JoinResponse | undefined>): void;
     onInfo(handler: Handler<[types.Peer]>): void;
-    onInit(handler: Handler<[types.InitRequest], types.InitResponse>): void;
-    init(target: MessageTarget, request: types.InitRequest): Promise<types.InitResponse>;
+    onInit(handler: Handler<[types.InitData]>): void;
+    init(target: MessageTarget, data: types.InitData): void;
 }
 
 export interface EditorHandler {
@@ -79,6 +79,8 @@ export function createConnection(options: ProtocolBroadcastConnectionOptions): P
     return new ProtocolBroadcastConnectionImpl(options);
 }
 
+const EMTPY_HANDLER = () => { };
+
 export class ProtocolBroadcastConnectionImpl extends AbstractBroadcastConnection {
 
     room: RoomHandler = {
@@ -101,12 +103,11 @@ export class ProtocolBroadcastConnectionImpl extends AbstractBroadcastConnection
     peer: PeerHandler = {
         onJoinRequest: handler => this.onRequest(Messages.Peer.Join, handler),
         onInfo: handler => this.onNotification(Messages.Peer.Info, handler),
-        onInit: handler => this.onRequest(Messages.Peer.Init, async (origin, request) => {
-            const response = await handler(origin, request);
+        onInit: handler => this.onNotification(Messages.Peer.Init, async (origin, response) => {
             this.onDidInit(response);
-            return response;
+            handler(origin, response);
         }),
-        init: (target, request) => this.sendRequest(Messages.Peer.Init, target, request)
+        init: (target, request) => this.sendNotification(Messages.Peer.Init, target, request)
     };
 
     fs: FileSystemHandler = {
@@ -172,16 +173,31 @@ export class ProtocolBroadcastConnectionImpl extends AbstractBroadcastConnection
         }, options.transport);
         if (options.host) {
             this.onDidJoinRoom(options.host);
+        } else {
+            this.ready();
         }
+        // Ensure that the peer handlers are called
+        this.room.onJoin(EMTPY_HANDLER);
+        this.room.onLeave(EMTPY_HANDLER);
+        this.room.onClose(EMTPY_HANDLER);
+        this.peer.onInit(EMTPY_HANDLER);
     }
 
-    protected override getPublicKey(origin: string): string {
+    protected override getPublicKey(origin: string): Encryption.AsymmetricKey {
         if (origin === '') {
-            return this.keys.publicKey;
+            return {
+                peerId: '',
+                publicKey: this.keys.publicKey,
+                supportedCompression: ['none']
+            };
         }
         const peer = this.peers.get(origin);
         if (peer) {
-            return peer.publicKey;
+            return {
+                peerId: peer.id,
+                publicKey: peer.metadata.encryption.publicKey,
+                supportedCompression: peer.metadata.compression.supported
+            };
         } else {
             throw new Error('No public key found for origin ' + origin);
         }
@@ -199,13 +215,18 @@ export class ProtocolBroadcastConnectionImpl extends AbstractBroadcastConnection
         this.peers.clear();
     }
 
-    private onDidInit(response: types.InitResponse): void {
+    private onDidInit(response: types.InitData): void {
         for (const peer of [response.host, ...response.guests]) {
             this.peers.set(peer.id, peer);
         }
+        this.ready();
     }
 
-    protected override getPublicKeys(): string[] {
-        return Array.from(this.peers.values()).map(peer => peer.publicKey);
+    protected override getPublicKeys(): Encryption.AsymmetricKey[] {
+        return Array.from(this.peers.values()).map(peer => ({
+            peerId: peer.id,
+            publicKey: peer.metadata.encryption.publicKey,
+            supportedCompression: peer.metadata.compression.supported
+        }));
     }
 }

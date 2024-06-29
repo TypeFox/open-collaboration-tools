@@ -4,7 +4,7 @@ import * as Y from 'yjs';
 import * as awarenessProtocol from 'y-protocols/awareness';
 import * as types from 'open-collaboration-protocol';
 import { CollaborationFileSystemProvider } from "./collaboration-file-system";
-import { Deferred, DisposableCollection, VERSION } from "open-collaboration-rpc";
+import { Deferred, DisposableCollection } from "open-collaboration-rpc";
 import * as paths from 'path';
 import { LOCAL_ORIGIN, OpenCollaborationYjsProvider } from 'open-collaboration-yjs';
 import { createMutex } from 'lib0/mutex';
@@ -254,8 +254,24 @@ export class CollaborationInstance implements vscode.Disposable {
                 }
             } : undefined;
         });
+        connection.peer.onInit(async (_, initData) => {
+            await this.initialize(initData);
+        });
         connection.room.onJoin(async (_, peer) => {
             this.peers.set(peer.id, new DisposablePeer(this.yjsAwareness, peer));
+            const roots = vscode.workspace.workspaceFolders ?? [];
+            const initData: types.InitData = {
+                protocol: '0.0.1',
+                host: await this.identity.promise,
+                guests: Array.from(this.peers.values()).map(e => e.peer),
+                capabilities: {},
+                permissions: { readonly: false },
+                workspace: {
+                    name: vscode.workspace.name ?? 'Collaboration',
+                    folders: roots.map(e => e.name)
+                }
+            };
+            connection.peer.init(peer.id, initData);
             this.onDidUsersChangeEmitter.fire();
         });
         connection.room.onLeave(async (_, peer) => {
@@ -277,21 +293,6 @@ export class CollaborationInstance implements vscode.Disposable {
         connection.peer.onInfo((_, peer) => {
             this.yjsAwareness.setLocalStateField('peer', peer.id);
             this.identity.resolve(peer);
-        });
-        connection.peer.onInit(async () => {
-            const roots = vscode.workspace.workspaceFolders ?? [];
-            const response: types.InitResponse = {
-                protocol: '0.0.1',
-                host: await this.identity.promise,
-                guests: Array.from(this.peers.values()).map(e => e.peer),
-                capabilities: {},
-                permissions: { readonly: false },
-                workspace: {
-                    name: vscode.workspace.name ?? 'Collaboration',
-                    folders: roots.map(e => e.name)
-                }
-            };
-            return response;
         });
         connection.fs.onStat(async (_, path) => {
             const uri = this.getResourceUri(path);
@@ -660,17 +661,11 @@ export class CollaborationInstance implements vscode.Disposable {
         };
     }
 
-    async initialize(): Promise<void> {
-        if (!this.options.hostId) {
-            throw new Error('Host user needs to be known to initialize the collaboration');
-        }
-        const response = await this.options.connection.peer.init(this.options.hostId, {
-            protocol: VERSION
-        });
-        for (const peer of [response.host, ...response.guests]) {
+    async initialize(data: types.InitData): Promise<void> {
+        for (const peer of [data.host, ...data.guests]) {
             this.peers.set(peer.id, new DisposablePeer(this.yjsAwareness, peer));
         }
-        this.toDispose.push(vscode.workspace.registerFileSystemProvider('oct', new CollaborationFileSystemProvider(this.options.connection, this.yjs, response.host)));
+        this.toDispose.push(vscode.workspace.registerFileSystemProvider('oct', new CollaborationFileSystemProvider(this.options.connection, this.yjs, data.host)));
     }
 
     getProtocolPath(uri?: vscode.Uri): string | undefined {

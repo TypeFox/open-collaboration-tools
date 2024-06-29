@@ -12,7 +12,7 @@ export namespace Messages {
     export namespace Peer {
         export const Join = new RequestType<[types.User], types.JoinResponse | undefined>('peer/join');
         export const Info = new NotificationType<[types.Peer]>('peer/info');
-        export const Init = new RequestType<[types.InitRequest], types.InitResponse>('peer/init');
+        export const Init = new NotificationType<[types.InitData]>('peer/init');
     }
 
     export namespace Room {

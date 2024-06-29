@@ -45,7 +45,6 @@ export class CollaborationRoomService {
                 roomId: roomData.roomId,
                 hostId: roomData.host.id
             });
-            await instance.initialize();
             this.onDidJoinRoomEmitter.fire(instance);
             return instance;
         }

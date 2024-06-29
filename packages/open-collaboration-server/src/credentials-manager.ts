@@ -44,6 +44,11 @@ export class CredentialsManager {
         return keys.privateKey;
     }
 
+    async getSymmetricKey(): Promise<string> {
+        this.cachedKey ??= await Encryption.generateSymKey();
+        return this.cachedKey;
+    }
+
     async confirmUser(confirmToken: string, user: Omit<User, 'id'>): Promise<string> {
         const auth = this.deferredAuths.get(confirmToken);
         if (!auth) {

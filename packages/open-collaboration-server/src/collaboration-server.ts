@@ -16,7 +16,6 @@ import { RoomManager, isRoomClaim } from './room-manager';
 import { UserManager } from './user-manager';
 import { CredentialsManager } from './credentials-manager';
 import { User } from './types';
-import { ErrorMessage } from 'open-collaboration-rpc';
 import * as types from 'open-collaboration-protocol';
 
 @injectable()
@@ -69,7 +68,6 @@ export class CollaborationServer {
             try {
                 await this.connectChannel(headers, new SocketIoChannel(socket));
             } catch (err) {
-                socket.send(ErrorMessage.create('Failed to join room'));
                 socket.disconnect(true);
                 console.error('Socket IO connection failed', err);
             }
@@ -79,19 +77,24 @@ export class CollaborationServer {
     }
 
     protected async connectChannel(headers: Record<string, string>, channel: Channel): Promise<void> {
-        const jwt = headers['x-jwt'] as string;
+        const jwt = headers['x-jwt'];
         if (!jwt) {
             throw new Error('No JWT auth token set');
         }
-        const publicKey = headers['x-public-key'] as string;
+        const publicKey = headers['x-public-key'];
         if (!publicKey) {
             throw new Error('No encryption key set');
+        }
+        let compression = headers['x-compression']?.split(',');
+        if (compression === undefined || compression.length === 0) {
+            compression = ['none'];
         }
         const roomClaim = await this.credentials.verifyJwt(jwt, isRoomClaim);
         const peer = this.peerFactory({
             user: roomClaim.user,
             host: roomClaim.host ?? false,
             publicKey,
+            supportedCompression: compression,
             channel
         });
         await this.roomManager.join(peer, roomClaim.room);

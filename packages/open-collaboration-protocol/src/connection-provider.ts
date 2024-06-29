@@ -141,7 +141,8 @@ export class ConnectionProvider {
         const keyPair = await Encryption.generateKeyPair();
         const transport = transportProvider.createTransport(this.options.url, {
             'x-jwt': roomAuthToken,
-            'x-public-key': keyPair.publicKey
+            'x-public-key': keyPair.publicKey,
+            'x-compression': 'gzip'
         });
         const connection = createConnection(
             {

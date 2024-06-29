@@ -10,13 +10,9 @@
     "access": "public"
   },
   "dependencies": {
-    "msgpackr": "^1.10.2",
-    "openpgp": "^5.11.2",
-    "uuid": "^10.0.0"
-  },
-  "devDependencies": {
-    "@types/uuid": "^10.0.0",
-    "@openpgp/web-stream-tools": "0.0.11-patch-1"
+    "base64-js": "^1.5.1",
+    "fflate": "^0.8.2",
+    "msgpackr": "^1.10.2"
   },
   "main": "./lib/index.js",
   "types": "./lib/index.d.ts",

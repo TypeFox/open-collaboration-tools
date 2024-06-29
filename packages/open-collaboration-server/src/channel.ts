@@ -6,11 +6,11 @@
 
 import { Socket } from 'socket.io';
 import * as ws from 'ws';
-import { Disposable, Emitter, Encoding, EncryptedMessage, Event } from 'open-collaboration-rpc';
+import { Disposable, Emitter, Encoding, BinaryMessage, Event } from 'open-collaboration-rpc';
 
 export interface Channel {
-    onMessage(cb: (message: EncryptedMessage) => void): Disposable;
-    sendMessage(message: EncryptedMessage): void;
+    onMessage(cb: (message: BinaryMessage) => void): Disposable;
+    sendMessage(message: BinaryMessage): void;
     close(): void;
     onClose: Event<void>;
 }
@@ -31,9 +31,9 @@ export class WebSocketChannel implements Channel {
         };
     }
 
-    onMessage(cb: (message: EncryptedMessage) => void): Disposable {
+    onMessage(cb: (message: BinaryMessage) => void): Disposable {
         const decode = (message: ArrayBuffer) => {
-            const data = Encoding.decode(new Uint8Array(message)) as EncryptedMessage;
+            const data = Encoding.decode(new Uint8Array(message)) as BinaryMessage;
             cb(data);
         };
         this._socket.on('message', decode);
@@ -42,7 +42,7 @@ export class WebSocketChannel implements Channel {
         });
     }
 
-    sendMessage(message: EncryptedMessage): void {
+    sendMessage(message: BinaryMessage): void {
         const buffer = Encoding.encode(message);
         this._socket.send(buffer);
     }
@@ -71,9 +71,9 @@ export class SocketIoChannel implements Channel {
         });
     }
 
-    onMessage(cb: (message: EncryptedMessage) => void): Disposable {
+    onMessage(cb: (message: BinaryMessage) => void): Disposable {
         const decode = (message: ArrayBuffer) => {
-            const data = Encoding.decode(new Uint8Array(message)) as EncryptedMessage;
+            const data = Encoding.decode(new Uint8Array(message)) as BinaryMessage;
             cb(data);
         };
         this._socket.on('message', decode);
@@ -82,7 +82,7 @@ export class SocketIoChannel implements Channel {
         });
     }
 
-    sendMessage(message: EncryptedMessage): void {
+    sendMessage(message: BinaryMessage): void {
         const buffer = Encoding.encode(message);
         this._socket.send(buffer);
     }
