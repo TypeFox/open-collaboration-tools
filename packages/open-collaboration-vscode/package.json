@@ -161,12 +161,16 @@
     "open-collaboration-protocol": "0.0.8",
     "lodash.debounce": "^4.0.8",
     "node-fetch": "^2.0.0",
-    "ws": "^8.17.0"
+    "ws": "~8.17.1"
   },
   "devDependencies": {
     "@types/lodash.debounce": "^4.0.9",
     "@types/node-fetch": "^2.0.0",
     "@types/vscode": "^1.89.0",
     "@types/ws": "^8.5.10"
+  },
+  "volta": {
+    "node": "18.20.3",
+    "npm": "10.7.0"
   }
 }

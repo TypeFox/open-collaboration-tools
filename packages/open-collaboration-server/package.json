@@ -22,7 +22,7 @@
     "reflect-metadata": "^0.1.13",
     "socket.io": "^4.5.3",
     "express": "^4.19.2",
-    "ws": "^8.17.1",
+    "ws": "~8.17.1",
     "yargs": "^17.7.2"
   },
   "devDependencies": {
@@ -48,5 +48,9 @@
   "author": {
     "name": "TypeFox",
     "url": "https://www.typefox.io/"
+  },
+  "volta": {
+    "node": "18.20.3",
+    "npm": "10.7.0"
   }
 }
