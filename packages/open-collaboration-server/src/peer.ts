@@ -12,12 +12,15 @@ import { Channel } from './channel';
 import { MessageRelay } from './message-relay';
 import { RoomManager } from './room-manager';
 import { Peer, PeerInfo, Room, User } from './types';
+import { Logger } from './utils/logging';
 
 export const PeerFactory = Symbol('PeerFactory');
 export type PeerFactory = (info: PeerInfo) => Peer;
 
 @injectable()
 export class PeerImpl implements Peer {
+
+    @inject(Symbol('Logger')) protected logger: Logger;
 
     readonly id = nanoid(24);
 
@@ -36,7 +39,7 @@ export class PeerImpl implements Peer {
     get room(): Room {
         const value = this.roomManager.getRoomByPeerId(this.id);
         if (!value) {
-            throw new Error("This peer doesn't belong to any room");
+            throw this.logger.createErrorAndLog('This peer does not belong to any room');
         }
         return value;
     }
@@ -78,8 +81,8 @@ export class PeerImpl implements Peer {
             message.origin = this.id;
             try {
                 this.messageRelay.sendNotification(this.getTargetPeer(message.target), message);
-            } catch (err) {
-                console.error(`Failed sending notification to: ${message.target}`, err);
+            } catch (error) {
+                this.logger.error(`Failed sending notification to: ${message.target}`);
             }
         } else if (BroadcastMessage.is(message)) {
             this.messageRelay.sendBroadcast(this, message);
@@ -90,7 +93,7 @@ export class PeerImpl implements Peer {
         // If no target is specified, the host is the default target
         const peer = targetId ? this.room.getPeer(targetId) : this.room.host;
         if (!peer) {
-            throw new Error('Could not find the target peer: ' + targetId);
+            throw this.logger.createErrorAndLog('Could not find the target peer: ' + targetId);
         }
         return peer;
     }

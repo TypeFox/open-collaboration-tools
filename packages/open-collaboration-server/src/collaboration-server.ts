@@ -19,6 +19,7 @@ import { User } from './types';
 import { ErrorMessage, MessageEncoding } from 'open-collaboration-rpc';
 import { EncodingProvider } from './encoding-provider';
 import * as types from 'open-collaboration-protocol';
+import { Logger } from './utils/logging';
 
 @injectable()
 export class CollaborationServer {
@@ -38,9 +39,15 @@ export class CollaborationServer {
     @inject(PeerFactory)
     protected readonly peerFactory: PeerFactory;
 
+    @inject(Symbol('Logger')) protected logger: Logger;
+
     protected simpleLogin = true;
 
     startServer(args: Record<string, unknown>): void {
+        this.logger.debug('Starting Open Collaboration Server ...');
+
+        this.credentials.init();
+
         const httpServer = http.createServer(this.setupApiRoute());
         const wsServer = new ws.Server({
             path: '/websocket',
@@ -57,9 +64,9 @@ export class CollaborationServer {
                     return acc;
                 }, {} as Record<string, string>);
                 await this.connectChannel(headers, encoding => new WebSocketChannel(socket, encoding));
-            } catch (err) {
+            } catch (error) {
                 socket.close(undefined, 'Failed to join room');
-                console.error('Web socket connection failed', err);
+                this.logger.error('Web socket connection failed', error);
             }
         });
         const io = new Server(httpServer, {
@@ -72,20 +79,20 @@ export class CollaborationServer {
             const headers = socket.request.headers as Record<string, string>;
             try {
                 await this.connectChannel(headers, encoding => new SocketIoChannel(socket, encoding));
-            } catch (err) {
+            } catch (error) {
                 socket.send(ErrorMessage.create('Failed to join room'));
                 socket.disconnect(true);
-                console.error('Socket IO connection failed', err);
+                this.logger.error('Socket IO connection failed', error);
             }
         });
         httpServer.listen(Number(args.port), String(args.hostname));
-        console.log('Open Collaboration Server listening on ' + args.hostname + ':' + args.port);
+        this.logger.info(`Open Collaboration Server listening on ${args.hostname}:${args.port}`);
     }
 
     protected async connectChannel(headers: Record<string, string>, channelProvider: (encoding: MessageEncoding) => Channel): Promise<void> {
         const jwt = headers['x-jwt'] as string;
         if (!jwt) {
-            throw new Error('No JWT auth token set');
+            throw this.logger.createErrorAndLog('No JWT auth token set');
         }
         let encoding = headers['x-encoding'] as string;
         if (!encoding) {
@@ -142,8 +149,8 @@ export class CollaborationServer {
                     url: index,
                     token
                 });
-            } catch (err) {
-                console.error(err);
+            } catch (error) {
+                this.logger.error('Error occurred during login', error);
                 res.status(400);
                 res.send('Failed to login');
             }
@@ -168,9 +175,10 @@ export class CollaborationServer {
                         name: user,
                         email
                     });
+                    this.logger.info(`Simple login will be confirmed to client for user: ${user}`);
                     res.send('Ok');
-                } catch (err) {
-                    console.error(err);
+                } catch (error) {
+                    this.logger.error('Failed to perform simple login', error);
                     res.status(400);
                     res.send('Failed to perform simple login');
                 }
@@ -185,8 +193,8 @@ export class CollaborationServer {
                     user,
                     token: jwt
                 });
-            } catch (err) {
-                console.error(err);
+            } catch (error) {
+                this.logger.error('Error occurred during login token confirmation', error);
                 res.status(400);
                 res.send('Failed to confirm login token');
             }
@@ -211,7 +219,7 @@ export class CollaborationServer {
                 const user = await this.getUserFromAuth(req);
                 const room = this.roomManager.getRoomById(roomId);
                 if (!room) {
-                    throw new Error(`Room with requested id ${roomId} does not exist`);
+                    throw this.logger.createErrorAndLog(`Room with requested id ${roomId} does not exist`);
                 }
                 const result = await this.roomManager.requestJoin(room, user!);
                 const response: types.JoinRoomResponse = {
@@ -220,8 +228,8 @@ export class CollaborationServer {
                     workspace: result.response.workspace
                 };
                 res.send(response);
-            } catch (err) {
-                console.error(err);
+            } catch (error) {
+                this.logger.error('Error occurred while joining a room', error);
                 res.status(400);
                 res.send('Failed to join room');
             }
@@ -235,8 +243,8 @@ export class CollaborationServer {
                     roomToken: room.jwt
                 };
                 res.send(response);
-            } catch (err) {
-                console.error(err);
+            } catch (error) {
+                this.logger.error('Error occurred when creating a room', error);
                 res.status(400);
                 res.send('Failed to create room');
             }
