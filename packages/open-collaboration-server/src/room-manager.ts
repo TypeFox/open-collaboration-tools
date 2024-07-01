@@ -10,7 +10,7 @@ import { CredentialsManager } from './credentials-manager';
 import { MessageRelay } from './message-relay';
 import { Peer, Room, User, isUser } from './types';
 import { JoinResponse, Messages } from 'open-collaboration-protocol';
-import { LOGGER } from './collaboration-server';
+import { Logger } from './utils/logging';
 
 export interface PreparedRoom {
     id: string
@@ -30,14 +30,16 @@ export function isRoomClaim(obj: unknown): obj is RoomClaim {
 @injectable()
 export class RoomManager {
 
-    protected rooms = new Map<string, Room>();
-    protected peers = new Map<string, Room>();
-
     @inject(MessageRelay)
     private readonly messageRelay: MessageRelay;
 
     @inject(CredentialsManager)
     protected readonly credentials: CredentialsManager;
+
+    @inject(Symbol('Logger')) protected logger: Logger;
+
+    protected rooms = new Map<string, Room>();
+    protected peers = new Map<string, Room>();
 
     closeRoom(id: string): void {
         const room = this.rooms.get(id);
@@ -48,7 +50,7 @@ export class RoomManager {
                 peer.channel.close();
             }
             this.rooms.delete(id);
-            LOGGER.info(`Delete room with id: ${room.id}`);
+            this.logger.info(`Delete room with id: ${room.id}`);
         }
     }
 
@@ -63,7 +65,7 @@ export class RoomManager {
             },
             host: true
         };
-        LOGGER.info(`Prepared room [id: ${claim.room}] for user [id: ${user.id} | name: ${user.name} | email: ${user.email}]`)
+        this.logger.info(`Prepared room [id: ${claim.room}] for user [id: ${user.id} | name: ${user.name} | email: ${user.email}]`)
         const jwt = await this.credentials.generateJwt(claim);
         return {
             id,
@@ -77,18 +79,18 @@ export class RoomManager {
             room = new Room(roomId, peer, []);
             this.rooms.set(room.id, room);
             this.peers.set(peer.id, room);
-            LOGGER.info(`Created room with id: ${room.id}`);
+            this.logger.info(`Created room with id: ${room.id}`);
             peer.channel.onClose(() => {
                 this.closeRoom(room.id);
             });
         } else {
             room = this.rooms.get(roomId)!;
             if (!room) {
-                throw LOGGER.logAndCreateError({ message: `Could not find room to join from id: ${roomId}` });
+                throw this.logger.createErrorAndLog(`Could not find room to join from id: ${roomId}`);
             }
             this.peers.set(peer.id, room);
             room.guests.push(peer);
-            LOGGER.info(`From peer [id: ${peer.id}] peer user [id: ${peer.user.id} | name: ${peer.user.name} | email: ${peer.user.email}] joined room [id: ${room.id}]`)
+            this.logger.info(`From peer [id: ${peer.id}] peer user [id: ${peer.user.id} | name: ${peer.user.name} | email: ${peer.user.email}] joined room [id: ${room.id}]`)
             this.messageRelay.sendBroadcast(
                 peer,
                 BroadcastMessage.create(
@@ -130,7 +132,7 @@ export class RoomManager {
 
     async requestJoin(room: Room, user: User): Promise<{ jwt: string, response: JoinResponse }> {
         try {
-            LOGGER.info(`Request to join room [id: ${room.id}] by user [id: ${user.id} | name: ${user.name} | email: ${user.email}]`);
+            this.logger.info(`Request to join room [id: ${room.id}] by user [id: ${user.id} | name: ${user.name} | email: ${user.email}]`);
             const response = await this.messageRelay.sendRequest(
                 room.host,
                 RequestMessage.create(Messages.Peer.Join, this.credentials.secureId(), '', room.host.id, [user])
@@ -145,10 +147,10 @@ export class RoomManager {
                     response
                 };
             } else {
-                throw LOGGER.logAndCreateError({ message: 'Join request has been rejected' });
+                throw this.logger.createErrorAndLog('Join request has been rejected');
             }
         } catch {
-            throw LOGGER.logAndCreateError({ message: 'Join request has timed out' });
+            throw this.logger.createErrorAndLog('Join request has timed out');
         }
     }
 

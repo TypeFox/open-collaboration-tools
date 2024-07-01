@@ -13,8 +13,11 @@ import { RoomManager } from './room-manager';
 import { PeerInfo } from './types';
 import { UserManager } from './user-manager';
 import { EncodingProvider } from './encoding-provider';
+import { ConsoleLogger, LogLevel } from './utils/logging';
 
 export default new ContainerModule(bind => {
+    bind(Symbol('Logger')).to(ConsoleLogger).inSingletonScope();
+    bind(Symbol('LogLevel')).toConstantValue(LogLevel.info);
     bind(CollaborationServer).toSelf().inSingletonScope();
     bind(RoomManager).toSelf().inSingletonScope();
     bind(CredentialsManager).toSelf().inSingletonScope();

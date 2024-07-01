@@ -4,11 +4,11 @@
 // terms of the MIT License, which is available in the project root.
 // ******************************************************************************
 
-import { injectable } from 'inversify';
+import { inject, injectable } from 'inversify';
 import { BroadcastMessage, Deferred, NotificationMessage, RequestMessage, ResponseErrorMessage, ResponseMessage } from 'open-collaboration-rpc';
 import { Peer } from './types';
 import { nanoid } from 'nanoid';
-import { LOGGER } from './collaboration-server';
+import { Logger } from './utils/logging';
 
 export interface RelayedRequest {
     id: string | number;
@@ -18,6 +18,8 @@ export interface RelayedRequest {
 
 @injectable()
 export class MessageRelay {
+
+    @inject(Symbol('Logger')) protected logger: Logger;
 
     protected requestMap = new Map<string, RelayedRequest>();
 
@@ -70,7 +72,7 @@ export class MessageRelay {
                 }
             }
         } catch (error) {
-            LOGGER.error({ error });
+            this.logger.error('Error occurred during broadcast', error);
         }
     }
 

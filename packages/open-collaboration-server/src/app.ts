@@ -9,6 +9,7 @@ import * as yargs from 'yargs';
 import serverModule from './container';
 import { Container } from 'inversify';
 import { CollaborationServer } from './collaboration-server';
+import { checkLogLevel } from './utils/logging';
 
 const container = new Container();
 container.load(serverModule);
@@ -17,8 +18,7 @@ const server = container.get(CollaborationServer);
 const command = yargs.version('0.0.1').command<{
     port: number,
     hostname: string,
-    enableLogging: boolean,
-    debugLogging: boolean
+    logLevel: string
 }>({
     command: 'start',
     describe: 'Start the server',
@@ -34,6 +34,8 @@ const command = yargs.version('0.0.1').command<{
         }
     },
     handler: async args => {
+        const logLevel = checkLogLevel(args.logLevel);
+        container.rebind(Symbol('LogLevel')).toConstantValue(logLevel);
         server.startServer(args);
     }
 });
