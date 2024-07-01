@@ -14,6 +14,8 @@ import { PeerInfo } from './types';
 import { UserManager } from './user-manager';
 
 export default new ContainerModule(bind => {
+    bind(Symbol('Logger')).to(ConsoleLogger).inSingletonScope();
+    bind(Symbol('LogLevel')).toConstantValue(LogLevel.info);
     bind(CollaborationServer).toSelf().inSingletonScope();
     bind(RoomManager).toSelf().inSingletonScope();
     bind(CredentialsManager).toSelf().inSingletonScope();

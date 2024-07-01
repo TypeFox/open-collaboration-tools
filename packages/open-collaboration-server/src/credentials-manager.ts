@@ -10,7 +10,7 @@ import { UserManager } from './user-manager';
 import jose = require('jose');
 import { nanoid } from 'nanoid';
 import { Deferred, Encryption } from 'open-collaboration-rpc';
-import { LOGGER } from './collaboration-server';
+import { Logger } from './utils/logging';
 
 export interface DelayedAuth {
     deferred: Deferred<string>
@@ -23,13 +23,15 @@ export class CredentialsManager {
     @inject(UserManager)
     protected readonly userManager: UserManager;
 
+    @inject(Symbol('Logger')) protected logger: Logger;
+
     protected deferredAuths = new Map<string, DelayedAuth>();
 
     protected cachedKey?: string;
 
     init() {
         if (process.env.JWT_PRIVATE_KEY === undefined) {
-            LOGGER.warn('JWT_PRIVATE_KEY env variable is not set. Using a static key for development purposes.');
+            this.logger.warn('JWT_PRIVATE_KEY env variable is not set. Using a static key for development purposes.');
         }
     }
 
@@ -53,7 +55,7 @@ export class CredentialsManager {
     async confirmUser(confirmToken: string, user: Omit<User, 'id'>): Promise<string> {
         const auth = this.deferredAuths.get(confirmToken);
         if (!auth) {
-            throw LOGGER.logAndCreateError({ message: 'Login timed out' });
+            throw this.logger.createErrorAndLog('Login timed out');
         }
         const registeredUser = await this.userManager.registerUser(user);
         const userClaim: User = {
@@ -61,7 +63,7 @@ export class CredentialsManager {
             name: registeredUser.name,
             email: registeredUser.email
         };
-        LOGGER.info(`Will generate Jwt for user [id: ${userClaim.id} | name: ${userClaim.name} | email: ${userClaim.email}]`);
+        this.logger.info(`Will generate Jwt for user [id: ${userClaim.id} | name: ${userClaim.name} | email: ${userClaim.email}]`);
         const jwt = await this.generateJwt(userClaim);
         auth.deferred.resolve(jwt);
         auth.dispose();
@@ -86,7 +88,7 @@ export class CredentialsManager {
     async getUser(token: string): Promise<User | undefined> {
         const user = await this.verifyJwt(token, isUser);
         if (typeof user.id !== 'string' || typeof user.name !== 'string') {
-            throw LOGGER.logAndCreateError({ message: 'User token is not valid' });
+            throw this.logger.createErrorAndLog('User token is not valid');
         }
         return user;
     }
@@ -96,8 +98,8 @@ export class CredentialsManager {
         const { payload } = await jose.jwtVerify(jwt, key);
         if (verify(payload)) {
             return payload;
-        } else {
-            throw LOGGER.logAndCreateError({ message: 'JWT payload is not valid' });
+        } else {this.cachedKey
+            throw this.logger.createErrorAndLog('JWT payload is not valid');
         }
     }
 
