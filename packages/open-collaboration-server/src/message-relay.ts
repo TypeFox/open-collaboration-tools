@@ -61,7 +61,26 @@ export class MessageRelay {
             message.origin = origin.id;
             for (const peer of room.peers) {
                 if (peer !== origin) {
-                    peer.channel.sendMessage(message);
+                    // Find the key for the target peer
+                    const peerKey = message.metadata.encryption.keys.find(e => e.target === peer.id);
+                    if (peerKey) {
+                        // Adjust the message to only contain the key for the target peer
+                        // All other keys are not of use for the target peer
+                        const messageWithSingleKey: BinaryBroadcastMessage = {
+                            ...message,
+                            metadata: {
+                                ...message.metadata,
+                                encryption: {
+                                    keys: [peerKey]
+                                }
+                            }
+                        }
+                        peer.channel.sendMessage(messageWithSingleKey);
+                    } else {
+                        // If the sender did not include a key for one of the peers, they cannot decrypt the message
+                        // This is unexpected behavior as every broadcast should be sent to every peer in the room
+                        console.warn(`No key found for peer ${peer.id} in room ${room.id}`);
+                    }
                 }
             }
         } catch (err) {
