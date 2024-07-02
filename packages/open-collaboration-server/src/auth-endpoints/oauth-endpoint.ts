@@ -1,6 +1,8 @@
 import { injectable, postConstruct } from "inversify";
 import { type Express } from 'express';
 import fetch from 'node-fetch';
+import { Emitter } from "open-collaboration-rpc";
+import { AuthEndpoint, AuthSuccessEvent } from "./auth-endpoint";
 
 export const oauthProviders = Symbol('oauthProviders');
 
@@ -14,8 +16,9 @@ export interface OAuthProvider {
 }
 
 @injectable()
-export class OAuthEnpoint {
-    onDidSuccessfullyAuthenticate?: (token: string, userinfo: {name: string, email: string}) => void;
+export class OAuthEnpoint implements AuthEndpoint {
+    private authSuccessEmitter = new Emitter<AuthSuccessEvent>();
+    onDidSuccessfullyAuthenticate = this.authSuccessEmitter.event;
     
     protected providers: OAuthProvider[];
 
@@ -29,6 +32,10 @@ export class OAuthEnpoint {
             tokenEndpoint: 'http://localhost:8080/realms/master/protocol/openid-connect/token',
             scope: 'profile'
         }]
+    }
+
+    shouldActivate(): boolean {
+        return this.providers.length > 0;
     }
 
     onStart(app: Express, hostname: string, port: number): void {
@@ -80,7 +87,7 @@ export class OAuthEnpoint {
             if((await response.json() as any).access_token) {
                 res.status(200);
                 res.send();
-                this.onDidSuccessfullyAuthenticate?.(token, {name: 'test', email: 'test'});
+                this.authSuccessEmitter.fire({token, userInfo: {name: 'test', email: 'test'}});
             } else {
                 res.status(500);
                 res.send('Error fetching access_token');
@@ -88,7 +95,7 @@ export class OAuthEnpoint {
         });
     }
 
-    createRedirectUrl(host: string, port: number): string {
+    private createRedirectUrl(host: string, port: number): string {
         return `http://localhost:${port}/api/login/oauth-return`
     }
 } 

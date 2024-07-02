@@ -8,8 +8,6 @@
     "path": "../open-collaboration-protocol/tsconfig.json"
   }, {
     "path": "../open-collaboration-rpc/tsconfig.json"
-  }, {
-    "path": "../open-collaboration-server-oauth/tsconfig.json"
   }],
   "include": [
     "src/**/*.ts"
