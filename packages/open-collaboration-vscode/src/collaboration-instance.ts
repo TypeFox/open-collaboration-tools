@@ -154,7 +154,7 @@ export class ClientTextEditorDecorationType implements vscode.Disposable {
     }
 
     getThemeColor(): vscode.ThemeColor | undefined {
-        return typeof this.color === 'string' ?  new vscode.ThemeColor(this.color) : undefined;
+        return typeof this.color === 'string' ? new vscode.ThemeColor(this.color) : undefined;
     }
 }
 
@@ -165,6 +165,7 @@ export const CollaborationInstanceOptions = Symbol('CollaborationInstanceOptions
 export interface CollaborationInstanceOptions {
     connection: ProtocolBroadcastConnection;
     host: boolean;
+    hostId?: string;
     roomId: string;
 }
 
@@ -174,7 +175,7 @@ export type CollaborationInstanceFactory = (options: CollaborationInstanceOption
 export class CollaborationInstance implements vscode.Disposable {
 
     static Current: CollaborationInstance | undefined;
-    
+
     private yjs: Y.Doc = new Y.Doc();
     private yjsAwareness = new awarenessProtocol.Awareness(this.yjs);
     private identity = new Deferred<types.Peer>();
@@ -193,7 +194,7 @@ export class CollaborationInstance implements vscode.Disposable {
 
     private readonly onDidUsersChangeEmitter: vscode.EventEmitter<void> = new vscode.EventEmitter<void>();
     readonly onDidUsersChange: vscode.Event<void> = this.onDidUsersChangeEmitter.event;
-    
+
     private readonly onDidDisposeEmitter: vscode.EventEmitter<void> = new vscode.EventEmitter<void>();
     readonly onDidDispose: vscode.Event<void> = this.onDidDisposeEmitter.event;
 
@@ -253,8 +254,24 @@ export class CollaborationInstance implements vscode.Disposable {
                 }
             } : undefined;
         });
+        connection.peer.onInit(async (_, initData) => {
+            await this.initialize(initData);
+        });
         connection.room.onJoin(async (_, peer) => {
             this.peers.set(peer.id, new DisposablePeer(this.yjsAwareness, peer));
+            const roots = vscode.workspace.workspaceFolders ?? [];
+            const initData: types.InitData = {
+                protocol: '0.0.1',
+                host: await this.identity.promise,
+                guests: Array.from(this.peers.values()).map(e => e.peer),
+                capabilities: {},
+                permissions: { readonly: false },
+                workspace: {
+                    name: vscode.workspace.name ?? 'Collaboration',
+                    folders: roots.map(e => e.name)
+                }
+            };
+            connection.peer.init(peer.id, initData);
             this.onDidUsersChangeEmitter.fire();
         });
         connection.room.onLeave(async (_, peer) => {
@@ -276,21 +293,6 @@ export class CollaborationInstance implements vscode.Disposable {
         connection.peer.onInfo((_, peer) => {
             this.yjsAwareness.setLocalStateField('peer', peer.id);
             this.identity.resolve(peer);
-        });
-        connection.peer.onInit(async () => {
-            const roots = vscode.workspace.workspaceFolders ?? [];
-            const response: types.InitResponse = {
-                protocol: '0.0.1',
-                host: await this.identity.promise,
-                guests: Array.from(this.peers.values()).map(e => e.peer),
-                capabilities: {},
-                permissions: { readonly: false },
-                workspace: {
-                    name: vscode.workspace.name ?? 'Collaboration',
-                    folders: roots.map(e => e.name)
-                }
-            };
-            return response;
         });
         connection.fs.onStat(async (_, path) => {
             const uri = this.getResourceUri(path);
@@ -320,7 +322,7 @@ export class CollaborationInstance implements vscode.Disposable {
             if (uri) {
                 const content = await vscode.workspace.fs.readFile(uri);
                 return {
-                    content: Buffer.from(content).toString('base64')
+                    content
                 };
             } else {
                 throw new Error('Could not read file');
@@ -402,9 +404,7 @@ export class CollaborationInstance implements vscode.Disposable {
 
     followUser(id?: string) {
         this._following = id;
-        if(id) {
-            this.updateFollow();
-        }
+        this.updateFollow();
     }
 
     protected updateFollow(): void {
@@ -488,7 +488,7 @@ export class CollaborationInstance implements vscode.Disposable {
                     yjsText.insert(0, text);
                 });
             } else {
-                this.options.connection.editor.open('', path);
+                this.options.connection.editor.open(this.options.hostId, path);
             }
             const ytextContent = yjsText.toString();
             if (text !== ytextContent) {
@@ -661,14 +661,11 @@ export class CollaborationInstance implements vscode.Disposable {
         };
     }
 
-    async initialize(): Promise<void> {
-        const response = await this.options.connection.peer.init('', {
-            protocol: '0.0.1'
-        });
-        for (const peer of [response.host, ...response.guests]) {
+    async initialize(data: types.InitData): Promise<void> {
+        for (const peer of [data.host, ...data.guests]) {
             this.peers.set(peer.id, new DisposablePeer(this.yjsAwareness, peer));
         }
-        this.toDispose.push(vscode.workspace.registerFileSystemProvider('oct', new CollaborationFileSystemProvider(this.options.connection, this.yjs)));
+        this.toDispose.push(vscode.workspace.registerFileSystemProvider('oct', new CollaborationFileSystemProvider(this.options.connection, this.yjs, data.host)));
     }
 
     getProtocolPath(uri?: vscode.Uri): string | undefined {

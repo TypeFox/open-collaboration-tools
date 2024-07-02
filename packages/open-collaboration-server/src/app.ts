@@ -14,6 +14,10 @@ const container = new Container();
 container.load(serverModule);
 const server = container.get(CollaborationServer);
 
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+});
+
 const command = yargs.version('0.0.1').command<{
     port: number,
     hostname: string

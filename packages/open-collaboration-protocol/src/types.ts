@@ -4,9 +4,12 @@
 // terms of the MIT License, which is available in the project root.
 // ******************************************************************************
 
+import type { CompressionAlgorithm } from "open-collaboration-rpc";
+
 export type Path = string;
 export type Token = string;
 export type Id = string;
+export type Binary = Uint8Array;
 
 // HTTP API
 
@@ -20,14 +23,15 @@ export interface JoinRoomResponse {
     roomId: Id;
     roomToken: Token;
     loginToken?: Token;
-    workspace: Workspace
+    workspace: Workspace;
+    host: Peer;
 }
 
 export interface ProtocolServerMetaData {
     owner: string;
     version: string;
     transports: string[];
-    encodings: string[];
+    publicKey: string;
 }
 
 // Transport based API
@@ -46,13 +50,27 @@ export interface Peer {
     host: boolean
     name: string
     email?: string
+    metadata: PeerMetaData
+}
+
+export interface PeerMetaData {
+    encryption: EncryptionMetaData
+    compression: CompressionMetaData;
+}
+
+export interface EncryptionMetaData {
+    publicKey: string;
+}
+
+export interface CompressionMetaData {
+    supported: CompressionAlgorithm[];
 }
 
 export interface InitRequest {
     protocol: string;
 }
 
-export interface InitResponse {
+export interface InitData {
     protocol: string
     host: Peer
     guests: Peer[]
@@ -95,10 +113,7 @@ export interface FileSystemDirectory {
 }
 
 export interface FileData {
-    /**
-     * Base64 encoded content.
-     */
-    content: string
+    content: Binary
 }
 
 export enum FilePermission {

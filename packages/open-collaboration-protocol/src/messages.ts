@@ -12,7 +12,7 @@ export namespace Messages {
     export namespace Peer {
         export const Join = new RequestType<[types.User], types.JoinResponse | undefined>('peer/join');
         export const Info = new NotificationType<[types.Peer]>('peer/info');
-        export const Init = new RequestType<[types.InitRequest], types.InitResponse>('peer/init');
+        export const Init = new NotificationType<[types.InitData]>('peer/init');
     }
 
     export namespace Room {
@@ -28,11 +28,11 @@ export namespace Messages {
     }
 
     export namespace Sync {
-        export const DataUpdate = new BroadcastType<[string]>('sync/dataUpdate');
-        export const DataNotify = new NotificationType<[string]>('sync/dataNotify');
-        export const AwarenessUpdate = new BroadcastType<[string]>('sync/awarenessUpdate');
+        export const DataUpdate = new BroadcastType<[types.Binary]>('sync/dataUpdate');
+        export const DataNotify = new NotificationType<[types.Binary]>('sync/dataNotify');
+        export const AwarenessUpdate = new BroadcastType<[types.Binary]>('sync/awarenessUpdate');
         export const AwarenessQuery = new BroadcastType<[]>('sync/awarenessQuery');
-        export const AwarenessNotify = new NotificationType<[string]>('sync/awarenessNotify');
+        export const AwarenessNotify = new NotificationType<[types.Binary]>('sync/awarenessNotify');
     }
 
     export namespace FileSystem {

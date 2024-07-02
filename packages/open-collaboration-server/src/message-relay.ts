@@ -5,13 +5,13 @@
 // ******************************************************************************
 
 import { injectable } from 'inversify';
-import { BroadcastMessage, Deferred, NotificationMessage, RequestMessage, ResponseErrorMessage, ResponseMessage } from 'open-collaboration-rpc';
+import { Deferred, BinaryBroadcastMessage, BinaryNotificationMessage, BinaryRequestMessage, BinaryResponseErrorMessage, BinaryResponseMessage } from 'open-collaboration-rpc';
 import { Peer } from './types';
 import { nanoid } from 'nanoid';
 
 export interface RelayedRequest {
     id: string | number;
-    response: Deferred<unknown>
+    response: Deferred<BinaryResponseMessage | BinaryResponseErrorMessage>
     dispose(): void;
 }
 
@@ -20,20 +20,16 @@ export class MessageRelay {
 
     protected requestMap = new Map<string, RelayedRequest>();
 
-    pushResponse(receiver: Peer, message: ResponseMessage | ResponseErrorMessage): void {
+    pushResponse(receiver: Peer, message: BinaryResponseMessage | BinaryResponseErrorMessage): void {
         const relayedRequest = this.requestMap.get(message.id.toString());
         if (relayedRequest) {
-            if (ResponseMessage.is(message)) {
-                relayedRequest.response.resolve(message.response);
-            } else {
-                relayedRequest.response.reject(new Error(message.message));
-            }
+            relayedRequest.response.resolve(message);
             relayedRequest.dispose();
         }
     }
 
-    sendRequest(target: Peer, message: RequestMessage): Promise<unknown> {
-        const deferred = new Deferred<unknown>();
+    sendRequest(target: Peer, message: BinaryRequestMessage): Promise<BinaryResponseMessage | BinaryResponseErrorMessage> {
+        const deferred = new Deferred<BinaryResponseMessage | BinaryResponseErrorMessage>();
         const messageId = message.id;
         const key = nanoid(24);
         const dispose = () => {
@@ -47,7 +43,7 @@ export class MessageRelay {
             response: deferred,
             dispose
         });
-        const targetMessage: RequestMessage = {
+        const targetMessage: BinaryRequestMessage = {
             ...message,
             id: key
         };
@@ -55,17 +51,36 @@ export class MessageRelay {
         return deferred.promise;
     }
 
-    sendNotification(target: Peer, message: NotificationMessage): void {
+    sendNotification(target: Peer, message: BinaryNotificationMessage): void {
         target.channel.sendMessage(message);
     }
 
-    sendBroadcast(origin: Peer, message: BroadcastMessage): void {
+    sendBroadcast(origin: Peer, message: BinaryBroadcastMessage): void {
         try {
             const room = origin.room;
             message.origin = origin.id;
             for (const peer of room.peers) {
                 if (peer !== origin) {
-                    peer.channel.sendMessage(message);
+                    // Find the key for the target peer
+                    const peerKey = message.metadata.encryption.keys.find(e => e.target === peer.id);
+                    if (peerKey) {
+                        // Adjust the message to only contain the key for the target peer
+                        // All other keys are not of use for the target peer
+                        const messageWithSingleKey: BinaryBroadcastMessage = {
+                            ...message,
+                            metadata: {
+                                ...message.metadata,
+                                encryption: {
+                                    keys: [peerKey]
+                                }
+                            }
+                        }
+                        peer.channel.sendMessage(messageWithSingleKey);
+                    } else {
+                        // If the sender did not include a key for one of the peers, they cannot decrypt the message
+                        // This is unexpected behavior as every broadcast should be sent to every peer in the room
+                        console.warn(`No key found for peer ${peer.id} in room ${room.id}`);
+                    }
                 }
             }
         } catch (err) {

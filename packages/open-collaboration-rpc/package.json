@@ -6,6 +6,14 @@
     "lib",
     "src"
   ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "dependencies": {
+    "base64-js": "^1.5.1",
+    "fflate": "^0.8.2",
+    "msgpackr": "^1.10.2"
+  },
   "main": "./lib/index.js",
   "types": "./lib/index.d.ts",
   "keywords": [

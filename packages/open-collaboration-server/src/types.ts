@@ -6,7 +6,7 @@
 
 import { Channel } from './channel';
 import * as protocol from 'open-collaboration-protocol';
-import { isObject } from 'open-collaboration-rpc';
+import { Encryption, isObject } from 'open-collaboration-rpc';
 
 export class Room {
     constructor(public id: string, public host: Peer, public guests: Peer[]) {
@@ -37,6 +37,8 @@ export const PeerInfo = Symbol('PeerInfo');
 export interface PeerInfo {
     user: User;
     host: boolean;
+    publicKey: string;
+    supportedCompression: string[];
     channel: Channel;
 }
 
@@ -47,6 +49,7 @@ export interface Peer {
     channel: Channel;
     room: Room;
     toProtocol(): protocol.Peer
+    toEncryptionKey(): Encryption.AsymmetricKey
 }
 
 export type Permissions = Record<string, string>;
