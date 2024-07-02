@@ -41,8 +41,6 @@ export class CollaborationServer {
     startServer(args: Record<string, unknown>): void {
         this.logger.debug('Starting Open Collaboration Server ...');
 
-        this.credentials.init();
-
         const httpServer = http.createServer(this.setupApiRoute());
         const wsServer = new ws.Server({
             path: '/websocket',

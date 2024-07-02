@@ -26,7 +26,6 @@ const command = yargs.version('0.0.1').command<{
 }>({
     command: 'start',
     describe: 'Start the server',
-    // Disable this command's `--help` option so that it is forwarded to Theia's CLI
     builder: {
         'port': {
             type: 'number',
@@ -35,6 +34,10 @@ const command = yargs.version('0.0.1').command<{
         'hostname': {
             type: 'string',
             default: 'localhost'
+        },
+        'logLevel': {
+            type: 'string',
+            default: 'info'
         }
     },
     handler: async args => {

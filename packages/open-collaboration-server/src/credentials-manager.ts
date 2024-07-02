@@ -4,7 +4,7 @@
 // terms of the MIT License, which is available in the project root.
 // ******************************************************************************
 
-import { inject, injectable } from 'inversify';
+import { inject, injectable, postConstruct } from 'inversify';
 import { User, isUser } from './types';
 import { UserManager } from './user-manager';
 import jose = require('jose');
@@ -29,6 +29,7 @@ export class CredentialsManager {
 
     protected cachedKey?: string;
 
+    @postConstruct()
     init() {
         if (process.env.JWT_PRIVATE_KEY === undefined) {
             this.logger.warn('JWT_PRIVATE_KEY env variable is not set. Using a static key for development purposes.');
@@ -98,7 +99,7 @@ export class CredentialsManager {
         const { payload } = await jose.jwtVerify(jwt, key);
         if (verify(payload)) {
             return payload;
-        } else {this.cachedKey
+        } else {
             throw this.logger.createErrorAndLog('JWT payload is not valid');
         }
     }
