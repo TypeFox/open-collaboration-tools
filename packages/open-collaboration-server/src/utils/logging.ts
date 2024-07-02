@@ -41,32 +41,32 @@ export class ConsoleLogger implements Logger {
 
     error(message: string, ...params: unknown[]) {
         if (this.logLevel >= LogLevel.error) {
-            console.error(message, params);
+            console.error(message, ...params);
         }
     }
 
     createErrorAndLog(message: string, ...params: unknown[]) {
         if (this.logLevel >= LogLevel.error) {
-            this.error(message, params);
+            this.error(message, ...params);
         }
         return new Error(message);
     }
 
     warn(message: string, ...params: unknown[]) {
         if (this.logLevel >= LogLevel.warn) {
-            console.warn(message, params);
+            console.warn(message, ...params);
         }
     }
 
     info(message: string, ...params: unknown[]) {
         if (this.logLevel >= LogLevel.info) {
-            console.log(message, params);
+            console.log(message, ...params);
         }
     }
 
     debug(message: string, ...params: unknown[]) {
         if (this.logLevel >= LogLevel.debug) {
-            console.debug(message, params);
+            console.debug(message, ...params);
         }
     }
 
