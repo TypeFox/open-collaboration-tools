@@ -2,11 +2,12 @@ import * as monaco from "monaco-editor";
 import { monacoCollab } from "./monaco-api";
 import { User } from "open-collaboration-protocol";
 
-// import "../node_modules/monaco-editor/min/vs/editor/editor.main.css";
 
-const value = /* set from `myEditor.getModel()`: */ `function hello() {
-	alert('Hello Blah!');
-}`;
+const value = '';
+
+// /* set from `myEditor.getModel()`: */ `function hello() {
+// 	alert('Hello Blah!');
+// }`;
 
 const container = document.getElementById("container");
 if(container) {
@@ -28,8 +29,6 @@ if(container) {
 		}
 	});
 
-
-
 	// on click of button with id create create room, call createRoom, take the value from response and set it in textfield with id token
 	const createRoomButton = document.getElementById("create");
 	createRoomButton?.addEventListener("click", () => {
@@ -46,12 +45,23 @@ if(container) {
 	joinRoomButton?.addEventListener("click", () => {
 		const roomToken = (document.getElementById("room") as HTMLInputElement).value;
 		monacoCollabApi.joinRoom(roomToken).then(state => {
-            if(state && state.accessGranted) {
-			    console.log('Joined room');
-            } else if(state)  {
-                console.log('Access denied:', state.reason);
-            }
-		}
-);	});
+                if(state && state.accessGranted) {
+                    console.log('Joined room');
+                } else if(state)  {
+                    console.log('Access denied:', state.reason);
+                }
+        });
+    });
 
+    // on click of button with id login call login
+    const loginButton = document.getElementById("login");
+    loginButton?.addEventListener("click", () => {
+        monacoCollabApi.login().then((user?: User) => {
+            let loginText = 'Failed to login';
+            if(user) {
+                loginText = 'Logged in as ' + user.name;
+            }
+            document.getElementById("user")!.innerText = loginText;
+        });
+    });
 }

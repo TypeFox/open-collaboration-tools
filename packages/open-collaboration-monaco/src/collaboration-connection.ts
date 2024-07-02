@@ -3,6 +3,13 @@ import { CollaborationInstance } from "./collaboration-instance";
 import { MonacoCollabCallbacks } from "./monaco-api";
 import * as monaco from 'monaco-editor';
 
+export async function login (connectionProvider: ConnectionProvider): Promise<void> {
+    const valid = await connectionProvider.validate();
+    if (!valid) {
+        await connectionProvider.login();
+    }
+}
+
 export async function createRoom(connectionProvider: ConnectionProvider, callbacks: MonacoCollabCallbacks, editor: monaco.editor.IStandaloneCodeEditor): Promise<CollaborationInstance | undefined> {
     if (!connectionProvider) {
         return undefined;
@@ -50,12 +57,20 @@ export async function joinRoom(connectionProvider: ConnectionProvider, callbacks
     return;
 }
 
-async function connectToRoom(connectionProvider: ConnectionProvider, joinRes: CreateRoomResponse | JoinRoomResponse, isHost: boolean, callbacks: MonacoCollabCallbacks, editor: monaco.editor.IStandaloneCodeEditor) {
-    const connection = await connectionProvider.connect(joinRes.roomToken);
-    const instance = new CollaborationInstance(connection, isHost, callbacks, editor, joinRes.roomId);
+async function connectToRoom(connectionProvider: ConnectionProvider, roomClaim: CreateRoomResponse | JoinRoomResponse, isHost: boolean, callbacks: MonacoCollabCallbacks, editor: monaco.editor.IStandaloneCodeEditor) {
+    const host = 'host' in roomClaim ? roomClaim.host : undefined;
+    const connection = await connectionProvider.connect(roomClaim.roomToken, host);
+    const instance = new CollaborationInstance({
+        connection,
+        host: isHost,
+        roomToken: roomClaim.roomId,
+        hostId: host?.id,
+        callbacks,
+        editor
+    });
     connection.onDisconnect(() => {
         instance?.dispose();
     });
-    await instance.initialize();
+    // await instance.initialize();
     return instance;
 }
