@@ -229,4 +229,8 @@ export class ProtocolBroadcastConnectionImpl extends AbstractBroadcastConnection
             supportedCompression: peer.metadata.compression.supported
         }));
     }
+
+    protected override getPublicKeysLength(): number {
+        return this.peers.size;
+    }
 }

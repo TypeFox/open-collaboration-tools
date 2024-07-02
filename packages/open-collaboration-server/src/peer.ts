@@ -80,7 +80,8 @@ export class PeerImpl implements Peer {
                 this.channel.sendMessage(response);
             } catch (err) {
                 const errorResponseMessage = ResponseErrorMessage.create(message.id, 'Failed to retrieve the requested data.');
-                const encryptedError = await Encryption.encrypt(errorResponseMessage, this.credentials.getSymmetricKey(), this.toEncryptionKey());
+                const symmetricKey = await this.credentials.getSymmetricKey();
+                const encryptedError = await Encryption.encrypt(errorResponseMessage, { symmetricKey }, this.toEncryptionKey());
                 this.channel.sendMessage(encryptedError);
             }
         } else if (NotificationMessage.isBinary(message)) {
