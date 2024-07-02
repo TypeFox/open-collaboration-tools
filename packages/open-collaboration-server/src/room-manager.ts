@@ -10,7 +10,7 @@ import { CredentialsManager } from './credentials-manager';
 import { MessageRelay } from './message-relay';
 import { Peer, Room, User, isUser } from './types';
 import { JoinResponse, Messages } from 'open-collaboration-protocol';
-import { Logger } from './utils/logging';
+import { Logger, LoggerSymbol } from './utils/logging';
 
 export interface PreparedRoom {
     id: string
@@ -38,8 +38,8 @@ export class RoomManager {
 
     @inject(CredentialsManager)
     protected readonly credentials: CredentialsManager;
-    
-    @inject(Symbol('Logger')) protected logger: Logger;
+
+    @inject(LoggerSymbol) protected logger: Logger;
 
     async closeRoom(id: string): Promise<void> {
         const room = this.rooms.get(id);

@@ -9,7 +9,7 @@ import * as yargs from 'yargs';
 import serverModule from './container';
 import { Container } from 'inversify';
 import { CollaborationServer } from './collaboration-server';
-import { checkLogLevel } from './utils/logging';
+import { LogLevelSymbol, checkLogLevel } from './utils/logging';
 
 const container = new Container();
 container.load(serverModule);
@@ -39,7 +39,7 @@ const command = yargs.version('0.0.1').command<{
     },
     handler: async args => {
         const logLevel = checkLogLevel(args.logLevel);
-        container.rebind(Symbol('LogLevel')).toConstantValue(logLevel);
+        container.rebind(LogLevelSymbol).toConstantValue(logLevel);
         server.startServer(args);
     }
 });

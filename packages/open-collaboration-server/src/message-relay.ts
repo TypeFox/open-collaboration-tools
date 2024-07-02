@@ -8,7 +8,7 @@ import { inject, injectable } from 'inversify';
 import { Deferred, BinaryBroadcastMessage, BinaryNotificationMessage, BinaryRequestMessage, BinaryResponseErrorMessage, BinaryResponseMessage } from 'open-collaboration-rpc';
 import { Peer } from './types';
 import { nanoid } from 'nanoid';
-import { Logger } from './utils/logging';
+import { Logger, LoggerSymbol } from './utils/logging';
 
 export interface RelayedRequest {
     id: string | number;
@@ -19,7 +19,7 @@ export interface RelayedRequest {
 @injectable()
 export class MessageRelay {
 
-    @inject(Symbol('Logger')) protected logger: Logger;
+    @inject(LoggerSymbol) protected logger: Logger;
 
     protected requestMap = new Map<string, RelayedRequest>();
 

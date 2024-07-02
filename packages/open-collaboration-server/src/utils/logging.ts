@@ -27,10 +27,13 @@ export interface Logger {
 
 }
 
+export const LogLevelSymbol = Symbol('LogLevel');
+export const LoggerSymbol = Symbol('Logger');
+
 @injectable()
 export class ConsoleLogger implements Logger {
 
-    @inject(Symbol('LogLevel')) public logLevel: LogLevel = LogLevel.info;
+    @inject(LogLevelSymbol) public logLevel: LogLevel = LogLevel.info;
 
     getLogLevel() {
         return this.logLevel;

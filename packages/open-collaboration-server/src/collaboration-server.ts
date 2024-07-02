@@ -17,7 +17,7 @@ import { UserManager } from './user-manager';
 import { CredentialsManager } from './credentials-manager';
 import { User } from './types';
 import * as types from 'open-collaboration-protocol';
-import { Logger } from './utils/logging';
+import { Logger, LoggerSymbol } from './utils/logging';
 
 @injectable()
 export class CollaborationServer {
@@ -34,7 +34,7 @@ export class CollaborationServer {
     @inject(PeerFactory)
     protected readonly peerFactory: PeerFactory;
 
-    @inject(Symbol('Logger')) protected logger: Logger;
+    @inject(LoggerSymbol) protected logger: Logger;
 
     protected simpleLogin = true;
 

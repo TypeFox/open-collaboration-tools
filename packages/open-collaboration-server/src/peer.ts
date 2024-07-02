@@ -13,7 +13,7 @@ import { MessageRelay } from './message-relay';
 import { RoomManager } from './room-manager';
 import { Peer, PeerInfo, Room, User } from './types';
 import { CredentialsManager } from './credentials-manager';
-import { Logger } from './utils/logging';
+import { Logger, LoggerSymbol } from './utils/logging';
 
 export const PeerFactory = Symbol('PeerFactory');
 export type PeerFactory = (info: PeerInfo) => Peer;
@@ -21,7 +21,7 @@ export type PeerFactory = (info: PeerInfo) => Peer;
 @injectable()
 export class PeerImpl implements Peer {
 
-    @inject(Symbol('Logger')) protected logger: Logger;
+    @inject(LoggerSymbol) protected logger: Logger;
 
     readonly id = nanoid(24);
 

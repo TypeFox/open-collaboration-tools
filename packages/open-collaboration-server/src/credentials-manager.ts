@@ -10,7 +10,7 @@ import { UserManager } from './user-manager';
 import jose = require('jose');
 import { nanoid } from 'nanoid';
 import { Deferred, Encryption } from 'open-collaboration-rpc';
-import { Logger } from './utils/logging';
+import { Logger, LoggerSymbol } from './utils/logging';
 
 export interface DelayedAuth {
     deferred: Deferred<string>
@@ -23,7 +23,7 @@ export class CredentialsManager {
     @inject(UserManager)
     protected readonly userManager: UserManager;
 
-    @inject(Symbol('Logger')) protected logger: Logger;
+    @inject(LoggerSymbol) protected logger: Logger;
 
     protected deferredAuths = new Map<string, DelayedAuth>();
 
