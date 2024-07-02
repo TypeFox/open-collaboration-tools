@@ -39,11 +39,12 @@ export class RoomManager {
     protected readonly credentials: CredentialsManager;
 
     async closeRoom(id: string): Promise<void> {
-        const room = this.rooms.get(id);
+        const room = this.getRoomById(id);
         if (room) {
             const symmetricKey = await this.credentials.getSymmetricKey();
             const broadcastMessage = BroadcastMessage.create(Messages.Room.Closed, '');
-            const encryptedMessage = await Encryption.encrypt(broadcastMessage, { symmetricKey }, room.host.toEncryptionKey());
+            const allKeys = room.peers.map(peer => peer.toEncryptionKey());
+            const encryptedMessage = await Encryption.encrypt(broadcastMessage, { symmetricKey }, ...allKeys);
             this.messageRelay.sendBroadcast(room.host, encryptedMessage);
             for (const peer of room.peers) {
                 this.peers.delete(peer.id);
@@ -88,7 +89,7 @@ export class RoomManager {
                 throw new Error('Could not find room to join');
             }
             const broadcastMessage = BroadcastMessage.create(Messages.Room.Joined, '', [peer.toProtocol()]);
-            const allKeys = [room.host, ...room.guests].map(peer => peer.toEncryptionKey());
+            const allKeys = room.peers.map(peer => peer.toEncryptionKey());
             this.peers.set(peer.id, room);
             room.guests.push(peer);
             if (allKeys.length > 0) {
@@ -103,11 +104,13 @@ export class RoomManager {
                 }
             }
             peer.channel.onClose(async () => {
-                const allPeerKeys = [room.host, ...room.guests].map(peer => peer.toEncryptionKey());
-                if (allPeerKeys.length > 0) {
+                const otherPeerKeys = room.peers
+                    .filter(roomPeer => roomPeer.id !== peer.id)
+                    .map(roomPeer => roomPeer.toEncryptionKey());
+                if (otherPeerKeys.length > 0) {
                     try {
                         const broadcastMessage = BroadcastMessage.create(Messages.Room.Left, '', [peer.toProtocol()]);
-                        const encryptedMessage = await Encryption.encrypt(broadcastMessage, { symmetricKey }, ...allPeerKeys);
+                        const encryptedMessage = await Encryption.encrypt(broadcastMessage, { symmetricKey }, ...otherPeerKeys);
                         this.messageRelay.sendBroadcast(
                             peer,
                             encryptedMessage
@@ -116,8 +119,12 @@ export class RoomManager {
                         console.error('Failed to send leave broadcast', err);
                     }
                 }
+                // Remove the peer from the room as the last step
+                this.peers.delete(peer.id);
+                room.removeGuest(peer.id);
             });
         }
+        // Send the identity info to the user (i.e. what the user needs to know about itself)
         const infoNotification = NotificationMessage.create(
             Messages.Peer.Info,
             '',
