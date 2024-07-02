@@ -9,6 +9,7 @@ import * as yargs from 'yargs';
 import serverModule from './container';
 import { Container } from 'inversify';
 import { CollaborationServer } from './collaboration-server';
+import { LogLevelSymbol, checkLogLevel } from './utils/logging';
 
 const container = new Container();
 container.load(serverModule);
@@ -20,11 +21,11 @@ process.on('unhandledRejection', (reason, promise) => {
 
 const command = yargs.version('0.0.1').command<{
     port: number,
-    hostname: string
+    hostname: string,
+    logLevel: string
 }>({
     command: 'start',
     describe: 'Start the server',
-    // Disable this command's `--help` option so that it is forwarded to Theia's CLI
     builder: {
         'port': {
             type: 'number',
@@ -33,9 +34,15 @@ const command = yargs.version('0.0.1').command<{
         'hostname': {
             type: 'string',
             default: 'localhost'
+        },
+        'logLevel': {
+            type: 'string',
+            default: 'info'
         }
     },
     handler: async args => {
+        const logLevel = checkLogLevel(args.logLevel);
+        container.rebind(LogLevelSymbol).toConstantValue(logLevel);
         server.startServer(args);
     }
 });

@@ -12,8 +12,11 @@ import { PeerFactory, PeerImpl } from './peer';
 import { RoomManager } from './room-manager';
 import { PeerInfo } from './types';
 import { UserManager } from './user-manager';
+import { ConsoleLogger, LogLevel, LogLevelSymbol, LoggerSymbol } from './utils/logging';
 
 export default new ContainerModule(bind => {
+    bind(LoggerSymbol).to(ConsoleLogger).inSingletonScope();
+    bind(LogLevelSymbol).toConstantValue(LogLevel.info);
     bind(CollaborationServer).toSelf().inSingletonScope();
     bind(RoomManager).toSelf().inSingletonScope();
     bind(CredentialsManager).toSelf().inSingletonScope();
