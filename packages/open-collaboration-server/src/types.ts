@@ -20,6 +20,9 @@ export class Room {
         return this.peers.find(peer => peer.id === id);
     }
 
+    removeGuest(id: string): void {
+        this.guests = this.guests.filter(peer => peer.id !== id);
+    }
 }
 
 export interface User {
