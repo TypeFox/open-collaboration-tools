@@ -35,5 +35,9 @@
   "author": {
     "name": "TypeFox",
     "url": "https://www.typefox.io/"
+  },
+  "volta": {
+    "node": "18.20.3",
+    "npm": "10.7.0"
   }
 }
