@@ -20,7 +20,14 @@
             "outFiles": [
                 "${workspaceFolder}/packages/open-collaboration-server/lib/**/*.js",
                 "${workspaceFolder}/packages/open-collaboration-server-oauth/lib/**/*.js"
-            ]
+            ],
+            "env": {
+                "OCT_OAUTH_GITHUB_CLIENTID": "Ov23liKZl4nzPujZP5qg",
+                "OCT_OAUTH_GITHUB_CLIENTSECRET": "c4f27f5f6556613956d16ad95d93a70bf8f18fbf",
+                "OCT_OAUTH_GITHUB_AUTHURL": "https://github.com/login/oauth/authorize",
+                "OCT_OAUTH_GITHUB_TOKENENDPOINT": "https://github.com/login/oauth/access_token",
+                "OCT_OAUTH_GITHUB_SCOPE": "read:user",
+            }
         },
         {
 			"name": "Run VS Code Extension",
