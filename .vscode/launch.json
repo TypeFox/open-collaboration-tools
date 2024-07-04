@@ -21,6 +21,9 @@
                 "${workspaceFolder}/packages/open-collaboration-server/lib/**/*.js",
                 "${workspaceFolder}/packages/open-collaboration-server-oauth/lib/**/*.js"
             ],
+            "env": {
+                "OCT_ACTIVATE_SIMPLE_LOGIN": "true"
+            }
         },
         {
 			"name": "Run VS Code Extension",
