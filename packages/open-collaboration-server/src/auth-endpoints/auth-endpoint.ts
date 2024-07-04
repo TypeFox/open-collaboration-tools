@@ -13,5 +13,5 @@ export const AuthEndpoint = Symbol('AuthEndpoint');
 export interface AuthEndpoint {
     shouldActivate(): boolean;
     onStart(app: Express, hostname: string, port: number): void;
-    onDidSuccessfullyAuthenticate: Event<AuthSuccessEvent>;
+    onDidAuthenticate: Event<AuthSuccessEvent>;
 }

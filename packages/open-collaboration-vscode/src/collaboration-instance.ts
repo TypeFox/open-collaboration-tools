@@ -242,7 +242,7 @@ export class CollaborationInstance implements vscode.Disposable {
 
         connection.peer.onJoinRequest(async (_, user) => {
             const result = await vscode.window.showInformationMessage(
-                `${user.authProvider ? user.authProvider + ' ' : ''}user '${user.email ? `${user.name} (${user.email})` : user.name}' wants to join the collaboration room`,
+                `User '${user.email ? `${user.name} (${user.email})` : user.name}' ${user.authProvider ? `via ${user.authProvider} login ` : ''}wants to join the collaboration room`,
                 'Allow',
                 'Deny'
             );

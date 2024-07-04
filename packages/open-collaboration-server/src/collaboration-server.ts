@@ -82,10 +82,10 @@ export class CollaborationServer {
         });
         httpServer.listen(Number(args.port), String(args.hostname));
 
-        for(const authEndpoint of this.authEndpoints) {
-            if(authEndpoint.shouldActivate()) {
+        for (const authEndpoint of this.authEndpoints) {
+            if (authEndpoint.shouldActivate()) {
                 authEndpoint.onStart(app, String(args.hostname), Number(args.port));
-                authEndpoint.onDidSuccessfullyAuthenticate(e => this.credentials.confirmUser(e.token, e.userInfo));
+                authEndpoint.onDidAuthenticate(e => this.credentials.confirmUser(e.token, e.userInfo));
             }
         }
 
