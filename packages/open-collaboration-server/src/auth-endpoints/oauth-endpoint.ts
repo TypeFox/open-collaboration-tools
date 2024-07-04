@@ -45,9 +45,9 @@ export abstract class OAuthEndpoint implements AuthEndpoint {
         app.get(this.redirectPath, async (req, res) => {
             const token = (req.query.state as string)
             if(!token) {
-                this.logger.error('missing token parameter in state');
+                this.logger.error('missing token in request state');
                 res.status(400);
-                res.send(`Error: Missing token parameter in state`);
+                res.send(`Error: Missing token in request state`);
                 return;
             }
             passport.authenticate(this.id, { state: token, scope: this.scope }, async (err: any, userInfo?: UserInfo) => {
@@ -79,14 +79,14 @@ export abstract class OAuthEndpoint implements AuthEndpoint {
 }
 
 @injectable()
-export class GithubOAuthEnpoint extends OAuthEndpoint {
+export class GitHubOAuthEndpoint  extends OAuthEndpoint {
     protected id = 'github';
     protected path = '/api/login/github'
     protected redirectPath = '/api/login/github-callback'
 
 
     shouldActivate(): boolean {
-        return !!(process.env.OCT_OAUTH_GITHUB_CLIENTID && process.env.OCT_OAUTH_GITHUB_CLIENTSECRET)
+        return Boolean(process.env.OCT_OAUTH_GITHUB_CLIENTID && process.env.OCT_OAUTH_GITHUB_CLIENTSECRET)
     }
 
     override getStrategy(hostname: string, port: number): passport.Strategy {
@@ -102,14 +102,14 @@ export class GithubOAuthEnpoint extends OAuthEndpoint {
 
 
 @injectable()
-export class GoogleOAuthEnpoint extends OAuthEndpoint {
+export class GoogleOAuthEndpoint extends OAuthEndpoint {
     protected id = 'google';
     protected path = '/api/login/google'
     protected redirectPath = '/api/login/google-callback'
 
 
     shouldActivate(): boolean {
-        return !!(process.env.OCT_OAUTH_GOOGLE_CLIENTID && process.env.OCT_OAUTH_GOOGLE_CLIENTSECRET)
+        return Boolean(process.env.OCT_OAUTH_GOOGLE_CLIENTID && process.env.OCT_OAUTH_GOOGLE_CLIENTSECRET)
     }
 
     override getStrategy(hostname: string, port: number): passport.Strategy {
