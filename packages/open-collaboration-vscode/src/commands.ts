@@ -56,12 +56,7 @@ export class Commands {
                     quickPick.items = items;
                     const index = await showQuickPick(quickPick);
                     if (index === 0) {
-                        instance.dispose();
-                        this.contextKeyService.setConnection(undefined);
-                        if (!instance.host) {
-                            await closeSharedEditors();
-                            removeWorkspaceFolders();
-                        }
+                        vscode.commands.executeCommand('oct.closeConnection');
                     } else if (index === 1) {
                         vscode.env.clipboard.writeText(instance.roomId ?? '');
                         vscode.window.showInformationMessage(`Room ID ${instance.roomId} copied to clipboard`);
@@ -80,6 +75,22 @@ export class Commands {
                         await this.roomService.joinRoom(connectionProvider);
                     }
                 }
+            }),
+            vscode.commands.registerCommand('oct.closeConnection', async () => {
+                const instance = CollaborationInstance.Current
+                if(instance) {
+                    instance.dispose();
+                    this.contextKeyService.setConnection(undefined);
+                    if (!instance.host) {
+                        await closeSharedEditors();
+                        removeWorkspaceFolders();
+                    }
+                }
+            }),
+            vscode.commands.registerCommand('oct.signOut', async () => {
+                await vscode.commands.executeCommand('oct.closeConnection');
+                await this.context.secrets.delete('oct.userToken');
+                vscode.window.showInformationMessage('Signed out successfully');
             })
         );
         this.statusService.initialize('oct.enter');

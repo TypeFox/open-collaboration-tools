@@ -7,11 +7,12 @@
 import { injectable } from 'inversify';
 import { nanoid } from 'nanoid';
 import { User } from './types';
+import { UserInfo } from './auth-endpoints/auth-endpoint';
 
 @injectable()
 export class UserManager {
 
-    async registerUser(user: Omit<User, 'id'>): Promise<User> {
+    async registerUser(user: UserInfo): Promise<User> {
         const registeredUser: User = {
             ...user,
             id: nanoid(24)

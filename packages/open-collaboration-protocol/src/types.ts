@@ -39,6 +39,7 @@ export interface ProtocolServerMetaData {
 export interface User {
     name: string
     email?: string
+    authProvider?: string
 }
 
 export interface JoinResponse {

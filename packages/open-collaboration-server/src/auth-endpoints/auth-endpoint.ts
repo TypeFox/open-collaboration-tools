@@ -1,12 +1,8 @@
 import type { Express } from 'express';
 import { Event } from 'open-collaboration-rpc';
+import { User } from '../types';
 
-export interface UserInfo {
-    name: string, 
-    email?: string 
-    authProvider?: string
-}
-
+export type UserInfo = Omit<User, 'id'>;
 export interface AuthSuccessEvent {
     token: string, 
     userInfo: UserInfo
