@@ -9,7 +9,7 @@ export class SimpleLoginEndpoint implements AuthEndpoint {
     onDidSuccessfullyAuthenticate = this.authSuccessEmitter.event;
 
     shouldActivate(): boolean {
-        return process.env.OCT_DEACTIVATE_SIMPLE_LOGIN !== 'true';
+        return process.env.OCT_ACTIVATE_SIMPLE_LOGIN?.toLowerCase() === 'true';
     }
 
     onStart(app: Express, hostname: string, port: number): void {
@@ -18,7 +18,7 @@ export class SimpleLoginEndpoint implements AuthEndpoint {
                 const token = req.body.token as string;
                 const user = req.body.user as string;
                 const email = req.body.email as string | undefined;
-                await this.authSuccessEmitter.fire({token, userInfo: {name: user, email}});
+                await this.authSuccessEmitter.fire({token, userInfo: {name: user, email, authProvider: 'none'}});
                 res.send('Ok');
             } catch (err) {
                 console.error(err);
