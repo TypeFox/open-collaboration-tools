@@ -361,15 +361,21 @@ export class CollaborationInstance implements vscode.Disposable {
     private registerEditorEvents() {
 
         vscode.workspace.textDocuments.forEach(document => {
-            this.registerTextDocument(document);
+            if (!this.isNotebookCell(document)) {
+                this.registerTextDocument(document);
+            }
         });
 
         this.toDispose.push(vscode.workspace.onDidOpenTextDocument(document => {
-            this.registerTextDocument(document);
+            if (!this.isNotebookCell(document)) {
+                this.registerTextDocument(document);
+            }
         }));
 
         this.toDispose.push(vscode.workspace.onDidChangeTextDocument(event => {
-            this.updateTextDocument(event);
+            if (!this.isNotebookCell(event.document)) {
+                this.updateTextDocument(event);
+            }
         }));
 
         this.toDispose.push(vscode.window.onDidChangeVisibleTextEditors(() => {
@@ -400,6 +406,10 @@ export class CollaborationInstance implements vscode.Disposable {
                 awarenessDebounce();
             }
         });
+    }
+
+    protected isNotebookCell(doc: vscode.TextDocument): boolean {
+        return doc.uri.scheme === 'vscode-notebook-cell';
     }
 
     followUser(id?: string) {
