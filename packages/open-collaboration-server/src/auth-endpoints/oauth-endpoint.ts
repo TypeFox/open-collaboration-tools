@@ -73,7 +73,8 @@ export abstract class OAuthEndpoint implements AuthEndpoint {
     }
 
     protected createRedirectUrl(host: string, port: number, path: string): string {
-        return `http://${host === '0.0.0.0' ? 'localhost' : host}:${port}${path}`
+        const baseURL = process.env.OCT_BASE_URL ?? `http://${host === '0.0.0.0' ? 'localhost' : host}:${port}`
+        return new URL(path, baseURL).toString();
     }
 }
 
