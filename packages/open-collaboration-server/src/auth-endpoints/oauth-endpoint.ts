@@ -109,12 +109,13 @@ export class GitHubOAuthEndpoint  extends OAuthEndpoint {
 @injectable()
 export class GoogleOAuthEndpoint extends OAuthEndpoint {
     protected id = 'google';
-    protected path = '/api/login/google'
-    protected redirectPath = '/api/login/google-callback'
+    protected path = '/api/login/google';
+    protected redirectPath = '/api/login/google-callback';
+    protected override scope = 'email profile';
 
 
     shouldActivate(): boolean {
-        return Boolean(process.env.OCT_OAUTH_GOOGLE_CLIENTID && process.env.OCT_OAUTH_GOOGLE_CLIENTSECRET)
+        return Boolean(process.env.OCT_OAUTH_GOOGLE_CLIENTID && process.env.OCT_OAUTH_GOOGLE_CLIENTSECRET);
     }
 
     override getStrategy(hostname: string, port: number): passport.Strategy {
