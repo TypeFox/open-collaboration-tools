@@ -65,8 +65,13 @@ export abstract class OAuthEndpoint implements AuthEndpoint {
                     res.send('Internal server error occured during Login. Please try again');
                     return;
                 }
-                res.status(200);
-                res.send('Login Successful. You can close this page');
+                if(process.env.OCT_LOGIN_SUCCESS_URL) {
+                    res.redirect(process.env.OCT_LOGIN_SUCCESS_URL);
+                } else {
+                    res.status(200);
+                    res.send('Login Successful. You can close this page');    
+                }
+
             })(req, res);
         });
 

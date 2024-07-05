@@ -151,7 +151,7 @@ export class CollaborationServer {
         app.post('/api/login/url', async (req, res) => {
             try {
                 const token = this.credentials.secureId();
-                var loginPage
+                let loginPage
                 try {
                     const loginPageURL = new URL(process.env.OCT_LOGIN_PAGE_URL ?? '');
                     loginPageURL.searchParams.set('token', token);
