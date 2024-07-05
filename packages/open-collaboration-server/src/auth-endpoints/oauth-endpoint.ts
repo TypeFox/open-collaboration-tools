@@ -6,19 +6,22 @@ import passport from 'passport';
 import { Strategy as GithubStrategy } from "passport-github";
 import { Strategy as GoogleStrategy } from "passport-google-oauth20";
 import { Logger, LoggerSymbol } from "../utils/logging";
+import { Configuration } from "../utils/configuration";
 
 export const oauthProviders = Symbol('oauthProviders');
 
 @injectable()
 export abstract class OAuthEndpoint implements AuthEndpoint {
-    @inject(LoggerSymbol)
-    protected logger: Logger;
+
+    @inject(LoggerSymbol) protected logger: Logger;
+
+    @inject(Configuration) protected configuration: Configuration;
 
     protected abstract id: string;
     protected abstract path: string
     protected abstract redirectPath: string
     protected scope?: string;
-   
+
     private authSuccessEmitter = new Emitter<AuthSuccessEvent>();
     onDidAuthenticate: Event<AuthSuccessEvent> = this.authSuccessEmitter.event;
 
@@ -51,7 +54,7 @@ export abstract class OAuthEndpoint implements AuthEndpoint {
                 return;
             }
             passport.authenticate(this.id, { state: token, scope: this.scope }, async (err: any, userInfo?: UserInfo) => {
-                if(err || !userInfo) {
+                if (err || !userInfo) {
                     this.logger.error('Error retrieving user info', err);
                     res.status(400);
                     res.send('Error retrieving user info');
@@ -65,11 +68,12 @@ export abstract class OAuthEndpoint implements AuthEndpoint {
                     res.send('Internal server error occured during Login. Please try again');
                     return;
                 }
-                if(process.env.OCT_LOGIN_SUCCESS_URL) {
-                    res.redirect(process.env.OCT_LOGIN_SUCCESS_URL);
+                const loginSuccessURL = this.configuration.getValue('oct-login-success-url');
+                if (loginSuccessURL) {
+                    res.redirect(loginSuccessURL);
                 } else {
                     res.status(200);
-                    res.send('Login Successful. You can close this page');    
+                    res.send('Login Successful. You can close this page');
                 }
 
             })(req, res);
@@ -78,7 +82,7 @@ export abstract class OAuthEndpoint implements AuthEndpoint {
     }
 
     protected createRedirectUrl(host: string, port: number, path: string): string {
-        const baseURL = process.env.OCT_BASE_URL ?? `http://${host === '0.0.0.0' ? 'localhost' : host}:${port}`
+        const baseURL = this.configuration.getValue('oct-base-url') ?? `http://${host === '0.0.0.0' ? 'localhost' : host}:${port}`
         return new URL(path, baseURL).toString();
     }
 }
@@ -89,21 +93,20 @@ export class GitHubOAuthEndpoint  extends OAuthEndpoint {
     protected path = '/api/login/github'
     protected redirectPath = '/api/login/github-callback'
 
-
     shouldActivate(): boolean {
-        return Boolean(process.env.OCT_OAUTH_GITHUB_CLIENTID && process.env.OCT_OAUTH_GITHUB_CLIENTSECRET)
+        return Boolean(this.configuration.getValue('oct-oauth-github-clientid') && this.configuration.getValue('oct-oauth-github-clientsecret'));
     }
 
     override getStrategy(hostname: string, port: number): passport.Strategy {
         return new GithubStrategy({
-            clientID: process.env.OCT_OAUTH_GITHUB_CLIENTID as string,
-            clientSecret: process.env.OCT_OAUTH_GITHUB_CLIENTSECRET as string,
+            clientID: this.configuration.getValue('oct-oauth-github-clientid')!,
+            clientSecret: this.configuration.getValue('oct-oauth-github-clientsecret')!,
             callbackURL: this.createRedirectUrl(hostname, port, this.redirectPath),
         }, (accessToken, refreshToken, profile, done) => {
             done(undefined, { name: profile.displayName, email: profile.emails?.[0], authProvider: 'Github' } as UserInfo)
         });
     }
-} 
+}
 
 
 @injectable()
@@ -113,18 +116,17 @@ export class GoogleOAuthEndpoint extends OAuthEndpoint {
     protected redirectPath = '/api/login/google-callback';
     protected override scope = 'email profile';
 
-
     shouldActivate(): boolean {
-        return Boolean(process.env.OCT_OAUTH_GOOGLE_CLIENTID && process.env.OCT_OAUTH_GOOGLE_CLIENTSECRET);
+        return Boolean(this.configuration.getValue('oct-oauth-google-clientid') && this.configuration.getValue('oct-oauth-google-clientsecret'));
     }
 
     override getStrategy(hostname: string, port: number): passport.Strategy {
         return new GoogleStrategy({
-            clientID: process.env.OCT_OAUTH_GOOGLE_CLIENTID as string,
-            clientSecret: process.env.OCT_OAUTH_GOOGLE_CLIENTSECRET as string,
+            clientID: this.configuration.getValue('oct-oauth-google-clientid')!,
+            clientSecret: this.configuration.getValue('oct-oauth-google-clientsecret')!,
             callbackURL: this.createRedirectUrl(hostname, port, this.redirectPath),
         }, (accessToken, refreshToken, profile, done) => {
             done(undefined, { name: profile.displayName, email: profile.emails?.find(mail => mail.verified)?.value, authProvider: 'Google' } as UserInfo)
         });
     }
-} 
+}

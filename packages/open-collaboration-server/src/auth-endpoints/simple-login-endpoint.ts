@@ -3,17 +3,20 @@ import { type Express } from 'express';
 import { Emitter } from "open-collaboration-rpc";
 import { AuthEndpoint, AuthSuccessEvent } from "./auth-endpoint";
 import { Logger, LoggerSymbol } from "../utils/logging";
+import { Configuration } from "../utils/configuration";
 
 @injectable()
 export class SimpleLoginEndpoint implements AuthEndpoint {
-    @inject(LoggerSymbol)
-    protected logger: Logger;
+
+    @inject(LoggerSymbol) protected logger: Logger;
+
+    @inject(Configuration) protected configuration: Configuration;
 
     private authSuccessEmitter = new Emitter<AuthSuccessEvent>();
     onDidAuthenticate = this.authSuccessEmitter.event;
 
     shouldActivate(): boolean {
-        return process.env.OCT_ACTIVATE_SIMPLE_LOGIN?.toLowerCase() === 'true';
+        return this.configuration.getValue('oct-activate-simple-login', 'boolean') ?? false;
     }
 
     onStart(app: Express, hostname: string, port: number): void {
@@ -26,7 +29,7 @@ export class SimpleLoginEndpoint implements AuthEndpoint {
                 res.send('Ok');
             } catch (err) {
                 this.logger.error('Failed to perform simple login', err);
-                console.error(err);
+                this.logger.error(String(err));
                 res.status(400);
                 res.send('Failed to perform simple login');
             }

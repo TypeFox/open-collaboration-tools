@@ -106,7 +106,7 @@ export class RoomManager {
                         encryptedMessage
                     );
                 } catch (err) {
-                    console.error('Failed to send join broadcast', err);
+                    this.logger.error('Failed to send join broadcast', err);
                 }
             }
             peer.channel.onClose(async () => {
@@ -122,7 +122,7 @@ export class RoomManager {
                             encryptedMessage
                         );
                     } catch (err) {
-                        console.error('Failed to send leave broadcast', err);
+                        this.logger.error('Failed to send leave broadcast', err);
                     }
                 }
                 // Remove the peer from the room as the last step
