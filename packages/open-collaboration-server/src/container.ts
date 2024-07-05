@@ -13,6 +13,9 @@ import { RoomManager } from './room-manager';
 import { PeerInfo } from './types';
 import { UserManager } from './user-manager';
 import { ConsoleLogger, LogLevel, LogLevelSymbol, LoggerSymbol } from './utils/logging';
+import { SimpleLoginEndpoint } from './auth-endpoints/simple-login-endpoint';
+import { AuthEndpoint } from './auth-endpoints/auth-endpoint';
+import { GitHubOAuthEndpoint  } from './auth-endpoints/oauth-endpoint';
 
 export default new ContainerModule(bind => {
     bind(LoggerSymbol).to(ConsoleLogger).inSingletonScope();
@@ -29,4 +32,9 @@ export default new ContainerModule(bind => {
         child.bind(PeerInfo).toConstantValue(peerInfo);
         return child.get(PeerImpl);
     });
+
+    bind(SimpleLoginEndpoint).toSelf().inSingletonScope();
+    bind(AuthEndpoint).toService(SimpleLoginEndpoint);
+    bind(GitHubOAuthEndpoint ).toSelf().inSingletonScope();
+    bind(AuthEndpoint).toService(GitHubOAuthEndpoint );
 });

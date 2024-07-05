@@ -69,7 +69,7 @@ export class RoomManager {
             },
             host: true
         };
-        this.logger.info(`Prepared room [id: ${claim.room}] for user [id: ${user.id} | name: ${user.name} | email: ${user.email}]`)
+        this.logger.info(`Prepared room [id: ${claim.room}] for user [provider: ${user.authProvider} id: ${user.id} | name: ${user.name} | email: ${user.email}]`)
         const jwt = await this.credentials.generateJwt(claim);
         return {
             id,

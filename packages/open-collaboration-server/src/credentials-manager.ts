@@ -11,6 +11,7 @@ import jose = require('jose');
 import { nanoid } from 'nanoid';
 import { Deferred, Encryption } from 'open-collaboration-rpc';
 import { Logger, LoggerSymbol } from './utils/logging';
+import { UserInfo } from './auth-endpoints/auth-endpoint';
 
 export interface DelayedAuth {
     deferred: Deferred<string>
@@ -53,7 +54,7 @@ export class CredentialsManager {
         return this.cachedKey;
     }
 
-    async confirmUser(confirmToken: string, user: Omit<User, 'id'>): Promise<string> {
+    async confirmUser(confirmToken: string, user: UserInfo): Promise<string> {
         const auth = this.deferredAuths.get(confirmToken);
         if (!auth) {
             throw this.logger.createErrorAndLog('Login timed out');
@@ -62,7 +63,8 @@ export class CredentialsManager {
         const userClaim: User = {
             id: registeredUser.id,
             name: registeredUser.name,
-            email: registeredUser.email
+            email: registeredUser.email,
+            authProvider: registeredUser.authProvider
         };
         this.logger.info(`Will generate Jwt for user [id: ${userClaim.id} | name: ${userClaim.name} | email: ${userClaim.email}]`);
         const jwt = await this.generateJwt(userClaim);

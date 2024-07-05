@@ -4,7 +4,7 @@
 // terms of the MIT License, which is available in the project root.
 // ******************************************************************************
 
-import { inject, injectable } from 'inversify';
+import { inject, injectable, multiInject } from 'inversify';
 import * as http from 'http';
 import * as path from 'path';
 import { Server } from 'socket.io';
@@ -17,6 +17,7 @@ import { UserManager } from './user-manager';
 import { CredentialsManager } from './credentials-manager';
 import { User } from './types';
 import * as types from 'open-collaboration-protocol';
+import { AuthEndpoint } from './auth-endpoints/auth-endpoint';
 import { Logger, LoggerSymbol } from './utils/logging';
 
 @injectable()
@@ -36,12 +37,14 @@ export class CollaborationServer {
 
     @inject(LoggerSymbol) protected logger: Logger;
 
-    protected simpleLogin = true;
+    @multiInject(AuthEndpoint)
+    protected readonly authEndpoints: AuthEndpoint[];
 
     startServer(args: Record<string, unknown>): void {
         this.logger.debug('Starting Open Collaboration Server ...');
 
-        const httpServer = http.createServer(this.setupApiRoute());
+        const app = this.setupApiRoute()
+        const httpServer = http.createServer(app);
         const wsServer = new ws.Server({
             path: '/websocket',
             server: httpServer
@@ -78,6 +81,14 @@ export class CollaborationServer {
             }
         });
         httpServer.listen(Number(args.port), String(args.hostname));
+
+        for (const authEndpoint of this.authEndpoints) {
+            if (authEndpoint.shouldActivate()) {
+                authEndpoint.onStart(app, String(args.hostname), Number(args.port));
+                authEndpoint.onDidAuthenticate(e => this.credentials.confirmUser(e.token, e.userInfo));
+            }
+        }
+
         this.logger.info(`Open Collaboration Server listening on ${args.hostname}:${args.port}`);
     }
 
@@ -115,7 +126,7 @@ export class CollaborationServer {
         }
     }
 
-    protected setupApiRoute(): express.Application {
+    protected setupApiRoute(): express.Express {
         const app = express();
         app.use(express.json());
         app.use((_, res, next) => {
@@ -140,9 +151,16 @@ export class CollaborationServer {
         app.post('/api/login/url', async (req, res) => {
             try {
                 const token = this.credentials.secureId();
-                const index = `/login.html?token=${token}`;
+                let loginPage
+                try {
+                    const loginPageURL = new URL(process.env.OCT_LOGIN_PAGE_URL ?? '');
+                    loginPageURL.searchParams.set('token', token);
+                    loginPage = loginPageURL.toString();
+                } catch (error) {
+                    loginPage = `/login.html?token=${token}`
+                }
                 res.send({
-                    url: index,
+                    url: loginPage,
                     token
                 });
             } catch (error) {
@@ -161,25 +179,6 @@ export class CollaborationServer {
                 res.send('false');
             }
         });
-        if (this.simpleLogin) {
-            app.post('/api/login/simple', async (req, res) => {
-                try {
-                    const token = req.body.token as string;
-                    const user = req.body.user as string;
-                    const email = req.body.email as string | undefined;
-                    await this.credentials.confirmUser(token, {
-                        name: user,
-                        email
-                    });
-                    this.logger.info(`Simple login will be confirmed to client for user: ${user}`);
-                    res.send('Ok');
-                } catch (error) {
-                    this.logger.error('Failed to perform simple login', error);
-                    res.status(400);
-                    res.send('Failed to perform simple login');
-                }
-            });
-        }
         app.post('/api/login/confirm/:token', async (req, res) => {
             try {
                 const token = req.params.token as string;

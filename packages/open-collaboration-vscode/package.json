@@ -94,6 +94,19 @@
         "title": "Stop Following Peer",
         "category": "OCT",
         "icon": "$(eye-closed)"
+      },
+      {
+        "command": "oct.closeConnection",
+        "title": "Close Current Connection",
+        "category": "OCT",
+        "icon": "$(close)",
+        "when": "oct.connection === true"
+      },
+      {
+        "command": "oct.signOut",
+        "title": "Sign Out",
+        "category": "OCT",
+        "icon": "$(sign-out)"
       }
     ],
     "colors": [
