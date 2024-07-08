@@ -1,12 +1,12 @@
-import { inject, injectable } from "inversify";
+import { inject, injectable, postConstruct } from 'inversify';
 import { type Express } from 'express';
-import { Emitter, Event } from "open-collaboration-rpc";
-import { AuthEndpoint, AuthSuccessEvent, UserInfo } from "./auth-endpoint";
+import { Emitter, Event } from 'open-collaboration-rpc';
+import { AuthEndpoint, AuthSuccessEvent, UserInfo } from './auth-endpoint';
 import passport from 'passport';
-import { Strategy as GithubStrategy } from "passport-github";
-import { Strategy as GoogleStrategy } from "passport-google-oauth20";
-import { Logger, LoggerSymbol } from "../utils/logging";
-import { Configuration } from "../utils/configuration";
+import { Strategy as GithubStrategy } from 'passport-github';
+import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
+import { Logger, LoggerSymbol } from '../utils/logging';
+import { Configuration } from '../utils/configuration';
 
 export const oauthProviders = Symbol('oauthProviders');
 
@@ -21,18 +21,21 @@ export abstract class OAuthEndpoint implements AuthEndpoint {
     protected abstract path: string
     protected abstract redirectPath: string
     protected scope?: string;
+    protected baseURL?: string;
 
     private authSuccessEmitter = new Emitter<AuthSuccessEvent>();
     onDidAuthenticate: Event<AuthSuccessEvent> = this.authSuccessEmitter.event;
 
+    @postConstruct()
+    initialize() {
+        this.baseURL = this.configuration.getValue('oct-base-url');
+    }
 
     abstract shouldActivate(): boolean;
     abstract getStrategy(host: string, port: number): passport.Strategy;
 
-
     onStart(app: Express, hostname: string, port: number): void {
         passport.use(this.id, this.getStrategy(hostname, port));
-
 
         app.get(this.path, async (req, res) => {
             const token = req.query.token;
@@ -45,6 +48,7 @@ export abstract class OAuthEndpoint implements AuthEndpoint {
             passport.authenticate(this.id, { state: `${token}`, scope: this.scope })(req, res);
         });
 
+        const loginSuccessURL = this.configuration.getValue('oct-login-success-url');
         app.get(this.redirectPath, async (req, res) => {
             const token = (req.query.state as string)
             if(!token) {
@@ -68,7 +72,6 @@ export abstract class OAuthEndpoint implements AuthEndpoint {
                     res.send('Internal server error occured during Login. Please try again');
                     return;
                 }
-                const loginSuccessURL = this.configuration.getValue('oct-login-success-url');
                 if (loginSuccessURL) {
                     res.redirect(loginSuccessURL);
                 } else {
@@ -82,7 +85,7 @@ export abstract class OAuthEndpoint implements AuthEndpoint {
     }
 
     protected createRedirectUrl(host: string, port: number, path: string): string {
-        const baseURL = this.configuration.getValue('oct-base-url') ?? `http://${host === '0.0.0.0' ? 'localhost' : host}:${port}`
+        const baseURL = this.baseURL ?? `http://${host === '0.0.0.0' ? 'localhost' : host}:${port}`;
         return new URL(path, baseURL).toString();
     }
 }

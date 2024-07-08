@@ -1,9 +1,9 @@
-import { inject, injectable } from "inversify";
+import { inject, injectable } from 'inversify';
 import { type Express } from 'express';
-import { Emitter } from "open-collaboration-rpc";
-import { AuthEndpoint, AuthSuccessEvent } from "./auth-endpoint";
-import { Logger, LoggerSymbol } from "../utils/logging";
-import { Configuration } from "../utils/configuration";
+import { Emitter } from 'open-collaboration-rpc';
+import { AuthEndpoint, AuthSuccessEvent } from './auth-endpoint';
+import { Logger, LoggerSymbol } from '../utils/logging';
+import { Configuration } from '../utils/configuration';
 
 @injectable()
 export class SimpleLoginEndpoint implements AuthEndpoint {
@@ -29,7 +29,6 @@ export class SimpleLoginEndpoint implements AuthEndpoint {
                 res.send('Ok');
             } catch (err) {
                 this.logger.error('Failed to perform simple login', err);
-                this.logger.error(String(err));
                 res.status(400);
                 res.send('Failed to perform simple login');
             }

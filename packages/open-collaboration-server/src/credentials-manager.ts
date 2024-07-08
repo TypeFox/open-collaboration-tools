@@ -34,7 +34,7 @@ export class CredentialsManager {
     protected cachedKey?: string;
 
     @postConstruct()
-    init() {
+    initialize() {
         if (this.configuration.getValue('oct-jwt-private-key') === undefined) {
             this.logger.warn('OCT_JWT_PRIVATE_KEY env variable is not set. Using a static key for development purposes.');
         }

@@ -154,12 +154,13 @@ export class CollaborationServer {
             }
         });
         app.use(express.static(path.resolve(__dirname, '../src/static')));
+        const loginPageUrlConfig = this.configuration.getValue('oct-login-page-url') ?? '';
         app.post('/api/login/url', async (req, res) => {
             try {
                 const token = this.credentials.secureId();
                 let loginPage
                 try {
-                    const loginPageURL = new URL(this.configuration.getValue('oct-login-page-url') ?? '');
+                    const loginPageURL = new URL(loginPageUrlConfig);
                     loginPageURL.searchParams.set('token', token);
                     loginPage = loginPageURL.toString();
                 } catch (error) {

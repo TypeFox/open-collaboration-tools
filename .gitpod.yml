@@ -7,4 +7,6 @@ tasks:
   - init: |
       npm install
       npm run build
-    command: npm run start
+    command: |
+      export OCT_ACTIVATE_SIMPLE_LOGIN=true
+      npm run start
