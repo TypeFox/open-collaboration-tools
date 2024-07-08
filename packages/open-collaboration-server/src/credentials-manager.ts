@@ -12,6 +12,7 @@ import { nanoid } from 'nanoid';
 import { Deferred, Encryption } from 'open-collaboration-rpc';
 import { Logger, LoggerSymbol } from './utils/logging';
 import { UserInfo } from './auth-endpoints/auth-endpoint';
+import { Configuration } from './utils/configuration';
 
 export interface DelayedAuth {
     deferred: Deferred<string>
@@ -26,14 +27,16 @@ export class CredentialsManager {
 
     @inject(LoggerSymbol) protected logger: Logger;
 
+    @inject(Configuration) protected configuration: Configuration;
+
     protected deferredAuths = new Map<string, DelayedAuth>();
 
     protected cachedKey?: string;
 
     @postConstruct()
-    init() {
-        if (process.env.JWT_PRIVATE_KEY === undefined) {
-            this.logger.warn('JWT_PRIVATE_KEY env variable is not set. Using a static key for development purposes.');
+    initialize() {
+        if (this.configuration.getValue('oct-jwt-private-key') === undefined) {
+            this.logger.warn('OCT_JWT_PRIVATE_KEY env variable is not set. Using a static key for development purposes.');
         }
     }
 
@@ -107,7 +110,7 @@ export class CredentialsManager {
     }
 
     protected async getJwtPrivateKey(): Promise<Uint8Array> {
-        const key = process.env.JWT_PRIVATE_KEY ?? __filename;
+        const key = this.configuration.getValue('oct-jwt-private-key') ?? __filename;
         return Buffer.from(key);
     }
 

@@ -19,6 +19,7 @@ import { User } from './types';
 import * as types from 'open-collaboration-protocol';
 import { AuthEndpoint } from './auth-endpoints/auth-endpoint';
 import { Logger, LoggerSymbol } from './utils/logging';
+import { Configuration } from './utils/configuration';
 
 @injectable()
 export class CollaborationServer {
@@ -36,6 +37,8 @@ export class CollaborationServer {
     protected readonly peerFactory: PeerFactory;
 
     @inject(LoggerSymbol) protected logger: Logger;
+
+    @inject(Configuration) protected configuration: Configuration;
 
     @multiInject(AuthEndpoint)
     protected readonly authEndpoints: AuthEndpoint[];
@@ -85,7 +88,10 @@ export class CollaborationServer {
         for (const authEndpoint of this.authEndpoints) {
             if (authEndpoint.shouldActivate()) {
                 authEndpoint.onStart(app, String(args.hostname), Number(args.port));
-                authEndpoint.onDidAuthenticate(e => this.credentials.confirmUser(e.token, e.userInfo));
+                authEndpoint.onDidAuthenticate(event =>
+                    this.credentials.confirmUser(event.token, event.userInfo)
+                        .catch(err => this.logger.error('Failed to confirm user', err))
+                );
             }
         }
 
@@ -148,12 +154,13 @@ export class CollaborationServer {
             }
         });
         app.use(express.static(path.resolve(__dirname, '../src/static')));
+        const loginPageUrlConfig = this.configuration.getValue('oct-login-page-url') ?? '';
         app.post('/api/login/url', async (req, res) => {
             try {
                 const token = this.credentials.secureId();
                 let loginPage
                 try {
-                    const loginPageURL = new URL(process.env.OCT_LOGIN_PAGE_URL ?? '');
+                    const loginPageURL = new URL(loginPageUrlConfig);
                     loginPageURL.searchParams.set('token', token);
                     loginPage = loginPageURL.toString();
                 } catch (error) {

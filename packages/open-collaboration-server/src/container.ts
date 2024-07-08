@@ -16,10 +16,13 @@ import { ConsoleLogger, LogLevel, LogLevelSymbol, LoggerSymbol } from './utils/l
 import { SimpleLoginEndpoint } from './auth-endpoints/simple-login-endpoint';
 import { AuthEndpoint } from './auth-endpoints/auth-endpoint';
 import { GitHubOAuthEndpoint, GoogleOAuthEndpoint  } from './auth-endpoints/oauth-endpoint';
+import { Configuration, DefaultConfiguration } from './utils/configuration';
 
 export default new ContainerModule(bind => {
     bind(LoggerSymbol).to(ConsoleLogger).inSingletonScope();
     bind(LogLevelSymbol).toConstantValue(LogLevel.info);
+    bind(DefaultConfiguration).toSelf().inSingletonScope();
+    bind(Configuration).toService(DefaultConfiguration);
     bind(CollaborationServer).toSelf().inSingletonScope();
     bind(RoomManager).toSelf().inSingletonScope();
     bind(CredentialsManager).toSelf().inSingletonScope();

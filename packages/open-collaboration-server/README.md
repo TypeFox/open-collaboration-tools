@@ -16,13 +16,13 @@ Usage of the public instance is bound to its [Terms of Use](https://www.open-col
 
 Environment variables
 
-| Variable | Description | 
+| Variable | Description |
 |--------------------|---|
-| JWT_PRIVATE_KEY           | The private key for encoding the JWT's used for authenticating users  | 
-| OCT_LOGIN_PAGE_URL        | Url of the login page. Defaults to /login.html?token={token}  | 
-| OCT_LOGIN_SUCCESS_URL     | Url of the login success page. Defaults a simple "Login Successful. You can close this page" text  | 
-| OCT_BASE_URL              | Base URL of the server is reachable under. Used for oauth redirects | 
-| OCT_ACTIVATE_SIMPLE_LOGIN | Activates the simple login handler to alow unverified authentication just with username and optionally email | 
-| OCT_OAUTH_{Provider Name}_CLIENTID | Sets the client id for the specified OAuth provider | 
-| OCT_OAUTH_{Provider Name}_CLIENTSECRET | Sets the client secret for the specified OAuth provider | 
+| OCT_JWT_PRIVATE_KEY           | The private key for encoding the JWT's used for authenticating users  |
+| OCT_LOGIN_PAGE_URL        | Url of the login page. Defaults to /login.html?token={token}  |
+| OCT_LOGIN_SUCCESS_URL     | Url of the login success page. Defaults a simple "Login Successful. You can close this page" text  |
+| OCT_BASE_URL              | Base URL of the server is reachable under. Used for oauth redirects |
+| OCT_ACTIVATE_SIMPLE_LOGIN | Activates the simple login handler to alow unverified authentication just with username and optionally email |
+| OCT_OAUTH_{Provider Name}_CLIENTID | Sets the client id for the specified OAuth provider |
+| OCT_OAUTH_{Provider Name}_CLIENTSECRET | Sets the client secret for the specified OAuth provider |
 

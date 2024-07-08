@@ -82,7 +82,7 @@ export class MessageRelay {
                     } else {
                         // If the sender did not include a key for one of the peers, they cannot decrypt the message
                         // This is unexpected behavior as every broadcast should be sent to every peer in the room
-                        console.warn(`No key found for peer ${peer.id} in room ${room.id}`);
+                        this.logger.warn(`No key found for peer ${peer.id} in room ${room.id}`);
                     }
                 }
             }
