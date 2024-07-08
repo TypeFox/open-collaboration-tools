@@ -54,7 +54,7 @@
       "properties": {
         "oct.serverUrl": {
           "type": "string",
-          "default": "",
+          "default": "https://api.open-collab.tools/",
           "description": "URL of the OCT Server instance for live collaboration sessions."
         }
       }
