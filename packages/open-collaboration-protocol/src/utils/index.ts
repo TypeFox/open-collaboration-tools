@@ -11,3 +11,4 @@ export * from './event';
 export * from './promise';
 export * from './system';
 export * from './types';
+export * from './version';

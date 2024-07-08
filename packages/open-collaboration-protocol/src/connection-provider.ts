@@ -4,11 +4,12 @@
 // terms of the MIT License, which is available in the project root.
 // ******************************************************************************
 
-import { Encryption, VERSION } from "./messaging";
+import { Encryption } from "./messaging";
 import { MessageTransportProvider } from "./transport";
 import { ProtocolBroadcastConnection, createConnection } from "./connection";
 import * as semver from 'semver';
 import * as types from './types';
+import { VERSION, compatibleVersions } from "./utils/version";
 
 export type Fetch = (url: string, options?: FetchRequestOptions) => Promise<FetchResponse>;
 
@@ -96,26 +97,8 @@ export class ConnectionProvider {
         if (!serverVersion) {
             throw new Error('Invalid protocol version returned by server: ' + metadata.version);
         }
-        if (!this.satisfiesSemver(serverVersion)) {
-            throw new Error(`Incompatible protocol versions: client ${this.protocolVersion}, server ${metadata.version}`);
-        }
-    }
-
-    /**
-     * Returns whether the client protocol version is compatible with the server protocol version.
-     * The client and server are compatible if they either share the same major version or if both are in the `0.x` range and they share the same minor version.
-     * 
-     * After the first major version, minor versions only indicate backwards-compatible changes.
-     * In the `0.x` range, minor versions indicate backwards-incompatible changes.
-     * Patch versions are ignored for compatibility checks.
-     */
-    private satisfiesSemver(serverVersion: semver.SemVer): boolean {
-        if (this.protocolVersion.major !== serverVersion.major) {
-            return false;
-        } else if (this.protocolVersion.major === 0 && serverVersion.major === 0) {
-            return this.protocolVersion.minor === serverVersion.minor;
-        } else {
-            return true;
+        if (!compatibleVersions(serverVersion, this.protocolVersion)) {
+            throw new Error(`Incompatible protocol versions: client ${this.protocolVersion.format()}, server ${serverVersion.format()}`);
         }
     }
 

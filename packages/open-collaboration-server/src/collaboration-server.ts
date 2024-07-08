@@ -206,7 +206,7 @@ export class CollaborationServer {
         });
         app.get('/api/meta', async (_, res) => {
             const data: types.ProtocolServerMetaData = {
-                owner: process.env['OCT_SERVER_OWNER'] ?? 'Unknown',
+                owner: this.configuration.getValue('oct-server-owner') ?? 'Unknown',
                 version: VERSION,
                 transports: [
                     'websocket',

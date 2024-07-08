@@ -24,6 +24,7 @@
     "passport-google-oauth20": "^2.0.0",
     "passport-oauth2": "~1.6.1",
     "reflect-metadata": "^0.1.13",
+    "semver": "^7.6.2",
     "socket.io": "^4.5.3",
     "ws": "^8.18.0",
     "yargs": "^17.7.2"

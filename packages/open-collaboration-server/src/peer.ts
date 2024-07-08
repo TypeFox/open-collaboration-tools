@@ -13,6 +13,7 @@ import { RoomManager } from './room-manager';
 import { Peer, PeerInfo, Room, User } from './types';
 import { CredentialsManager } from './credentials-manager';
 import { Logger, LoggerSymbol } from './utils/logging';
+import { parse } from 'semver';
 
 export const PeerFactory = Symbol('PeerFactory');
 export type PeerFactory = (info: PeerInfo) => Peer;
@@ -74,6 +75,15 @@ export class PeerImpl implements Peer {
     }
 
     private async receiveMessage(message: protocol.Message): Promise<void> {
+        const messageVersion = parse(message.version);
+        if (!messageVersion) {
+            this.logger.warn(`Received message with invalid version: ${message.version}. Ignoring message.`);
+            return;
+        }
+        if (!protocol.compatibleVersions(messageVersion)) {
+            this.logger.warn(`Received message with incompatible version: ${message.version}; expected: ${protocol.VERSION}. Ignoring message.`);
+            return;
+        }
         if (protocol.ResponseMessage.isBinary(message) || protocol.ResponseErrorMessage.isBinary(message)) {
             this.messageRelay.pushResponse(this, message);
         } else if (protocol.RequestMessage.isBinary(message)) {
