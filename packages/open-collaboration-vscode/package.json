@@ -16,7 +16,6 @@
     "co-edit",
     "pair-programming"
   ],
-  "preview": true,
   "license": "MIT",
   "icon": "data/oct-logo.png",
   "galleryBanner": {
@@ -55,7 +54,7 @@
         "oct.serverUrl": {
           "type": "string",
           "default": "https://api.open-collab.tools/",
-          "description": "URL of the OCT Server instance for live collaboration sessions."
+          "description": "URL of the Open Collaboration Tools Server instance for live collaboration sessions."
         }
       }
     },
@@ -86,26 +85,26 @@
       {
         "command": "oct.followPeer",
         "title": "Follow Peer",
-        "category": "OCT",
+        "category": "Open Collaboration Tools",
         "icon": "$(eye)"
       },
       {
         "command": "oct.stopFollowPeer",
         "title": "Stop Following Peer",
-        "category": "OCT",
+        "category": "Open Collaboration Tools",
         "icon": "$(eye-closed)"
       },
       {
         "command": "oct.closeConnection",
         "title": "Close Current Connection",
-        "category": "OCT",
+        "category": "Open Collaboration Tools",
         "icon": "$(close)",
         "when": "oct.connection === true"
       },
       {
         "command": "oct.signOut",
         "title": "Sign Out",
-        "category": "OCT",
+        "category": "Open Collaboration Tools",
         "icon": "$(sign-out)"
       }
     ],
@@ -120,7 +119,7 @@
       },
       {
         "id": "oct.user.green",
-        "description": "Color for user 1 in OCT collaboration sessions",
+        "description": "Color for user 2 in OCT collaboration sessions",
         "defaults": {
           "dark": "#107c10",
           "light": "#107c10"
@@ -128,7 +127,7 @@
       },
       {
         "id": "oct.user.magenta",
-        "description": "Color for user 1 in OCT collaboration sessions",
+        "description": "Color for user 3 in OCT collaboration sessions",
         "defaults": {
           "dark": "#b4009e",
           "light": "#b4009e"
@@ -136,7 +135,7 @@
       },
       {
         "id": "oct.user.lightGreen",
-        "description": "Color for user 1 in OCT collaboration sessions",
+        "description": "Color for user 4 in OCT collaboration sessions",
         "defaults": {
           "dark": "#bad80a",
           "light": "#bad80a"
@@ -144,7 +143,7 @@
       },
       {
         "id": "oct.user.lightOrange",
-        "description": "Color for user 1 in OCT collaboration sessions",
+        "description": "Color for user 5 in OCT collaboration sessions",
         "defaults": {
           "dark": "#ff8c00",
           "light": "#ff8c00"
@@ -152,7 +151,7 @@
       },
       {
         "id": "oct.user.lightMagenta",
-        "description": "Color for user 1 in OCT collaboration sessions",
+        "description": "Color for user 6 in OCT collaboration sessions",
         "defaults": {
           "dark": "#e3008c",
           "light": "#e3008c"
