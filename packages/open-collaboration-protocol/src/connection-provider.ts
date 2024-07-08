@@ -37,13 +37,21 @@ export class ConnectionProvider {
 
     private options: ConnectionProviderOptions;
     private fetch: Fetch;
-    private protocolVersion: string;
+    private protocolVersion: semver.SemVer;
 
     constructor(options: ConnectionProviderOptions) {
         this.options = options;
         this.fetch = options.fetch ?? ((url, options) => fetch(url, options));
         this.userAuthToken = options.userToken;
-        this.protocolVersion = options.protocolVersion ?? VERSION;
+        if (options.protocolVersion) {
+            const parsed = semver.parse(options.protocolVersion);
+            if (!parsed) {
+                throw new Error('Invalid protocol version provided: ' + options.protocolVersion);
+            }
+            this.protocolVersion = parsed;
+        } else {
+            this.protocolVersion = new semver.SemVer(VERSION);
+        }
     }
 
     protected userAuthToken?: string;
@@ -84,16 +92,30 @@ export class ConnectionProvider {
 
     async ensureCompatibility(): Promise<void> {
         const metadata = await this.getMetaData();
-        if (!semver.valid(metadata.version)) {
+        const serverVersion = semver.parse(metadata.version);
+        if (!serverVersion) {
             throw new Error('Invalid protocol version returned by server: ' + metadata.version);
         }
-        if (!semver.valid(this.protocolVersion)) {
-            throw new Error('Invalid protocol version provided by client: ' + this.protocolVersion);
-        }
-        // Check if the server version is compatible with the client version
-        const serverVersionRange = `^${metadata.version}`;
-        if (!semver.satisfies(this.protocolVersion, serverVersionRange)) {
+        if (!this.satisfiesSemver(serverVersion)) {
             throw new Error(`Incompatible protocol versions: client ${this.protocolVersion}, server ${metadata.version}`);
+        }
+    }
+
+    /**
+     * Returns whether the client protocol version is compatible with the server protocol version.
+     * The client and server are compatible if they either share the same major version or if both are in the `0.x` range and they share the same minor version.
+     * 
+     * After the first major version, minor versions only indicate backwards-compatible changes.
+     * In the `0.x` range, minor versions indicate backwards-incompatible changes.
+     * Patch versions are ignored for compatibility checks.
+     */
+    private satisfiesSemver(serverVersion: semver.SemVer): boolean {
+        if (this.protocolVersion.major !== serverVersion.major) {
+            return false;
+        } else if (this.protocolVersion.major === 0 && serverVersion.major === 0) {
+            return this.protocolVersion.minor === serverVersion.minor;
+        } else {
+            return true;
         }
     }
 
