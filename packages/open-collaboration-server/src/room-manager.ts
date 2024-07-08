@@ -69,7 +69,7 @@ export class RoomManager {
             },
             host: true
         };
-        this.logger.info(`Prepared room [id: ${claim.room}] for user [provider: ${user.authProvider} id: ${user.id} | name: ${user.name} | email: ${user.email}]`)
+        this.logger.info(`Prepared room [id: ${claim.room}] for user [provider: ${user.authProvider} | id: ${user.id} | name: ${user.name} | email: ${user.email}]`)
         const jwt = await this.credentials.generateJwt(claim);
         return {
             id,
@@ -84,7 +84,7 @@ export class RoomManager {
             room = new Room(roomId, peer, []);
             this.rooms.set(room.id, room);
             this.peers.set(peer.id, room);
-            this.logger.info(`Created room with id: ${room.id}`);
+            this.logger.info(`Host [id: ${peer.id} | client: ${peer.client} | userId: ${peer.user.id} | name: ${peer.user.name} | email: ${peer.user.email}] created room [id: ${room.id}]`);
             peer.channel.onClose(() => {
                 this.closeRoom(room.id);
             });
@@ -97,7 +97,7 @@ export class RoomManager {
             const allKeys = room.peers.map(peer => peer.toEncryptionKey());
             this.peers.set(peer.id, room);
             room.guests.push(peer);
-            this.logger.info(`From peer [id: ${peer.id}] peer user [id: ${peer.user.id} | name: ${peer.user.name} | email: ${peer.user.email}] joined room [id: ${room.id}]`);
+            this.logger.info(`Peer [id: ${peer.id} | client: ${peer.client} | userId: ${peer.user.id} | name: ${peer.user.name} | email: ${peer.user.email}] joined room [id: ${room.id}]`);
             if (allKeys.length > 0) {
                 try {
                     const encryptedMessage = await Encryption.encrypt(broadcastMessage, { symmetricKey }, ...allKeys);

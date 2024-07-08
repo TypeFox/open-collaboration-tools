@@ -29,6 +29,10 @@ export class PeerImpl implements Peer {
         return this.peerInfo.publicKey;
     }
 
+    get client(): string {
+        return this.peerInfo.client;
+    }
+
     get supportedCompression(): string[] {
         return this.peerInfo.supportedCompression;
     }

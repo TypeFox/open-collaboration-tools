@@ -13,6 +13,7 @@ export type Fetch = (url: string, options?: FetchRequestOptions) => Promise<Fetc
 export interface ConnectionProviderOptions {
     url: string;
     userToken?: string;
+    client?: string;
     fetch: Fetch;
     opener: (url: string) => void;
     transports: MessageTransportProvider[];
@@ -81,7 +82,7 @@ export class ConnectionProvider {
             const validateResponse = await this.fetch(this.getUrl('/api/login/validate'), {
                 method: 'POST',
                 headers: {
-                    'x-jwt': this.userAuthToken!
+                    'x-oct-jwt': this.userAuthToken!
                 }
             });
             return validateResponse.status === 200;
@@ -99,7 +100,7 @@ export class ConnectionProvider {
         const response = await this.fetch(this.getUrl('/api/session/create'), {
             method: 'POST',
             headers: {
-                'x-jwt': this.userAuthToken!
+                'x-oct-jwt': this.userAuthToken!
             }
         });
         const body: types.CreateRoomResponse = await response.json();
@@ -119,7 +120,7 @@ export class ConnectionProvider {
         const response = await this.fetch(this.getUrl(`/api/session/join/${roomId}`), {
             method: 'POST',
             headers: {
-                'x-jwt': this.userAuthToken!
+                'x-oct-jwt': this.userAuthToken!
             }
         });
         const body: types.JoinRoomResponse = await response.json();
@@ -140,9 +141,10 @@ export class ConnectionProvider {
         const transportProvider = this.options.transports[transportIndex];
         const keyPair = await Encryption.generateKeyPair();
         const transport = transportProvider.createTransport(this.options.url, {
-            'x-jwt': roomAuthToken,
-            'x-public-key': keyPair.publicKey,
-            'x-compression': 'gzip'
+            'x-oct-jwt': roomAuthToken,
+            'x-oct-public-key': keyPair.publicKey,
+            'x-oct-client': this.options.client ?? 'Unknown OCT JS Client',
+            'x-oct-compression': 'gzip'
         });
         const connection = createConnection(
             {

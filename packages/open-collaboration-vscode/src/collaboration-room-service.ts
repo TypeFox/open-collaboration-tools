@@ -4,10 +4,9 @@ import { CollaborationInstance, CollaborationInstanceFactory } from "./collabora
 import { CollaborationUri } from "./utils/uri";
 import { inject, injectable } from "inversify";
 import { ExtensionContext } from "./inversify";
-import { CollaborationConnectionProvider } from "./collaboration-connection-provider";
+import { CollaborationConnectionProvider, OCT_USER_TOKEN } from "./collaboration-connection-provider";
 
 export const OCT_ROOM_DATA = 'oct.roomData';
-export const OCT_USER_TOKEN = 'oct.userToken';
 
 interface RoomData {
     roomToken: string;

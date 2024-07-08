@@ -3,7 +3,7 @@ import { inject, injectable } from "inversify";
 import { FollowService } from './follow-service';
 import { CollaborationInstance, DisposablePeer } from './collaboration-instance';
 import { ExtensionContext } from './inversify';
-import { CollaborationConnectionProvider } from './collaboration-connection-provider';
+import { CollaborationConnectionProvider, OCT_USER_TOKEN } from './collaboration-connection-provider';
 import { showQuickPick } from './utils/quick-pick';
 import { ContextKeyService } from './context-key-service';
 import { CollaborationRoomService } from './collaboration-room-service';
@@ -77,8 +77,8 @@ export class Commands {
                 }
             }),
             vscode.commands.registerCommand('oct.closeConnection', async () => {
-                const instance = CollaborationInstance.Current
-                if(instance) {
+                const instance = CollaborationInstance.Current;
+                if (instance) {
                     instance.dispose();
                     this.contextKeyService.setConnection(undefined);
                     if (!instance.host) {
@@ -89,7 +89,7 @@ export class Commands {
             }),
             vscode.commands.registerCommand('oct.signOut', async () => {
                 await vscode.commands.executeCommand('oct.closeConnection');
-                await this.context.secrets.delete('oct.userToken');
+                await this.context.secrets.delete(OCT_USER_TOKEN);
                 vscode.window.showInformationMessage('Signed out successfully');
             })
         );

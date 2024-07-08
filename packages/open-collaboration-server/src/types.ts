@@ -41,6 +41,7 @@ export const PeerInfo = Symbol('PeerInfo');
 export interface PeerInfo {
     user: User;
     host: boolean;
+    client: string;
     publicKey: string;
     supportedCompression: string[];
     channel: Channel;
@@ -48,6 +49,7 @@ export interface PeerInfo {
 
 export interface Peer {
     id: string;
+    client: string;
     host: boolean;
     user: User;
     channel: Channel;
