@@ -5,7 +5,7 @@
 // ******************************************************************************
 
 import * as types from './types';
-import { BroadcastType, RequestType, NotificationType } from 'open-collaboration-rpc';
+import { BroadcastType, RequestType, NotificationType } from './messaging';
 
 export namespace Messages {
 

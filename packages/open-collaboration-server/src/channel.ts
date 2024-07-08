@@ -6,7 +6,7 @@
 
 import { Socket } from 'socket.io';
 import * as ws from 'ws';
-import { Disposable, Emitter, Encoding, BinaryMessage, Event } from 'open-collaboration-rpc';
+import { Disposable, Emitter, Encoding, BinaryMessage, Event } from 'open-collaboration-protocol';
 
 export interface Channel {
     onMessage(cb: (message: BinaryMessage) => void): Disposable;

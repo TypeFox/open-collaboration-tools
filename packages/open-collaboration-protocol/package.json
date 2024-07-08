@@ -9,7 +9,10 @@
   "main": "./lib/index.js",
   "types": "./lib/index.d.ts",
   "dependencies": {
-    "open-collaboration-rpc": "0.0.7"
+    "base64-js": "^1.5.1",
+    "fflate": "^0.8.2",
+    "msgpackr": "^1.10.2",
+    "semver": "^7.6.2"
   },
   "keywords": [
     "collaboration",

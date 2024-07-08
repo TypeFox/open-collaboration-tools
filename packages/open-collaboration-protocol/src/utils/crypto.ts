@@ -35,12 +35,12 @@ export async function getCryptoLib(): Promise<CryptoLib> {
     if (isBrowser) {
         return fromCryptoModule(self.crypto);
     } else {
-        const node = await import('crypto');
+        const node = await import('node:crypto');
         return fromCryptoModule(node.webcrypto);
     }
 }
 
-async function fromCryptoModule(crypto: typeof self.crypto | typeof import('crypto').webcrypto): Promise<CryptoLib> {
+async function fromCryptoModule(crypto: typeof self.crypto | typeof import('node:crypto').webcrypto): Promise<CryptoLib> {
     const subtle = crypto.subtle;
     return {
         async generateKeyPair() {
@@ -66,7 +66,7 @@ async function fromCryptoModule(crypto: typeof self.crypto | typeof import('cryp
             return toBase64(new Uint8Array(exportedKey));
         },
         async generateIV() {
-            const iv = (crypto.getRandomValues as typeof self.crypto.getRandomValues)(new Uint8Array(16));
+            const iv = (crypto.getRandomValues<Uint8Array>)(new Uint8Array(16));
             return toBase64(iv);
         },
         async symEncrypt(data: Uint8Array, key: string, iv: string) {

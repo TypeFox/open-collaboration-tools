@@ -6,10 +6,8 @@
 
 import { NotificationMessage, BinaryNotificationMessage, RequestMessage, BinaryRequestMessage, ErrorMessage, ResponseErrorMessage, BinaryResponseErrorMessage, BroadcastMessage, BinaryBroadcastMessage, BinaryErrorMessage, ResponseMessage, BinaryResponseMessage, Message, MessageContentKey, CompressionAlgorithm } from './messages';
 import { Encoding } from './encoding';
-import { getCryptoLib } from './utils/crypto';
 import { Compression } from './compression';
-import { MaybePromise } from './utils';
-import { fromBase64, toBase64 } from './utils/base64';
+import { MaybePromise, fromBase64, toBase64, getCryptoLib } from '../utils';
 
 export namespace Encryption {
 

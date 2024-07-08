@@ -1,5 +1,5 @@
 import type { Express } from 'express';
-import { Event } from 'open-collaboration-rpc';
+import { Event } from 'open-collaboration-protocol';
 import { User } from '../types';
 
 export type UserInfo = Omit<User, 'id'>;

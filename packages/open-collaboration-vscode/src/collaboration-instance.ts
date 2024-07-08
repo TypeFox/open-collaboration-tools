@@ -1,10 +1,9 @@
-import { ProtocolBroadcastConnection } from "open-collaboration-protocol";
+import { ProtocolBroadcastConnection, Deferred, DisposableCollection } from "open-collaboration-protocol";
 import * as vscode from 'vscode';
 import * as Y from 'yjs';
 import * as awarenessProtocol from 'y-protocols/awareness';
 import * as types from 'open-collaboration-protocol';
 import { CollaborationFileSystemProvider } from "./collaboration-file-system";
-import { Deferred, DisposableCollection } from "open-collaboration-rpc";
 import * as paths from 'path';
 import { LOCAL_ORIGIN, OpenCollaborationYjsProvider } from 'open-collaboration-yjs';
 import { createMutex } from 'lib0/mutex';

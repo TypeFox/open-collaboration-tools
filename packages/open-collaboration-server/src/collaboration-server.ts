@@ -19,8 +19,8 @@ import { User } from './types';
 import * as types from 'open-collaboration-protocol';
 import { AuthEndpoint } from './auth-endpoints/auth-endpoint';
 import { Logger, LoggerSymbol } from './utils/logging';
+import { VERSION } from 'open-collaboration-protocol';
 import { Configuration } from './utils/configuration';
-import { VERSION } from 'open-collaboration-rpc';
 
 @injectable()
 export class CollaborationServer {

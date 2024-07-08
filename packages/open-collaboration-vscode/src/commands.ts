@@ -69,10 +69,14 @@ export class Commands {
                         { label: '$(vm-connect) Join Collaboration Session' }
                     ];
                     const index = await showQuickPick(quickPick);
-                    if (index === 0) {
-                        await this.roomService.createRoom(connectionProvider);
-                    } else if (index === 1) {
-                        await this.roomService.joinRoom(connectionProvider);
+                    try {
+                        if (index === 0) {
+                            await this.roomService.createRoom(connectionProvider);
+                        } else if (index === 1) {
+                            await this.roomService.joinRoom(connectionProvider);
+                        }
+                    } catch (error) {
+                        vscode.window.showErrorMessage('Failed to create or join room: ' + String(error));
                     }
                 }
             }),

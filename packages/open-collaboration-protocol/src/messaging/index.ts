@@ -4,7 +4,8 @@
 // terms of the MIT License, which is available in the project root.
 // ******************************************************************************
 
-export * from './disposable';
-export * from './event';
-export * from './promise';
-export * from './types';
+export * from './abstract-connection';
+export * from './compression';
+export * from './encoding';
+export * from './encryption';
+export * from './messages';

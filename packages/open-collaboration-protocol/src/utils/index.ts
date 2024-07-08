@@ -4,10 +4,10 @@
 // terms of the MIT License, which is available in the project root.
 // ******************************************************************************
 
-export * from './messaging';
-export * from './transport';
-export * from './utils';
-export * from './messages';
+export * from './base64';
+export * from './crypto';
+export * from './disposable';
+export * from './event';
+export * from './promise';
+export * from './system';
 export * from './types';
-export * from './connection';
-export * from './connection-provider';

@@ -4,9 +4,10 @@
 // terms of the MIT License, which is available in the project root.
 // ******************************************************************************
 
-import { AbstractBroadcastConnection, BroadcastConnection, Handler, MessageTarget, MessageTransport, Encryption } from 'open-collaboration-rpc';
 import type * as types from './types';
+import { AbstractBroadcastConnection, BroadcastConnection, Handler, MessageTarget, Encryption } from './messaging';
 import { Messages } from './messages';
+import { MessageTransport } from './transport';
 
 export interface RoomHandler {
     onJoin(handler: Handler<[types.Peer]>): void;

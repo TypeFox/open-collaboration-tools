@@ -1,6 +1,6 @@
 import { inject, injectable } from 'inversify';
 import { type Express } from 'express';
-import { Emitter } from 'open-collaboration-rpc';
+import { Emitter } from 'open-collaboration-protocol';
 import { AuthEndpoint, AuthSuccessEvent } from './auth-endpoint';
 import { Logger, LoggerSymbol } from '../utils/logging';
 import { Configuration } from '../utils/configuration';

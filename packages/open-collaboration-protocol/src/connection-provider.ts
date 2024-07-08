@@ -4,8 +4,10 @@
 // terms of the MIT License, which is available in the project root.
 // ******************************************************************************
 
-import { Encryption, MessageTransportProvider } from "open-collaboration-rpc";
+import { Encryption, VERSION } from "./messaging";
+import { MessageTransportProvider } from "./transport";
 import { ProtocolBroadcastConnection, createConnection } from "./connection";
+import * as semver from 'semver';
 import * as types from './types';
 
 export type Fetch = (url: string, options?: FetchRequestOptions) => Promise<FetchResponse>;
@@ -14,6 +16,7 @@ export interface ConnectionProviderOptions {
     url: string;
     userToken?: string;
     client?: string;
+    protocolVersion?: string;
     fetch: Fetch;
     opener: (url: string) => void;
     transports: MessageTransportProvider[];
@@ -34,11 +37,13 @@ export class ConnectionProvider {
 
     private options: ConnectionProviderOptions;
     private fetch: Fetch;
+    private protocolVersion: string;
 
     constructor(options: ConnectionProviderOptions) {
         this.options = options;
         this.fetch = options.fetch ?? ((url, options) => fetch(url, options));
         this.userAuthToken = options.userToken;
+        this.protocolVersion = options.protocolVersion ?? VERSION;
     }
 
     protected userAuthToken?: string;
@@ -77,6 +82,21 @@ export class ConnectionProvider {
         return confirmBody.token;
     }
 
+    async ensureCompatibility(): Promise<void> {
+        const metadata = await this.getMetaData();
+        if (!semver.valid(metadata.version)) {
+            throw new Error('Invalid protocol version returned by server: ' + metadata.version);
+        }
+        if (!semver.valid(this.protocolVersion)) {
+            throw new Error('Invalid protocol version provided by client: ' + this.protocolVersion);
+        }
+        // Check if the server version is compatible with the client version
+        const serverVersionRange = `^${metadata.version}`;
+        if (!semver.satisfies(this.protocolVersion, serverVersionRange)) {
+            throw new Error(`Incompatible protocol versions: client ${this.protocolVersion}, server ${metadata.version}`);
+        }
+    }
+
     async validate(): Promise<boolean> {
         if (this.userAuthToken) {
             const validateResponse = await this.fetch(this.getUrl('/api/login/validate'), {
@@ -92,6 +112,7 @@ export class ConnectionProvider {
     }
 
     async createRoom(): Promise<types.CreateRoomResponse> {
+        await this.ensureCompatibility();
         const valid = await this.validate();
         let loginToken: string | undefined;
         if (!valid) {
@@ -112,6 +133,7 @@ export class ConnectionProvider {
     }
 
     async joinRoom(roomId: string): Promise<types.JoinRoomResponse> {
+        await this.ensureCompatibility();
         const valid = await this.validate();
         let loginToken: string | undefined;
         if (!valid) {
@@ -135,9 +157,8 @@ export class ConnectionProvider {
     }
 
     async connect(roomAuthToken: string, host?: types.Peer): Promise<ProtocolBroadcastConnection> {
-        const metadata = await this.fetch(this.getUrl('/api/meta'));
-        const metadataBody = await metadata.json() as types.ProtocolServerMetaData;
-        const transportIndex = this.findFitting(metadataBody.transports, this.options.transports.map(t => t.id));
+        const metadata = await this.getMetaData();
+        const transportIndex = this.findFitting(metadata.transports, this.options.transports.map(t => t.id));
         const transportProvider = this.options.transports[transportIndex];
         const keyPair = await Encryption.generateKeyPair();
         const transport = transportProvider.createTransport(this.options.url, {
@@ -149,12 +170,17 @@ export class ConnectionProvider {
         const connection = createConnection(
             {
                 privateKey: keyPair.privateKey,
-                publicServerKey: metadataBody.publicKey,
+                publicServerKey: metadata.publicKey,
                 transport,
                 host
             }
         );
         return connection;
+    }
+
+    private async getMetaData(): Promise<types.ProtocolServerMetaData> {
+        const response = await this.fetch(this.getUrl('/api/meta'));
+        return await response.json();
     }
 
     private findFitting(available: string[], desired: string[]): number {

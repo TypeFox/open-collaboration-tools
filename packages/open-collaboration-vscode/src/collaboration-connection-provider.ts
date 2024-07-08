@@ -1,12 +1,11 @@
 import * as vscode from 'vscode';
 import { inject, injectable } from "inversify";
-import { ConnectionProvider } from 'open-collaboration-protocol';
-import { WebSocketTransportProvider } from 'open-collaboration-rpc';
-import { WebSocket } from 'ws';
+import { ConnectionProvider, WebSocketTransportProvider } from 'open-collaboration-protocol'
+import * as ws from 'ws';
 import fetch from 'node-fetch';
 import { ExtensionContext } from './inversify';
 
-(global as any).WebSocket = WebSocket;
+WebSocketTransportProvider.Constructor = ws.WebSocket as any;
 
 export const OCT_USER_TOKEN = 'oct.userToken';
 

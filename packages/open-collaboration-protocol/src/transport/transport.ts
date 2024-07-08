@@ -4,7 +4,7 @@
 // terms of the MIT License, which is available in the project root.
 // ******************************************************************************
 
-import { Event } from './utils/event';
+import { Event } from '../utils/event';
 
 export type ConnectionWriter = (data: ArrayBuffer) => void;
 export type ConnectionReader = (cb: (data: ArrayBuffer) => void) => void;

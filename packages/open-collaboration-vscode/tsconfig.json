@@ -10,9 +10,6 @@
             "path": "../open-collaboration-protocol/tsconfig.json"
         },
         {
-            "path": "../open-collaboration-rpc/tsconfig.json"
-        },
-        {
             "path": "../open-collaboration-yjs/tsconfig.json"
         }
     ],

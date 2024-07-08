@@ -4,9 +4,6 @@
     "rootDir": "src",
     "outDir": "lib"
   },
-  "references": [{
-    "path": "../open-collaboration-rpc/tsconfig.json"
-  }],
   "include": [
     "src/**/*.ts"
   ]
