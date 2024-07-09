@@ -168,8 +168,8 @@
   "dependencies": {
     "inversify": "^6.0.2",
     "reflect-metadata": "^0.2.2",
-    "open-collaboration-yjs": "0.0.3",
-    "open-collaboration-protocol": "0.0.10",
+    "open-collaboration-yjs": "0.0.4",
+    "open-collaboration-protocol": "0.0.11",
     "lodash.debounce": "^4.0.8",
     "node-fetch": "^2.0.0",
     "ws": "^8.18.0"

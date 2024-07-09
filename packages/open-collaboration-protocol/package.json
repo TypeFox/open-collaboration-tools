@@ -1,6 +1,6 @@
 {
   "name": "open-collaboration-protocol",
-  "version": "0.0.10",
+  "version": "0.0.11",
   "description": "Open Collaboration Protocol implementation, part of the Open Collaboration Tools project",
   "files": [
     "lib",
@@ -10,10 +10,10 @@
   "types": "./lib/index.d.ts",
   "exports": {
     "types": "./lib/index.d.ts",
-    "require": "./lib/index-node.js",
-    "node": "./lib/index-node.js",
+    "browser": "./lib/index-browser.js",
     "import": "./lib/index-browser.js",
-    "browser": "./lib/index-browser.js"
+    "node": "./lib/index-node.js",
+    "require": "./lib/index-node.js"
   },
   "dependencies": {
     "base64-js": "^1.5.1",
