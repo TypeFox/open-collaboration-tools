@@ -9,7 +9,7 @@ import { MessageTransportProvider } from "./transport";
 import { ProtocolBroadcastConnection, createConnection } from "./connection";
 import * as semver from 'semver';
 import * as types from './types';
-import { VERSION, compatibleVersions } from "./utils/version";
+import { SEM_VERSION, compatibleVersions } from "./utils/version";
 
 export type Fetch = (url: string, options?: FetchRequestOptions) => Promise<FetchResponse>;
 
@@ -51,7 +51,7 @@ export class ConnectionProvider {
             }
             this.protocolVersion = parsed;
         } else {
-            this.protocolVersion = new semver.SemVer(VERSION);
+            this.protocolVersion = SEM_VERSION;
         }
     }
 

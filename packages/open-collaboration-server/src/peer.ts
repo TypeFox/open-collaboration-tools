@@ -52,7 +52,7 @@ export class PeerImpl implements Peer {
     get room(): Room {
         const value = this.roomManager.getRoomByPeerId(this.id);
         if (!value) {
-            throw this.logger.createErrorAndLog('This peer does not belong to any room');
+            throw this.logger.createErrorAndLog(`Peer '${this.id}' does not belong to any room`);
         }
         return value;
     }

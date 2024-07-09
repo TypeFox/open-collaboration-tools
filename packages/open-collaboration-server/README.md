@@ -18,6 +18,7 @@ Environment variables
 
 | Variable | Description |
 |--------------------|---|
+| OCT_SERVER_OWNER          | Name of the server owner. E.g. the name of the company that hosts the server |
 | OCT_JWT_PRIVATE_KEY           | The private key for encoding the JWT's used for authenticating users  |
 | OCT_LOGIN_PAGE_URL        | Url of the login page. Defaults to /login.html?token={token}  |
 | OCT_LOGIN_SUCCESS_URL     | Url of the login success page. Defaults a simple "Login Successful. You can close this page" text  |
