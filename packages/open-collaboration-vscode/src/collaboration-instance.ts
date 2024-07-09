@@ -258,19 +258,22 @@ export class CollaborationInstance implements vscode.Disposable {
         });
         connection.room.onJoin(async (_, peer) => {
             this.peers.set(peer.id, new DisposablePeer(this.yjsAwareness, peer));
-            const roots = vscode.workspace.workspaceFolders ?? [];
-            const initData: types.InitData = {
-                protocol: '0.0.1',
-                host: await this.identity.promise,
-                guests: Array.from(this.peers.values()).map(e => e.peer),
-                capabilities: {},
-                permissions: { readonly: false },
-                workspace: {
-                    name: vscode.workspace.name ?? 'Collaboration',
-                    folders: roots.map(e => e.name)
-                }
-            };
-            connection.peer.init(peer.id, initData);
+            if (this.host) {
+                // Only initialize the user if we are the host
+                const roots = vscode.workspace.workspaceFolders ?? [];
+                const initData: types.InitData = {
+                    protocol: types.VERSION,
+                    host: await this.identity.promise,
+                    guests: Array.from(this.peers.values()).map(e => e.peer),
+                    capabilities: {},
+                    permissions: { readonly: false },
+                    workspace: {
+                        name: vscode.workspace.name ?? 'Collaboration',
+                        folders: roots.map(e => e.name)
+                    }
+                };
+                connection.peer.init(peer.id, initData);
+            }
             this.onDidUsersChangeEmitter.fire();
         });
         connection.room.onLeave(async (_, peer) => {
