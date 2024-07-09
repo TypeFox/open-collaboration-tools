@@ -6,8 +6,15 @@
     "lib",
     "src"
   ],
-  "main": "./lib/index.js",
+  "main": "./lib/index-node.js",
   "types": "./lib/index.d.ts",
+  "exports": {
+    "types": "./lib/index.d.ts",
+    "require": "./lib/index-node.js",
+    "node": "./lib/index-node.js",
+    "import": "./lib/index-browser.js",
+    "browser": "./lib/index-browser.js"
+  },
   "dependencies": {
     "base64-js": "^1.5.1",
     "fflate": "^0.8.2",

@@ -5,7 +5,8 @@
 // ******************************************************************************
 
 import { fromBase64, toBase64 } from './base64';
-import { isBrowser } from './system';
+
+const Crypto = Symbol('Crypto');
 
 export interface KeyPair {
     publicKey: string;
@@ -31,16 +32,18 @@ export interface CryptoLib {
     generateKeyPair(): Promise<KeyPair>;
 }
 
-export async function getCryptoLib(): Promise<CryptoLib> {
-    if (isBrowser) {
-        return fromCryptoModule(self.crypto);
-    } else {
-        const node = await import('node:crypto');
-        return fromCryptoModule(node.webcrypto);
-    }
+export type CryptoModule = typeof self.crypto | typeof import('node:crypto').webcrypto;
+
+export function setCryptoModule(module: CryptoModule): void {
+    (global as any)[Crypto] = module;
 }
 
-async function fromCryptoModule(crypto: typeof self.crypto | typeof import('node:crypto').webcrypto): Promise<CryptoLib> {
+export function getCryptoLib(): CryptoLib {
+    const cryptoModule = (global as any)[Crypto] as CryptoModule;
+    return fromCryptoModule(cryptoModule);
+}
+
+function fromCryptoModule(crypto: CryptoModule): CryptoLib {
     const subtle = crypto.subtle;
     return {
         async generateKeyPair() {

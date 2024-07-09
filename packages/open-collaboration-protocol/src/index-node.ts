@@ -4,10 +4,7 @@
 // terms of the MIT License, which is available in the project root.
 // ******************************************************************************
 
-export * from './base64';
-export * from './crypto';
-export * from './disposable';
-export * from './event';
-export * from './promise';
-export * from './types';
-export * from './version';
+import { setCryptoModule } from './utils/crypto';
+setCryptoModule(require('node:crypto'));
+
+export * from './index';

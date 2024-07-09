@@ -4,4 +4,7 @@
 // terms of the MIT License, which is available in the project root.
 // ******************************************************************************
 
-export const isBrowser = typeof self !== 'undefined';
+import { setCryptoModule } from './utils/crypto';
+setCryptoModule(self.crypto);
+
+export * from './index';
