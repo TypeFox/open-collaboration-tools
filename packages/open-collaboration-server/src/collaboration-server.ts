@@ -144,7 +144,7 @@ export class CollaborationServer {
             next();
         });
         app.use(async (req, res, next) => {
-            if (req.method === 'POST' && req.url.startsWith('/api/') && !req.url.startsWith('/api/login/')) {
+            if (req.method === 'POST' && req.url.startsWith('/api/') && !req.url.startsWith('/api/login/') && !req.url.startsWith('/api/meta')) {
                 const user = await this.getUserFromAuth(req);
                 if (!user) {
                     res.status(403);
