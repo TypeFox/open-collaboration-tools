@@ -105,7 +105,7 @@ export class PeerImpl implements Peer {
             try {
                 this.messageRelay.sendNotification(this.getTargetPeer(message.target), message);
             } catch (error) {
-                this.logger.error(`Failed sending notification to: ${message.target}`);
+                this.logger.error(`Failed sending notification to: ${message.target || '<empty>'}`);
             }
         } else if (protocol.BroadcastMessage.isBinary(message)) {
             this.messageRelay.sendBroadcast(this, message);
@@ -115,7 +115,7 @@ export class PeerImpl implements Peer {
     private getTargetPeer(targetId: string | undefined): Peer {
         const peer = targetId ? this.room.getPeer(targetId) : undefined;
         if (!peer) {
-            throw this.logger.createErrorAndLog(`Could not find the target peer: ${targetId}`);
+            throw this.logger.createErrorAndLog(`Could not find the target peer: ${targetId || '<empty>'}`);
         }
         return peer;
     }

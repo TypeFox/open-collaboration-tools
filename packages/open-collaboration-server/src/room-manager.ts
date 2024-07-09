@@ -154,7 +154,7 @@ export class RoomManager {
 
     async requestJoin(room: Room, user: User): Promise<{ jwt: string, response: JoinResponse }> {
         try {
-        	this.logger.info(`Request to join room [id: '${room.id}'] by user [id: '${user.id}' | name: '${user.name}' | email: '${user.email}']`);
+        	this.logger.info(`Request to join room [id: '${room.id}'] by user [id: '${user.id}' | name: '${user.name}' | email: '${user.email ?? '<none>'}']`);
             const symmetricKey = await this.credentials.getSymmetricKey();
             const privateKey = await this.credentials.getPrivateKey();
             const requestMessage = RequestMessage.create(Messages.Peer.Join, this.credentials.secureId(), '', room.host.id, [user]);
