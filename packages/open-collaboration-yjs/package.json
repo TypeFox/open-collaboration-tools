@@ -1,6 +1,6 @@
 {
   "name": "open-collaboration-yjs",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Open Collaboration Yjs integration, part of the Open Collaboration Tools project",
   "files": [
     "lib",
@@ -10,7 +10,7 @@
   "types": "./lib/index.d.ts",
   "dependencies": {
     "lib0": "^0.2.94",
-    "open-collaboration-protocol": "0.0.8",
+    "open-collaboration-protocol": "0.0.9",
     "y-protocols": "^1.0.6"
   },
   "peerDependencies": {
