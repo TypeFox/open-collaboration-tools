@@ -11,9 +11,7 @@
   "exports": {
     "types": "./lib/index.d.ts",
     "browser": "./lib/index-browser.js",
-    "import": "./lib/index-browser.js",
-    "node": "./lib/index-node.js",
-    "require": "./lib/index-node.js"
+    "node": "./lib/index-node.js"
   },
   "dependencies": {
     "base64-js": "^1.5.1",
