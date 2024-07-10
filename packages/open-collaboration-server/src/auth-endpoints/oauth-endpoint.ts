@@ -51,7 +51,7 @@ export abstract class OAuthEndpoint implements AuthEndpoint {
         const loginSuccessURL = this.configuration.getValue('oct-login-success-url');
         app.get(this.redirectPath, async (req, res) => {
             const token = (req.query.state as string)
-            if(!token) {
+            if (!token) {
                 this.logger.error('missing token in request state');
                 res.status(400);
                 res.send(`Error: Missing token in request state`);
@@ -65,7 +65,7 @@ export abstract class OAuthEndpoint implements AuthEndpoint {
                     return;
                 }
                 try {
-                    await Promise.all(this.authSuccessEmitter.fire({token, userInfo}));
+                    await Promise.all(this.authSuccessEmitter.fire({ token, userInfo }));
                 } catch (err) {
                     this.logger.error('Error during login', err);
                     res.status(500);
@@ -91,7 +91,7 @@ export abstract class OAuthEndpoint implements AuthEndpoint {
 }
 
 @injectable()
-export class GitHubOAuthEndpoint  extends OAuthEndpoint {
+export class GitHubOAuthEndpoint extends OAuthEndpoint {
     protected id = 'github';
     protected path = '/api/login/github'
     protected redirectPath = '/api/login/github-callback'
@@ -106,7 +106,12 @@ export class GitHubOAuthEndpoint  extends OAuthEndpoint {
             clientSecret: this.configuration.getValue('oct-oauth-github-clientsecret')!,
             callbackURL: this.createRedirectUrl(hostname, port, this.redirectPath),
         }, (accessToken, refreshToken, profile, done) => {
-            done(undefined, { name: profile.displayName, email: profile.emails?.[0], authProvider: 'Github' } as UserInfo)
+            const userInfo: UserInfo = {
+                name: profile.displayName,
+                email: profile.emails?.[0]?.value,
+                authProvider: 'Github'
+            };
+            done(undefined, userInfo)
         });
     }
 }
@@ -129,7 +134,12 @@ export class GoogleOAuthEndpoint extends OAuthEndpoint {
             clientSecret: this.configuration.getValue('oct-oauth-google-clientsecret')!,
             callbackURL: this.createRedirectUrl(hostname, port, this.redirectPath),
         }, (accessToken, refreshToken, profile, done) => {
-            done(undefined, { name: profile.displayName, email: profile.emails?.find(mail => mail.verified)?.value, authProvider: 'Google' } as UserInfo)
+            const userInfo: UserInfo = {
+                name: profile.displayName,
+                email: profile.emails?.find(mail => mail.verified)?.value,
+                authProvider: 'Google'
+            };
+            done(undefined, userInfo)
         });
     }
 }
