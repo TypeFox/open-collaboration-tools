@@ -30,6 +30,7 @@ export interface FetchRequestOptions {
 
 export interface FetchResponse {
     status?: number;
+    ok: boolean;
     json(): Promise<any>;
     text(): Promise<string>;
 }
@@ -110,7 +111,7 @@ export class ConnectionProvider {
                     'x-oct-jwt': this.userAuthToken!
                 }
             });
-            return validateResponse.status === 200;
+            return validateResponse.ok;
         } else {
             return false;
         }
@@ -129,7 +130,7 @@ export class ConnectionProvider {
                 'x-oct-jwt': this.userAuthToken!
             }
         });
-        if (response.status !== 200) {
+        if (!response.ok) {
             throw new Error(await this.readError(response));
         }
         const body: types.CreateRoomResponse = await response.json();
@@ -153,7 +154,7 @@ export class ConnectionProvider {
                 'x-oct-jwt': this.userAuthToken!
             }
         });
-        if (response.status !== 200) {
+        if (!response.ok) {
             throw new Error(await this.readError(response));
         }
         const body: types.JoinRoomResponse = await response.json();
@@ -199,7 +200,7 @@ export class ConnectionProvider {
 
     private async getMetaData(): Promise<types.ProtocolServerMetaData> {
         const response = await this.fetch(this.getUrl('/api/meta'));
-        if (response.status !== 200) {
+        if (!response.ok) {
             throw new Error('Failed to fetch metadata');
         }
         return await response.json();
