@@ -2,7 +2,7 @@
   "name": "open-collaboration-tools",
   "displayName": "Open Collaboration Tools",
   "description": "Connect with others and live-share your code in real-time collaboration sessions",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "publisher": "typefox",
   "categories": [
     "Other"
@@ -37,7 +37,7 @@
   },
   "main": "./dist/extension.js",
   "engines": {
-    "vscode": "^1.89.0"
+    "vscode": "^1.60.0"
   },
   "activationEvents": [
     "onStartupFinished"
@@ -168,8 +168,8 @@
   "dependencies": {
     "inversify": "^6.0.2",
     "reflect-metadata": "^0.2.2",
-    "open-collaboration-yjs": "0.0.4",
-    "open-collaboration-protocol": "0.0.11",
+    "open-collaboration-yjs": "0.1.0",
+    "open-collaboration-protocol": "0.1.0",
     "lodash.debounce": "^4.0.8",
     "node-fetch": "^2.0.0",
     "ws": "^8.18.0"
@@ -177,7 +177,7 @@
   "devDependencies": {
     "@types/lodash.debounce": "^4.0.9",
     "@types/node-fetch": "^2.0.0",
-    "@types/vscode": "^1.89.0",
+    "@types/vscode": "^1.60.0",
     "@types/ws": "^8.5.10"
   }
 }
