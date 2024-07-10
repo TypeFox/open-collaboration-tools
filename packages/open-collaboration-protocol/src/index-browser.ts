@@ -4,10 +4,7 @@
 // terms of the MIT License, which is available in the project root.
 // ******************************************************************************
 
-export * from './encoding';
-export * from './encryption';
-export * from './transport';
-export * from './utils';
-export * from './messages';
-export * from './connection';
-export * from './websocket-transport';
+import { setCryptoModule } from './utils/crypto';
+setCryptoModule(self.crypto);
+
+export * from './index';

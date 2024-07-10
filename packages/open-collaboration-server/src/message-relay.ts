@@ -5,7 +5,7 @@
 // ******************************************************************************
 
 import { inject, injectable } from 'inversify';
-import { Deferred, BinaryBroadcastMessage, BinaryNotificationMessage, BinaryRequestMessage, BinaryResponseErrorMessage, BinaryResponseMessage } from 'open-collaboration-rpc';
+import { Deferred, BinaryBroadcastMessage, BinaryNotificationMessage, BinaryRequestMessage, BinaryResponseErrorMessage, BinaryResponseMessage } from 'open-collaboration-protocol';
 import { Peer } from './types';
 import { nanoid } from 'nanoid';
 import { Logger, LoggerSymbol } from './utils/logging';

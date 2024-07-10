@@ -4,15 +4,20 @@
 // terms of the MIT License, which is available in the project root.
 // ******************************************************************************
 
-import { Encryption, MessageTransportProvider } from "open-collaboration-rpc";
+import { Encryption } from "./messaging";
+import { MessageTransportProvider } from "./transport";
 import { ProtocolBroadcastConnection, createConnection } from "./connection";
+import * as semver from 'semver';
 import * as types from './types';
+import { SEM_VERSION, compatibleVersions } from "./utils/version";
 
 export type Fetch = (url: string, options?: FetchRequestOptions) => Promise<FetchResponse>;
 
 export interface ConnectionProviderOptions {
     url: string;
     userToken?: string;
+    client?: string;
+    protocolVersion?: string;
     fetch: Fetch;
     opener: (url: string) => void;
     transports: MessageTransportProvider[];
@@ -33,11 +38,21 @@ export class ConnectionProvider {
 
     private options: ConnectionProviderOptions;
     private fetch: Fetch;
+    private protocolVersion: semver.SemVer;
 
     constructor(options: ConnectionProviderOptions) {
         this.options = options;
         this.fetch = options.fetch ?? ((url, options) => fetch(url, options));
         this.userAuthToken = options.userToken;
+        if (options.protocolVersion) {
+            const parsed = semver.parse(options.protocolVersion);
+            if (!parsed) {
+                throw new Error('Invalid protocol version provided: ' + options.protocolVersion);
+            }
+            this.protocolVersion = parsed;
+        } else {
+            this.protocolVersion = SEM_VERSION;
+        }
     }
 
     protected userAuthToken?: string;
@@ -76,12 +91,23 @@ export class ConnectionProvider {
         return confirmBody.token;
     }
 
+    async ensureCompatibility(): Promise<void> {
+        const metadata = await this.getMetaData();
+        const serverVersion = semver.parse(metadata.version);
+        if (!serverVersion) {
+            throw new Error('Invalid protocol version returned by server: ' + metadata.version);
+        }
+        if (!compatibleVersions(serverVersion, this.protocolVersion)) {
+            throw new Error(`Incompatible protocol versions: client ${this.protocolVersion.format()}, server ${serverVersion.format()}`);
+        }
+    }
+
     async validate(): Promise<boolean> {
         if (this.userAuthToken) {
             const validateResponse = await this.fetch(this.getUrl('/api/login/validate'), {
                 method: 'POST',
                 headers: {
-                    'x-jwt': this.userAuthToken!
+                    'x-oct-jwt': this.userAuthToken!
                 }
             });
             return validateResponse.status === 200;
@@ -91,6 +117,7 @@ export class ConnectionProvider {
     }
 
     async createRoom(): Promise<types.CreateRoomResponse> {
+        await this.ensureCompatibility();
         const valid = await this.validate();
         let loginToken: string | undefined;
         if (!valid) {
@@ -99,9 +126,12 @@ export class ConnectionProvider {
         const response = await this.fetch(this.getUrl('/api/session/create'), {
             method: 'POST',
             headers: {
-                'x-jwt': this.userAuthToken!
+                'x-oct-jwt': this.userAuthToken!
             }
         });
+        if (response.status !== 200) {
+            throw new Error(await this.readError(response));
+        }
         const body: types.CreateRoomResponse = await response.json();
         return {
             loginToken,
@@ -111,6 +141,7 @@ export class ConnectionProvider {
     }
 
     async joinRoom(roomId: string): Promise<types.JoinRoomResponse> {
+        await this.ensureCompatibility();
         const valid = await this.validate();
         let loginToken: string | undefined;
         if (!valid) {
@@ -119,9 +150,12 @@ export class ConnectionProvider {
         const response = await this.fetch(this.getUrl(`/api/session/join/${roomId}`), {
             method: 'POST',
             headers: {
-                'x-jwt': this.userAuthToken!
+                'x-oct-jwt': this.userAuthToken!
             }
         });
+        if (response.status !== 200) {
+            throw new Error(await this.readError(response));
+        }
         const body: types.JoinRoomResponse = await response.json();
         const roomAuthToken = body.roomToken;
         return {
@@ -133,26 +167,42 @@ export class ConnectionProvider {
         };
     }
 
+    private async readError(response: FetchResponse): Promise<string> {
+        try {
+            return await response.text();
+        } catch (error) {
+            return 'Unknown error';
+        }
+    }
+
     async connect(roomAuthToken: string, host?: types.Peer): Promise<ProtocolBroadcastConnection> {
-        const metadata = await this.fetch(this.getUrl('/api/meta'));
-        const metadataBody = await metadata.json() as types.ProtocolServerMetaData;
-        const transportIndex = this.findFitting(metadataBody.transports, this.options.transports.map(t => t.id));
+        const metadata = await this.getMetaData();
+        const transportIndex = this.findFitting(metadata.transports, this.options.transports.map(t => t.id));
         const transportProvider = this.options.transports[transportIndex];
         const keyPair = await Encryption.generateKeyPair();
         const transport = transportProvider.createTransport(this.options.url, {
-            'x-jwt': roomAuthToken,
-            'x-public-key': keyPair.publicKey,
-            'x-compression': 'gzip'
+            'x-oct-jwt': roomAuthToken,
+            'x-oct-public-key': keyPair.publicKey,
+            'x-oct-client': this.options.client ?? 'Unknown OCT JS Client',
+            'x-oct-compression': 'gzip'
         });
         const connection = createConnection(
             {
                 privateKey: keyPair.privateKey,
-                publicServerKey: metadataBody.publicKey,
+                publicServerKey: metadata.publicKey,
                 transport,
                 host
             }
         );
         return connection;
+    }
+
+    private async getMetaData(): Promise<types.ProtocolServerMetaData> {
+        const response = await this.fetch(this.getUrl('/api/meta'));
+        if (response.status !== 200) {
+            throw new Error('Failed to fetch metadata');
+        }
+        return await response.json();
     }
 
     private findFitting(available: string[], desired: string[]): number {

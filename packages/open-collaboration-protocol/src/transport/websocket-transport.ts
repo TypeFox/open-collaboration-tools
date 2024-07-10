@@ -4,10 +4,14 @@
 // terms of the MIT License, which is available in the project root.
 // ******************************************************************************
 
-import { Emitter, Event, Deferred } from './utils';
+import { Emitter, Event, Deferred } from '../utils';
 import { MessageTransport, MessageTransportProvider } from './transport';
 
-export const WebSocketTransportProvider: MessageTransportProvider = {
+export interface WebSocketTransportProvider extends MessageTransportProvider {
+    Constructor: typeof WebSocket;
+}
+
+export const WebSocketTransportProvider: WebSocketTransportProvider = {
     id: 'websocket',
     createTransport: (url, headers) => {
         if (url.startsWith('https')) {
@@ -19,11 +23,12 @@ export const WebSocketTransportProvider: MessageTransportProvider = {
             url = url.slice(0, -1);
         }
         const query = Object.entries(headers).map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(value)}`).join('&');
-        const socket = new WebSocket(url + '/websocket' + (query ? '?' + query : ''));
+        const socket = new WebSocketTransportProvider.Constructor(url + '/websocket' + (query ? '?' + query : ''));
         socket.binaryType = 'arraybuffer';
         const transport = new WebSocketTransport(socket);
         return transport;
-    }
+    },
+    Constructor: typeof WebSocket === 'undefined' ? undefined! : WebSocket
 };
 
 export class WebSocketTransport implements MessageTransport {

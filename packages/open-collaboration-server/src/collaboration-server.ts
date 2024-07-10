@@ -19,6 +19,7 @@ import { User } from './types';
 import * as types from 'open-collaboration-protocol';
 import { AuthEndpoint } from './auth-endpoints/auth-endpoint';
 import { Logger, LoggerSymbol } from './utils/logging';
+import { VERSION } from 'open-collaboration-protocol';
 import { Configuration } from './utils/configuration';
 
 @injectable()
@@ -99,22 +100,24 @@ export class CollaborationServer {
     }
 
     protected async connectChannel(headers: Record<string, string>, channel: Channel): Promise<void> {
-        const jwt = headers['x-jwt'];
+        const jwt = headers['x-oct-jwt'];
         if (!jwt) {
             throw this.logger.createErrorAndLog('No JWT auth token set');
         }
-        const publicKey = headers['x-public-key'];
+        const publicKey = headers['x-oct-public-key'];
         if (!publicKey) {
-            throw new Error('No encryption key set');
+            throw this.logger.createErrorAndLog('No encryption key set');
         }
-        let compression = headers['x-compression']?.split(',');
+        let compression = headers['x-oct-compression']?.split(',');
         if (compression === undefined || compression.length === 0) {
             compression = ['none'];
         }
+        const client = headers['x-oct-client'] ?? 'unknown';
         const roomClaim = await this.credentials.verifyJwt(jwt, isRoomClaim);
         const peer = this.peerFactory({
             user: roomClaim.user,
             host: roomClaim.host ?? false,
+            client,
             publicKey,
             supportedCompression: compression,
             channel
@@ -123,7 +126,7 @@ export class CollaborationServer {
     }
 
     protected async getUserFromAuth(req: express.Request): Promise<User | undefined> {
-        const auth = req.headers['x-jwt'] as string;
+        const auth = req.headers['x-oct-jwt'] as string;
         try {
             const user = await this.credentials.getUser(auth);
             return user;
@@ -141,7 +144,7 @@ export class CollaborationServer {
             next();
         });
         app.use(async (req, res, next) => {
-            if (req.method === 'POST' && req.url.startsWith('/api/') && !req.url.startsWith('/api/login/')) {
+            if (req.method === 'POST' && req.url.startsWith('/api/') && !req.url.startsWith('/api/login/') && !req.url.startsWith('/api/meta')) {
                 const user = await this.getUserFromAuth(req);
                 if (!user) {
                     res.status(403);
@@ -164,7 +167,7 @@ export class CollaborationServer {
                     loginPageURL.searchParams.set('token', token);
                     loginPage = loginPageURL.toString();
                 } catch (error) {
-                    loginPage = `/login.html?token=${token}`
+                    loginPage = `/login.html?token=${encodeURIComponent(token)}`
                 }
                 res.send({
                     url: loginPage,
@@ -188,7 +191,7 @@ export class CollaborationServer {
         });
         app.post('/api/login/confirm/:token', async (req, res) => {
             try {
-                const token = req.params.token as string;
+                const token = req.params.token;
                 const jwt = await this.credentials.confirmAuth(token);
                 const user = await this.credentials.getUser(jwt);
                 res.send({
@@ -203,8 +206,8 @@ export class CollaborationServer {
         });
         app.get('/api/meta', async (_, res) => {
             const data: types.ProtocolServerMetaData = {
-                owner: '',
-                version: '',
+                owner: this.configuration.getValue('oct-server-owner') ?? 'Unknown',
+                version: VERSION,
                 transports: [
                     'websocket',
                     'socket.io'
@@ -215,24 +218,32 @@ export class CollaborationServer {
         });
         app.post('/api/session/join/:room', async (req, res) => {
             try {
-                const roomId = req.params.room as string;
+                const roomId = req.params.room;
                 const user = await this.getUserFromAuth(req);
                 const room = this.roomManager.getRoomById(roomId);
                 if (!room) {
-                    throw this.logger.createErrorAndLog(`Room with requested id ${roomId} does not exist`);
+                    this.logger.warn(`User tried joining non-existing room with id '${roomId}'`);
+                    res.status(404);
+                    res.send('Room not found');
+                    return;
                 }
                 const result = await this.roomManager.requestJoin(room, user!);
-                const response: types.JoinRoomResponse = {
-                    roomId: room.id,
-                    roomToken: result.jwt,
-                    workspace: result.response.workspace,
-                    host: room.host.toProtocol()
-                };
-                res.send(response);
+                if (typeof result === 'string') {
+                    res.status(400);
+                    res.send(result);
+                } else {
+                    const response: types.JoinRoomResponse = {
+                        roomId: room.id,
+                        roomToken: result.jwt,
+                        workspace: result.response.workspace,
+                        host: room.host.toProtocol()
+                    };
+                    res.send(response);
+                }
             } catch (error) {
                 this.logger.error('Error occurred while joining a room', error);
-                res.status(400);
-                res.send('Failed to join room');
+                res.status(500);
+                res.send('An internal server error occurred');
             }
         });
         app.post('/api/session/create', async (req, res) => {

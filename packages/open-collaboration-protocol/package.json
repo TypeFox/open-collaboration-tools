@@ -1,15 +1,23 @@
 {
   "name": "open-collaboration-protocol",
-  "version": "0.0.8",
+  "version": "0.0.11",
   "description": "Open Collaboration Protocol implementation, part of the Open Collaboration Tools project",
   "files": [
     "lib",
     "src"
   ],
-  "main": "./lib/index.js",
+  "main": "./lib/index-node.js",
   "types": "./lib/index.d.ts",
+  "exports": {
+    "types": "./lib/index.d.ts",
+    "browser": "./lib/index-browser.js",
+    "node": "./lib/index-node.js"
+  },
   "dependencies": {
-    "open-collaboration-rpc": "0.0.7"
+    "base64-js": "^1.5.1",
+    "fflate": "^0.8.2",
+    "msgpackr": "^1.10.2",
+    "semver": "^7.6.2"
   },
   "keywords": [
     "collaboration",

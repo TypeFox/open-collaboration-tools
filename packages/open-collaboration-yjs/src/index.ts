@@ -1,1 +1,1 @@
-export { OpenCollaborationYjsProvider, AwarenessChange, LOCAL_ORIGIN } from './yjs-provider';
+export * from './yjs-provider';

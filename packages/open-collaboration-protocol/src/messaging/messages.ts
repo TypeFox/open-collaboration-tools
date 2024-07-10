@@ -4,7 +4,7 @@
 // terms of the MIT License, which is available in the project root.
 // ******************************************************************************
 
-export const VERSION = '0.1.0';
+import { VERSION } from '../utils/version';
 
 /**
  * A collaboration message

@@ -1,10 +1,9 @@
-import { ProtocolBroadcastConnection } from "open-collaboration-protocol";
+import { ProtocolBroadcastConnection, Deferred, DisposableCollection } from "open-collaboration-protocol";
 import * as vscode from 'vscode';
 import * as Y from 'yjs';
 import * as awarenessProtocol from 'y-protocols/awareness';
 import * as types from 'open-collaboration-protocol';
 import { CollaborationFileSystemProvider } from "./collaboration-file-system";
-import { Deferred, DisposableCollection } from "open-collaboration-rpc";
 import * as paths from 'path';
 import { LOCAL_ORIGIN, OpenCollaborationYjsProvider } from 'open-collaboration-yjs';
 import { createMutex } from 'lib0/mutex';
@@ -259,19 +258,22 @@ export class CollaborationInstance implements vscode.Disposable {
         });
         connection.room.onJoin(async (_, peer) => {
             this.peers.set(peer.id, new DisposablePeer(this.yjsAwareness, peer));
-            const roots = vscode.workspace.workspaceFolders ?? [];
-            const initData: types.InitData = {
-                protocol: '0.0.1',
-                host: await this.identity.promise,
-                guests: Array.from(this.peers.values()).map(e => e.peer),
-                capabilities: {},
-                permissions: { readonly: false },
-                workspace: {
-                    name: vscode.workspace.name ?? 'Collaboration',
-                    folders: roots.map(e => e.name)
-                }
-            };
-            connection.peer.init(peer.id, initData);
+            if (this.host) {
+                // Only initialize the user if we are the host
+                const roots = vscode.workspace.workspaceFolders ?? [];
+                const initData: types.InitData = {
+                    protocol: types.VERSION,
+                    host: await this.identity.promise,
+                    guests: Array.from(this.peers.values()).map(e => e.peer),
+                    capabilities: {},
+                    permissions: { readonly: false },
+                    workspace: {
+                        name: vscode.workspace.name ?? 'Collaboration',
+                        folders: roots.map(e => e.name)
+                    }
+                };
+                connection.peer.init(peer.id, initData);
+            }
             this.onDidUsersChangeEmitter.fire();
         });
         connection.room.onLeave(async (_, peer) => {

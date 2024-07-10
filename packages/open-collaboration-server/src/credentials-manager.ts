@@ -9,7 +9,7 @@ import { User, isUser } from './types';
 import { UserManager } from './user-manager';
 import jose = require('jose');
 import { nanoid } from 'nanoid';
-import { Deferred, Encryption } from 'open-collaboration-rpc';
+import { Deferred, Encryption } from 'open-collaboration-protocol';
 import { Logger, LoggerSymbol } from './utils/logging';
 import { UserInfo } from './auth-endpoints/auth-endpoint';
 import { Configuration } from './utils/configuration';

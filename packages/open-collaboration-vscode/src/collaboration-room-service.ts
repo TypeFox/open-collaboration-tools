@@ -4,10 +4,9 @@ import { CollaborationInstance, CollaborationInstanceFactory } from "./collabora
 import { CollaborationUri } from "./utils/uri";
 import { inject, injectable } from "inversify";
 import { ExtensionContext } from "./inversify";
-import { CollaborationConnectionProvider } from "./collaboration-connection-provider";
+import { CollaborationConnectionProvider, OCT_USER_TOKEN } from "./collaboration-connection-provider";
 
 export const OCT_ROOM_DATA = 'oct.roomData';
-export const OCT_USER_TOKEN = 'oct.userToken';
 
 interface RoomData {
     roomToken: string;
@@ -80,7 +79,7 @@ export class CollaborationRoomService {
         if (!roomId) {
             roomId = await vscode.window.showInputBox({ placeHolder: 'Enter the room ID' })
         }
-        vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: 'Joining Room' }, async () => {
+        await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: 'Joining Room' }, async () => {
             if (roomId && connectionProvider) {
                 const roomClaim = await connectionProvider.joinRoom(roomId);
                 if (roomClaim.loginToken) {

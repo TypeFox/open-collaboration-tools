@@ -4,7 +4,7 @@
 // terms of the MIT License, which is available in the project root.
 // ******************************************************************************
 
-import type { CompressionAlgorithm } from "open-collaboration-rpc";
+import type { CompressionAlgorithm } from "./messaging";
 
 export type Path = string;
 export type Token = string;

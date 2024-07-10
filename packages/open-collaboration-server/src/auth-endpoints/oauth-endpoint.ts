@@ -1,6 +1,6 @@
 import { inject, injectable, postConstruct } from 'inversify';
 import { type Express } from 'express';
-import { Emitter, Event } from 'open-collaboration-rpc';
+import { Emitter, Event } from 'open-collaboration-protocol';
 import { AuthEndpoint, AuthSuccessEvent, UserInfo } from './auth-endpoint';
 import passport from 'passport';
 import { Strategy as GithubStrategy } from 'passport-github';

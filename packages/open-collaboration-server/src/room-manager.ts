@@ -5,11 +5,10 @@
 // ******************************************************************************
 
 import { inject, injectable } from 'inversify';
-import { BroadcastMessage, Encryption, NotificationMessage, RequestMessage, ResponseMessage, isObject } from 'open-collaboration-rpc';
 import { CredentialsManager } from './credentials-manager';
 import { MessageRelay } from './message-relay';
 import { Peer, Room, User, isUser } from './types';
-import { JoinResponse, Messages } from 'open-collaboration-protocol';
+import { JoinResponse, Messages, BroadcastMessage, Encryption, NotificationMessage, RequestMessage, ResponseMessage, isObject } from 'open-collaboration-protocol';
 import { Logger, LoggerSymbol } from './utils/logging';
 
 export interface PreparedRoom {
@@ -54,7 +53,7 @@ export class RoomManager {
                 peer.channel.close();
             }
             this.rooms.delete(id);
-            this.logger.info(`Delete room with id: ${room.id}`);
+            this.logger.info(`Deleted room '${room.id}'`);
         }
     }
 
@@ -69,7 +68,7 @@ export class RoomManager {
             },
             host: true
         };
-        this.logger.info(`Prepared room [id: ${claim.room}] for user [provider: ${user.authProvider} id: ${user.id} | name: ${user.name} | email: ${user.email}]`)
+        this.logger.info(`Prepared room [id: '${claim.room}'] for user [provider: '${user.authProvider || '<none>'}' | id: '${user.id}' | name: '${user.name}' | email: '${user.email || '<none>'}']`)
         const jwt = await this.credentials.generateJwt(claim);
         return {
             id,
@@ -84,7 +83,7 @@ export class RoomManager {
             room = new Room(roomId, peer, []);
             this.rooms.set(room.id, room);
             this.peers.set(peer.id, room);
-            this.logger.info(`Created room with id: ${room.id}`);
+            this.logger.info(`Host [id: '${peer.id}' | client: '${peer.client}' | userId: '${peer.user.id}' | name: '${peer.user.name}' | email: '${peer.user.email || '<none>'}'] created room [id: '${room.id}']`);
             peer.channel.onClose(() => {
                 this.closeRoom(room.id);
             });
@@ -97,7 +96,7 @@ export class RoomManager {
             const allKeys = room.peers.map(peer => peer.toEncryptionKey());
             this.peers.set(peer.id, room);
             room.guests.push(peer);
-            this.logger.info(`From peer [id: ${peer.id}] peer user [id: ${peer.user.id} | name: ${peer.user.name} | email: ${peer.user.email}] joined room [id: ${room.id}]`);
+            this.logger.info(`Peer [id: '${peer.id}' | client: '${peer.client}' | userId: '${peer.user.id}' | name: '${peer.user.name}' | email: '${peer.user.email || '<none>'}'] joined room [id: '${room.id}']`);
             if (allKeys.length > 0) {
                 try {
                     const encryptedMessage = await Encryption.encrypt(broadcastMessage, { symmetricKey }, ...allKeys);
@@ -153,9 +152,9 @@ export class RoomManager {
         return this.peers.get(id);
     }
 
-    async requestJoin(room: Room, user: User): Promise<{ jwt: string, response: JoinResponse }> {
+    async requestJoin(room: Room, user: User): Promise<{ jwt: string, response: JoinResponse } | string> {
         try {
-        	this.logger.info(`Request to join room [id: ${room.id}] by user [id: ${user.id} | name: ${user.name} | email: ${user.email}]`);
+        	this.logger.info(`Request to join room [id: '${room.id}'] by user [id: '${user.id}' | name: '${user.name}' | email: '${user.email ?? '<none>'}']`);
             const symmetricKey = await this.credentials.getSymmetricKey();
             const privateKey = await this.credentials.getPrivateKey();
             const requestMessage = RequestMessage.create(Messages.Peer.Join, this.credentials.secureId(), '', room.host.id, [user]);
@@ -167,6 +166,9 @@ export class RoomManager {
             const decryptedResponse = await Encryption.decrypt(response, { privateKey });
             if (ResponseMessage.is(decryptedResponse)) {
                 const joinResponse = decryptedResponse.content as JoinResponse;
+                if (joinResponse === undefined) {
+                    return 'Join request has been rejected';
+                }
                 const claim: RoomClaim = {
                     room: room.id,
                     user: { ...user }
@@ -176,10 +178,10 @@ export class RoomManager {
                     response: joinResponse
                 };
             } else {
-                throw this.logger.createErrorAndLog('Join request has been rejected');
+                return 'Join request has failed';
             }
         } catch {
-            throw this.logger.createErrorAndLog('Join request has timed out');
+            return 'Join request has timed out';
         }
     }
 

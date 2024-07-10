@@ -7,13 +7,13 @@
 import { inject, injectable, postConstruct } from 'inversify';
 import { nanoid } from 'nanoid';
 import * as protocol from 'open-collaboration-protocol';
-import { BroadcastMessage, Encryption, Message, NotificationMessage, RequestMessage, ResponseErrorMessage, ResponseMessage } from 'open-collaboration-rpc';
 import { Channel } from './channel';
 import { MessageRelay } from './message-relay';
 import { RoomManager } from './room-manager';
 import { Peer, PeerInfo, Room, User } from './types';
 import { CredentialsManager } from './credentials-manager';
 import { Logger, LoggerSymbol } from './utils/logging';
+import { parse } from 'semver';
 
 export const PeerFactory = Symbol('PeerFactory');
 export type PeerFactory = (info: PeerInfo) => Peer;
@@ -27,6 +27,10 @@ export class PeerImpl implements Peer {
 
     get publicKey(): string {
         return this.peerInfo.publicKey;
+    }
+
+    get client(): string {
+        return this.peerInfo.client;
     }
 
     get supportedCompression(): string[] {
@@ -48,7 +52,7 @@ export class PeerImpl implements Peer {
     get room(): Room {
         const value = this.roomManager.getRoomByPeerId(this.id);
         if (!value) {
-            throw this.logger.createErrorAndLog('This peer does not belong to any room');
+            throw this.logger.createErrorAndLog(`Peer '${this.id}' does not belong to any room`);
         }
         return value;
     }
@@ -70,10 +74,19 @@ export class PeerImpl implements Peer {
         this.channel.onMessage(message => this.receiveMessage(message));
     }
 
-    private async receiveMessage(message: Message): Promise<void> {
-        if (ResponseMessage.isBinary(message) || ResponseErrorMessage.isBinary(message)) {
+    private async receiveMessage(message: protocol.Message): Promise<void> {
+        const messageVersion = parse(message.version);
+        if (!messageVersion) {
+            this.logger.warn(`Received message with invalid version: ${message.version}. Ignoring message.`);
+            return;
+        }
+        if (!protocol.compatibleVersions(messageVersion)) {
+            this.logger.warn(`Received message with incompatible version: ${message.version}; expected: ${protocol.VERSION}. Ignoring message.`);
+            return;
+        }
+        if (protocol.ResponseMessage.isBinary(message) || protocol.ResponseErrorMessage.isBinary(message)) {
             this.messageRelay.pushResponse(this, message);
-        } else if (RequestMessage.isBinary(message)) {
+        } else if (protocol.RequestMessage.isBinary(message)) {
             // Override whatever we know about the origin of the message
             message.origin = this.id;
             try {
@@ -82,19 +95,19 @@ export class PeerImpl implements Peer {
                 response.id = message.id;
                 this.channel.sendMessage(response);
             } catch (err) {
-                const errorResponseMessage = ResponseErrorMessage.create(message.id, 'Failed to retrieve the requested data.');
+                const errorResponseMessage = protocol.ResponseErrorMessage.create(message.id, 'Failed to retrieve the requested data.');
                 const symmetricKey = await this.credentials.getSymmetricKey();
-                const encryptedError = await Encryption.encrypt(errorResponseMessage, { symmetricKey }, this.toEncryptionKey());
+                const encryptedError = await protocol.Encryption.encrypt(errorResponseMessage, { symmetricKey }, this.toEncryptionKey());
                 this.channel.sendMessage(encryptedError);
             }
-        } else if (NotificationMessage.isBinary(message)) {
+        } else if (protocol.NotificationMessage.isBinary(message)) {
             message.origin = this.id;
             try {
                 this.messageRelay.sendNotification(this.getTargetPeer(message.target), message);
             } catch (error) {
-                this.logger.error(`Failed sending notification to: ${message.target}`);
+                this.logger.error(`Failed sending notification to: ${message.target || '<empty>'}`);
             }
-        } else if (BroadcastMessage.isBinary(message)) {
+        } else if (protocol.BroadcastMessage.isBinary(message)) {
             this.messageRelay.sendBroadcast(this, message);
         }
     }
@@ -102,7 +115,7 @@ export class PeerImpl implements Peer {
     private getTargetPeer(targetId: string | undefined): Peer {
         const peer = targetId ? this.room.getPeer(targetId) : undefined;
         if (!peer) {
-            throw this.logger.createErrorAndLog(`Could not find the target peer: ${targetId}`);
+            throw this.logger.createErrorAndLog(`Could not find the target peer: ${targetId || '<empty>'}`);
         }
         return peer;
     }
@@ -124,7 +137,7 @@ export class PeerImpl implements Peer {
         };
     }
 
-    toEncryptionKey(): Encryption.AsymmetricKey {
+    toEncryptionKey(): protocol.Encryption.AsymmetricKey {
         return {
             publicKey: this.publicKey,
             peerId: this.id,
