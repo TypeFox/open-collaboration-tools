@@ -8,9 +8,9 @@ import { inject, injectable, multiInject } from 'inversify';
 import * as http from 'http';
 import * as path from 'path';
 import { Server } from 'socket.io';
-import * as ws from 'ws';
+// import * as ws from 'ws';
 import express from 'express';
-import { Channel, SocketIoChannel, WebSocketChannel } from './channel';
+import { Channel, SocketIoChannel } from './channel';
 import { PeerFactory } from './peer';
 import { RoomManager, isRoomClaim } from './room-manager';
 import { UserManager } from './user-manager';
@@ -49,26 +49,26 @@ export class CollaborationServer {
 
         const app = this.setupApiRoute()
         const httpServer = http.createServer(app);
-        const wsServer = new ws.Server({
-            path: '/websocket',
-            server: httpServer
-        });
-        wsServer.on('connection', async (socket, req) => {
-            try {
-                const query = req.url?.split('?')[1] ?? '';
-                const headers = query.split('&').reduce((acc, cur) => {
-                    const [key, value] = cur.split('=');
-                    if (typeof key === 'string' && typeof value === 'string') {
-                        acc[decodeURIComponent(key.trim())] = decodeURIComponent(value.trim());
-                    }
-                    return acc;
-                }, {} as Record<string, string>);
-                await this.connectChannel(headers, new WebSocketChannel(socket));
-            } catch (error) {
-                socket.close(undefined, 'Failed to join room');
-                this.logger.error('Web socket connection failed', error);
-            }
-        });
+        // const wsServer = new ws.Server({
+        //     path: '/websocket',
+        //     server: httpServer
+        // });
+        // wsServer.on('connection', async (socket, req) => {
+        //     try {
+        //         const query = req.url?.split('?')[1] ?? '';
+        //         const headers = query.split('&').reduce((acc, cur) => {
+        //             const [key, value] = cur.split('=');
+        //             if (typeof key === 'string' && typeof value === 'string') {
+        //                 acc[decodeURIComponent(key.trim())] = decodeURIComponent(value.trim());
+        //             }
+        //             return acc;
+        //         }, {} as Record<string, string>);
+        //         await this.connectChannel(headers, new WebSocketChannel(socket));
+        //     } catch (error) {
+        //         socket.close(undefined, 'Failed to join room');
+        //         this.logger.error('Web socket connection failed', error);
+        //     }
+        // });
         const io = new Server(httpServer, {
             cors: {
                 origin: '*',
@@ -209,7 +209,7 @@ export class CollaborationServer {
                 owner: this.configuration.getValue('oct-server-owner') ?? 'Unknown',
                 version: VERSION,
                 transports: [
-                    'websocket',
+                    // 'websocket',
                     'socket.io'
                 ],
                 publicKey: await this.credentials.getPublicKey()

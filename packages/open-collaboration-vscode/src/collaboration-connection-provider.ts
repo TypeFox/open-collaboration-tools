@@ -1,11 +1,8 @@
 import * as vscode from 'vscode';
 import { inject, injectable } from "inversify";
-import { ConnectionProvider, WebSocketTransportProvider } from 'open-collaboration-protocol'
-import * as ws from 'ws';
+import { ConnectionProvider, SocketIoTransportProvider } from 'open-collaboration-protocol'
 import fetch from 'node-fetch';
 import { ExtensionContext } from './inversify';
-
-WebSocketTransportProvider.Constructor = ws.WebSocket as any;
 
 export const OCT_USER_TOKEN = 'oct.userToken';
 
@@ -30,7 +27,7 @@ export class CollaborationConnectionProvider {
                 url: serverUrl,
                 client: 'OCT-VSCode@' + version,
                 opener: (url) => vscode.env.openExternal(vscode.Uri.parse(url)),
-                transports: [WebSocketTransportProvider],
+                transports: [SocketIoTransportProvider],
                 userToken,
                 fetch
             });
