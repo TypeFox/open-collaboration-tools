@@ -129,6 +129,9 @@ export class ConnectionProvider {
                 'x-oct-jwt': this.userAuthToken!
             }
         });
+        if (response.status !== 200) {
+            throw new Error(await this.readError(response));
+        }
         const body: types.CreateRoomResponse = await response.json();
         return {
             loginToken,
@@ -150,6 +153,9 @@ export class ConnectionProvider {
                 'x-oct-jwt': this.userAuthToken!
             }
         });
+        if (response.status !== 200) {
+            throw new Error(await this.readError(response));
+        }
         const body: types.JoinRoomResponse = await response.json();
         const roomAuthToken = body.roomToken;
         return {
@@ -159,6 +165,14 @@ export class ConnectionProvider {
             workspace: body.workspace,
             host: body.host
         };
+    }
+
+    private async readError(response: FetchResponse): Promise<string> {
+        try {
+            return await response.text();
+        } catch (error) {
+            return 'Unknown error';
+        }
     }
 
     async connect(roomAuthToken: string, host?: types.Peer): Promise<ProtocolBroadcastConnection> {
@@ -185,6 +199,9 @@ export class ConnectionProvider {
 
     private async getMetaData(): Promise<types.ProtocolServerMetaData> {
         const response = await this.fetch(this.getUrl('/api/meta'));
+        if (response.status !== 200) {
+            throw new Error('Failed to fetch metadata');
+        }
         return await response.json();
     }
 

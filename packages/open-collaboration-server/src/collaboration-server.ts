@@ -222,20 +222,28 @@ export class CollaborationServer {
                 const user = await this.getUserFromAuth(req);
                 const room = this.roomManager.getRoomById(roomId);
                 if (!room) {
-                    throw this.logger.createErrorAndLog(`Room with requested id ${roomId} does not exist`);
+                    this.logger.warn(`User tried joining non-existing room with id '${roomId}'`);
+                    res.status(404);
+                    res.send('Room not found');
+                    return;
                 }
                 const result = await this.roomManager.requestJoin(room, user!);
-                const response: types.JoinRoomResponse = {
-                    roomId: room.id,
-                    roomToken: result.jwt,
-                    workspace: result.response.workspace,
-                    host: room.host.toProtocol()
-                };
-                res.send(response);
+                if (typeof result === 'string') {
+                    res.status(400);
+                    res.send(result);
+                } else {
+                    const response: types.JoinRoomResponse = {
+                        roomId: room.id,
+                        roomToken: result.jwt,
+                        workspace: result.response.workspace,
+                        host: room.host.toProtocol()
+                    };
+                    res.send(response);
+                }
             } catch (error) {
                 this.logger.error('Error occurred while joining a room', error);
-                res.status(400);
-                res.send('Failed to join room');
+                res.status(500);
+                res.send('An internal server error occurred');
             }
         });
         app.post('/api/session/create', async (req, res) => {

@@ -79,7 +79,7 @@ export class CollaborationRoomService {
         if (!roomId) {
             roomId = await vscode.window.showInputBox({ placeHolder: 'Enter the room ID' })
         }
-        vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: 'Joining Room' }, async () => {
+        await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: 'Joining Room' }, async () => {
             if (roomId && connectionProvider) {
                 const roomClaim = await connectionProvider.joinRoom(roomId);
                 if (roomClaim.loginToken) {

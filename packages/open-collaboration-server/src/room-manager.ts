@@ -152,7 +152,7 @@ export class RoomManager {
         return this.peers.get(id);
     }
 
-    async requestJoin(room: Room, user: User): Promise<{ jwt: string, response: JoinResponse }> {
+    async requestJoin(room: Room, user: User): Promise<{ jwt: string, response: JoinResponse } | string> {
         try {
         	this.logger.info(`Request to join room [id: '${room.id}'] by user [id: '${user.id}' | name: '${user.name}' | email: '${user.email ?? '<none>'}']`);
             const symmetricKey = await this.credentials.getSymmetricKey();
@@ -166,6 +166,9 @@ export class RoomManager {
             const decryptedResponse = await Encryption.decrypt(response, { privateKey });
             if (ResponseMessage.is(decryptedResponse)) {
                 const joinResponse = decryptedResponse.content as JoinResponse;
+                if (joinResponse === undefined) {
+                    return 'Join request has been rejected';
+                }
                 const claim: RoomClaim = {
                     room: room.id,
                     user: { ...user }
@@ -175,10 +178,10 @@ export class RoomManager {
                     response: joinResponse
                 };
             } else {
-                throw this.logger.createErrorAndLog('Join request has been rejected');
+                return 'Join request has failed';
             }
         } catch {
-            throw this.logger.createErrorAndLog('Join request has timed out');
+            return 'Join request has timed out';
         }
     }
 

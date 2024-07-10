@@ -9,6 +9,7 @@ import { ContextKeyService } from './context-key-service';
 import { CollaborationRoomService } from './collaboration-room-service';
 import { CollaborationStatusService } from './collaboration-status-service';
 import { closeSharedEditors, removeWorkspaceFolders } from './utils/workspace';
+import { stringifyError } from './utils/errors';
 
 @injectable()
 export class Commands {
@@ -51,7 +52,7 @@ export class Commands {
                         { label: '$(close) Close Current Session' },
                     ];
                     if (instance.host) {
-                        items.push({ label: '$(copy) Copy Invite Code' });
+                        items.push({ label: '$(clippy) Copy Invite Code' });
                     }
                     quickPick.items = items;
                     const index = await showQuickPick(quickPick);
@@ -73,14 +74,13 @@ export class Commands {
                         try {
                             await this.roomService.createRoom(connectionProvider);
                         } catch (error) {
-                            vscode.window.showErrorMessage('Failed to create room: ' + String(error));
+                            vscode.window.showErrorMessage('Failed to create room: ' + stringifyError(error));
                         }
                     } else if (index === 1) {
                         try {
                             await this.roomService.joinRoom(connectionProvider);
                         } catch (error) {
-                            vscode.window.showErrorMessage('Failed to join room: ' + String(error));
-                        
+                            vscode.window.showErrorMessage('Failed to join room: ' + stringifyError(error));
                         }
                     }
                 }
