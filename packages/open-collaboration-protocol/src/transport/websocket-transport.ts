@@ -39,6 +39,10 @@ export class WebSocketTransport implements MessageTransport {
     private onErrorEmitter = new Emitter<string>();
     private ready = new Deferred();
 
+    get onReconnect(): Event<void> {
+        return Event.None;
+    }
+
     get onDisconnect(): Event<void> {
         return this.onDisconnectEmitter.event;
     }
@@ -53,8 +57,8 @@ export class WebSocketTransport implements MessageTransport {
         this.socket.onopen = () => this.ready.resolve();
     }
 
-    write(data: ArrayBuffer): void {
-        this.ready.promise.then(() => this.socket.send(data));
+    async write(data: ArrayBuffer): Promise<void> {
+        await this.ready.promise.then(() => this.socket.send(data));
     }
 
     read(cb: (data: ArrayBuffer) => void): void {

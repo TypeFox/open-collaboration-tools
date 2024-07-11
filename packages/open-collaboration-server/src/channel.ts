@@ -6,16 +6,109 @@
 
 import { Socket } from 'socket.io';
 import * as ws from 'ws';
-import { Disposable, Emitter, Encoding, BinaryMessage, Event } from 'open-collaboration-protocol';
+import { Disposable, Emitter, Encoding, BinaryMessage, Event, DisposableCollection } from 'open-collaboration-protocol';
 
-export interface Channel {
+export class Channel {
+
+    private onDidCloseEmitter = new Emitter<void>();
+    private onDidDisconnectEmitter = new Emitter<void>();
+    private onDidReconnectEmitter = new Emitter<void>();
+    private onMessageEmitter = new Emitter<BinaryMessage>();
+
+    get onClose(): Event<void> {
+        return this.onDidCloseEmitter.event;
+    }
+
+    get onDisconnect(): Event<void> {
+        return this.onDidDisconnectEmitter.event;
+    }
+
+    get onReconnect(): Event<void> {
+        return this.onDidReconnectEmitter.event;
+    }
+
+    get transport(): TransportChannel | undefined {
+        return this._transport;
+    }
+
+    set transport(transport: TransportChannel | undefined) {
+        this.toDispose.dispose();
+        this._transport = transport;
+        if (transport) {
+            this.toDispose.push(transport.onClose(() => {
+                this.onDidDisconnectEmitter.fire();
+                this._transport = undefined;
+            }));
+            this.toDispose.push(transport.onMessage(message => {
+                this.onMessageEmitter.fire(message);
+            }));
+            this.onDidReconnectEmitter.fire();
+            for (const message of this.buffer) {
+                transport.sendMessage(message);
+            }
+            this.buffer = [];
+        }
+    }
+
+    private _transport?: TransportChannel;
+    // Buffer to store messages that couldn't be sent yet due to a disconnect
+    private buffer: BinaryMessage[] = [];
+    private toDispose = new DisposableCollection();
+    private closeTimeout: NodeJS.Timeout | undefined;
+
+    constructor(transport: TransportChannel) {
+        this._transport = transport;
+        this.toDispose.push(transport.onClose(() => {
+            this.onDidDisconnectEmitter.fire();
+            this._transport = undefined;
+        }));
+        this.toDispose.push(transport.onMessage(message => {
+            this.onMessageEmitter.fire(message);
+        }));
+        this.onDisconnect(() => {
+            this.closeTimeout = setTimeout(() => {
+                this.close();
+            }, 30_000);
+        });
+        this.onReconnect(() => {
+            if (this.closeTimeout) {
+                clearTimeout(this.closeTimeout);
+                this.closeTimeout = undefined;
+            }
+        });
+    }
+
+    get onMessage(): Event<BinaryMessage> {
+        return this.onMessageEmitter.event;
+    }
+
+    sendMessage(message: BinaryMessage): void {
+        if (this._transport) {
+            this._transport.sendMessage(message);
+        } else {
+            this.buffer.push(message);
+        }
+    }
+
+    close(): void {
+        this.toDispose.dispose();
+        this.onDidCloseEmitter.fire();
+        this.onDidCloseEmitter.dispose();
+        this.onDidDisconnectEmitter.dispose();
+        this.onDidReconnectEmitter.dispose();
+        this.transport?.close();
+    }
+
+}
+
+export interface TransportChannel {
     onMessage(cb: (message: BinaryMessage) => void): Disposable;
     sendMessage(message: BinaryMessage): void;
     close(): void;
     onClose: Event<void>;
 }
 
-export class WebSocketChannel implements Channel {
+export class WebSocketChannel implements TransportChannel {
     private onDidCloseEmitter = new Emitter<void>();
 
     get onClose(): Event<void> {
@@ -54,7 +147,7 @@ export class WebSocketChannel implements Channel {
 
 }
 
-export class SocketIoChannel implements Channel {
+export class SocketIoChannel implements TransportChannel {
 
     private onDidCloseEmitter = new Emitter<void>();
 

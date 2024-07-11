@@ -18,6 +18,7 @@ export namespace Messages {
     export namespace Room {
         export const Joined = new BroadcastType<[types.Peer]>('room/joined');
         export const Left = new BroadcastType<[types.Peer]>('room/left');
+        export const Leave = new NotificationType<[]>('room/leave');
         export const PermissionsUpdated = new BroadcastType<[types.Permissions]>('room/permissionsUpdated');
         export const Closed = new BroadcastType('room/closed');
     }

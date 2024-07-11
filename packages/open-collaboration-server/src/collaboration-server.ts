@@ -10,7 +10,7 @@ import * as path from 'path';
 import { Server } from 'socket.io';
 // import * as ws from 'ws';
 import express from 'express';
-import { Channel, SocketIoChannel } from './channel';
+import { SocketIoChannel, TransportChannel } from './channel';
 import { PeerFactory } from './peer';
 import { RoomManager, isRoomClaim } from './room-manager';
 import { UserManager } from './user-manager';
@@ -21,6 +21,7 @@ import { AuthEndpoint } from './auth-endpoints/auth-endpoint';
 import { Logger, LoggerSymbol } from './utils/logging';
 import { VERSION } from 'open-collaboration-protocol';
 import { Configuration } from './utils/configuration';
+import { PeerManager } from './peer-manager';
 
 @injectable()
 export class CollaborationServer {
@@ -36,6 +37,9 @@ export class CollaborationServer {
 
     @inject(PeerFactory)
     protected readonly peerFactory: PeerFactory;
+
+    @inject(PeerManager)
+    protected readonly peerManager: PeerManager;
 
     @inject(LoggerSymbol) protected logger: Logger;
 
@@ -99,7 +103,7 @@ export class CollaborationServer {
         this.logger.info(`Open Collaboration Server listening on ${args.hostname}:${args.port}`);
     }
 
-    protected async connectChannel(headers: Record<string, string>, channel: Channel): Promise<void> {
+    protected async connectChannel(headers: Record<string, string>, channel: TransportChannel): Promise<void> {
         const jwt = headers['x-oct-jwt'];
         if (!jwt) {
             throw this.logger.createErrorAndLog('No JWT auth token set');
@@ -114,15 +118,24 @@ export class CollaborationServer {
         }
         const client = headers['x-oct-client'] ?? 'unknown';
         const roomClaim = await this.credentials.verifyJwt(jwt, isRoomClaim);
-        const peer = this.peerFactory({
-            user: roomClaim.user,
-            host: roomClaim.host ?? false,
-            client,
-            publicKey,
-            supportedCompression: compression,
-            channel
-        });
-        await this.roomManager.join(peer, roomClaim.room);
+        const existingPeer = this.peerManager.getPeer(jwt);
+        if (existingPeer) {
+            // If a peer with the same JWT already exists, we just update the channel
+            // This indicates that a client has reconnected
+            existingPeer.channel.transport = channel;
+        } else {
+            const peer = this.peerFactory({
+                jwt,
+                user: roomClaim.user,
+                host: roomClaim.host ?? false,
+                channel,
+                client,
+                publicKey,
+                supportedCompression: compression
+            });
+            this.peerManager.register(peer);
+            await this.roomManager.join(peer, roomClaim.room);
+        }
     }
 
     protected async getUserFromAuth(req: express.Request): Promise<User | undefined> {

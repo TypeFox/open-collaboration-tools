@@ -213,6 +213,10 @@ export class CollaborationInstance implements vscode.Disposable {
         return this.options.roomId;
     }
 
+    get connection(): ProtocolBroadcastConnection {
+        return this.options.connection;
+    }
+
     @inject(CollaborationInstanceOptions)
     private readonly options: CollaborationInstanceOptions;
 
@@ -228,6 +232,11 @@ export class CollaborationInstance implements vscode.Disposable {
         }))
         this.toDispose.push(connection.onConnectionError(message => {
             vscode.window.showErrorMessage('Connection error: ' + message);
+        }));
+        this.toDispose.push(connection.onReconnect(() => {
+            // Reconnect the Yjs provider
+            // This will resync all missed messages
+            this.yjsProvider.connect();
         }));
         this.toDispose.push(this.yjsProvider);
         this.toDispose.push({
@@ -341,7 +350,16 @@ export class CollaborationInstance implements vscode.Disposable {
         this.registerEditorEvents();
     }
 
-    dispose() {
+    async leave(): Promise<void> {
+        try {
+            await this.connection.room.leave();
+            await new Promise(resolve => setTimeout(resolve, 100));
+        } catch {
+            // Connection is likely already disposed
+        }
+    }
+
+    dispose(): void {
         CollaborationInstance.Current = undefined;
         this.peers.forEach(e => e.dispose());
         this.peers.clear();

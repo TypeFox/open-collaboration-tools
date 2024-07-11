@@ -11,24 +11,25 @@ import { MessageTransport } from './transport';
 
 export interface RoomHandler {
     onJoin(handler: Handler<[types.Peer]>): void;
+    leave(): Promise<void>;
     onLeave(handler: Handler<[types.Peer]>): void;
     onClose(handler: Handler<[]>): void;
     onPermissions(handler: Handler<[types.Permissions]>): void;
-    updatePermissions(permissions: types.Permissions): void;
+    updatePermissions(permissions: types.Permissions): Promise<void>;
 }
 
 export interface PeerHandler {
     onJoinRequest(handler: Handler<[types.User], types.JoinResponse | undefined>): void;
     onInfo(handler: Handler<[types.Peer]>): void;
     onInit(handler: Handler<[types.InitData]>): void;
-    init(target: MessageTarget, data: types.InitData): void;
+    init(target: MessageTarget, data: types.InitData): Promise<void>;
 }
 
 export interface EditorHandler {
     onOpen(handler: Handler<[string]>): void;
-    open(target: MessageTarget, path: types.Path): void;
+    open(target: MessageTarget, path: types.Path): Promise<void>;
     onClose(handler: Handler<[types.Path]>): void;
-    close(path: types.Path): void;
+    close(path: types.Path): Promise<void>;
 }
 
 export interface FileSystemHandler {
@@ -47,18 +48,18 @@ export interface FileSystemHandler {
     onRename(handler: Handler<[types.Path, types.Path]>): void;
     rename(target: MessageTarget, from: types.Path, to: types.Path): Promise<void>;
     onChange(handler: Handler<[types.FileChangeEvent]>): void;
-    change(event: types.FileChangeEvent): void;
+    change(event: types.FileChangeEvent): Promise<void>;
 }
 
 export interface SyncHandler {
     onDataUpdate(handler: Handler<[types.Binary]>): void;
-    dataUpdate(data: types.Binary): void;
-    dataUpdate(target: MessageTarget, data: types.Binary): void;
+    dataUpdate(data: types.Binary): Promise<void>;
+    dataUpdate(target: MessageTarget, data: types.Binary): Promise<void>;
     onAwarenessUpdate(handler: Handler<[types.Binary]>): void;
-    awarenessUpdate(data: types.Binary): void;
-    awarenessUpdate(target: MessageTarget, data: types.Binary): void;
+    awarenessUpdate(data: types.Binary): Promise<void>;
+    awarenessUpdate(target: MessageTarget, data: types.Binary): Promise<void>;
     onAwarenessQuery(handler: Handler<[]>): void;
-    awarenessQuery(): void;
+    awarenessQuery(): Promise<void>;
 }
 
 export interface ProtocolBroadcastConnection extends BroadcastConnection {
@@ -89,6 +90,7 @@ export class ProtocolBroadcastConnectionImpl extends AbstractBroadcastConnection
             this.onDidJoinRoom(peer);
             handler(origin, peer);
         }),
+        leave: () => this.sendNotification(Messages.Room.Leave, ''),
         onLeave: handler => this.onBroadcast(Messages.Room.Left, (origin, peer) => {
             this.onDidLeaveRoom(peer);
             handler(origin, peer);
@@ -142,22 +144,22 @@ export class ProtocolBroadcastConnectionImpl extends AbstractBroadcastConnection
             this.onBroadcast(Messages.Sync.DataUpdate, handler);
             this.onNotification(Messages.Sync.DataNotify, handler);
         },
-        dataUpdate: (target: string | undefined | types.Binary, data?: types.Binary) => {
+        dataUpdate: async (target: string | undefined | types.Binary, data?: types.Binary) => {
             if (typeof target === 'object') {
-                this.sendBroadcast(Messages.Sync.DataUpdate, target);
+                await this.sendBroadcast(Messages.Sync.DataUpdate, target);
             } else {
-                this.sendNotification(Messages.Sync.DataNotify, target, data);
+                await this.sendNotification(Messages.Sync.DataNotify, target, data);
             }
         },
         onAwarenessUpdate: handler => {
             this.onBroadcast(Messages.Sync.AwarenessUpdate, handler);
             this.onNotification(Messages.Sync.AwarenessNotify, handler);
         },
-        awarenessUpdate: (target: string | undefined | types.Binary, data?: types.Binary) => {
+        awarenessUpdate: async (target: string | undefined | types.Binary, data?: types.Binary) => {
             if (typeof target === 'object') {
-                this.sendBroadcast(Messages.Sync.AwarenessUpdate, target);
+                await this.sendBroadcast(Messages.Sync.AwarenessUpdate, target);
             } else {
-                this.sendNotification(Messages.Sync.AwarenessNotify, target, data);
+                await this.sendNotification(Messages.Sync.AwarenessNotify, target, data);
             }
         },
         onAwarenessQuery: handler => this.onBroadcast(Messages.Sync.AwarenessQuery, handler),

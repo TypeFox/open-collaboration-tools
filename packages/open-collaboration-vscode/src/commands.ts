@@ -88,6 +88,7 @@ export class Commands {
             vscode.commands.registerCommand('oct.closeConnection', async () => {
                 const instance = CollaborationInstance.Current;
                 if (instance) {
+                    await instance.leave();
                     instance.dispose();
                     this.contextKeyService.setConnection(undefined);
                     if (!instance.host) {

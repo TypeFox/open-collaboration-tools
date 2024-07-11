@@ -30,6 +30,7 @@ export interface BroadcastConnection {
     sendBroadcast<P extends unknown[]>(type: msg.BroadcastType<P>, ...parameters: P): void;
     dispose(): void;
     onDisconnect: Event<void>;
+    onReconnect: Event<void>;
     onConnectionError: Event<string>;
 }
 
@@ -45,6 +46,7 @@ export abstract class AbstractBroadcastConnection implements BroadcastConnection
     protected onErrorEmitter = new Emitter<string>();
     protected onDisconnectEmitter = new Emitter<void>();
     protected onConnectionErrorEmitter = new Emitter<string>();
+    protected onReconnectEmitter = new Emitter<void>();
 
     get onError(): Event<string> {
         return this.onErrorEmitter.event;
@@ -52,6 +54,10 @@ export abstract class AbstractBroadcastConnection implements BroadcastConnection
 
     get onDisconnect(): Event<void> {
         return this.onDisconnectEmitter.event;
+    }
+
+    get onReconnect(): Event<void> {
+        return this.onReconnectEmitter.event;
     }
 
     get onConnectionError(): Event<string> {
@@ -73,6 +79,7 @@ export abstract class AbstractBroadcastConnection implements BroadcastConnection
             this.onConnectionErrorEmitter.fire(message);
             this.dispose();
         });
+        transport.onReconnect(() => this.onReconnectEmitter.fire());
     }
 
     dispose(): void {
@@ -154,7 +161,7 @@ export abstract class AbstractBroadcastConnection implements BroadcastConnection
                         symmetricKey: this.symKey,
                         cache: this.encryptionKeyCache
                     }, publicKey);
-                    this.write(encryptedResponseMessage);
+                    await this.write(encryptedResponseMessage);
                 } catch (error) {
                     const responseErrorMessage = msg.ResponseErrorMessage.create(decrypted.id, String(error));
                     const publicKey = this.getPublicKey(decrypted.origin);
@@ -162,7 +169,7 @@ export abstract class AbstractBroadcastConnection implements BroadcastConnection
                         symmetricKey: this.symKey,
                         cache: this.encryptionKeyCache
                     }, publicKey);
-                    this.write(encryptedResponseErrorMessage);
+                    await this.write(encryptedResponseErrorMessage);
                 }
             } catch (err) {
                 console.error(`Failed to handle request message`, err);
@@ -199,8 +206,8 @@ export abstract class AbstractBroadcastConnection implements BroadcastConnection
     protected abstract getPublicKeys(): Encryption.AsymmetricKey[];
     protected abstract getPublicKeysLength(): number;
 
-    private write(message: msg.BinaryBroadcastMessage | msg.BinaryErrorMessage | msg.BinaryNotificationMessage | msg.BinaryRequestMessage | msg.BinaryResponseErrorMessage | msg.BinaryResponseMessage): void {
-        this.transport.write(Encoding.encode(message));
+    private async write(message: msg.BinaryBroadcastMessage | msg.BinaryErrorMessage | msg.BinaryNotificationMessage | msg.BinaryRequestMessage | msg.BinaryResponseErrorMessage | msg.BinaryResponseMessage): Promise<void> {
+        await this.transport.write(Encoding.encode(message));
     }
 
     onRequest(type: string, handler: Handler<any[], any>): void;
@@ -247,12 +254,12 @@ export abstract class AbstractBroadcastConnection implements BroadcastConnection
             symmetricKey: this.symKey,
             cache: this.encryptionKeyCache
         }, this.getPublicKey(target));
-        this.write(encryptedMessage);
+        await this.write(encryptedMessage);
         return deferred.promise;
     }
 
-    sendNotification(type: string, target: msg.MessageTarget, ...parameters: any[]): void;
-    sendNotification<P extends unknown[]>(type: msg.NotificationType<P>, target: msg.MessageTarget, ...parameters: P): void;
+    sendNotification(type: string, target: msg.MessageTarget, ...parameters: any[]): Promise<void>;
+    sendNotification<P extends unknown[]>(type: msg.NotificationType<P>, target: msg.MessageTarget, ...parameters: P): Promise<void>;
     async sendNotification(type: msg.NotificationType<any> | string, target: msg.MessageTarget, ...parameters: any[]): Promise<void> {
         await this._ready.promise;
         const message = msg.NotificationMessage.create(type, '', target, parameters);
@@ -260,11 +267,11 @@ export abstract class AbstractBroadcastConnection implements BroadcastConnection
             symmetricKey: this.symKey,
             cache: this.encryptionKeyCache
         }, this.getPublicKey(target));
-        this.write(encryptedMessage);
+        await this.write(encryptedMessage);
     }
 
-    sendBroadcast(type: string, ...parameters: any[]): void;
-    sendBroadcast<P extends unknown[]>(type: msg.BroadcastType<P>, ...parameters: P): void;
+    sendBroadcast(type: string, ...parameters: any[]): Promise<void>;
+    sendBroadcast<P extends unknown[]>(type: msg.BroadcastType<P>, ...parameters: P): Promise<void>;
     async sendBroadcast(type: msg.BroadcastType<any> | string, ...parameters: any[]): Promise<void> {
         await this._ready.promise;
         const message = msg.BroadcastMessage.create(type, '', parameters);
@@ -276,7 +283,7 @@ export abstract class AbstractBroadcastConnection implements BroadcastConnection
                 symmetricKey: this.symKey,
                 cache: this.encryptionKeyCache
             },  ...publicKeys);
-            this.write(encryptedMessage);
+            await this.write(encryptedMessage);
         }
     }
 }

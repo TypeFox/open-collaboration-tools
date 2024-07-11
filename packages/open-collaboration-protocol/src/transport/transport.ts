@@ -6,7 +6,7 @@
 
 import { Event } from '../utils/event';
 
-export type ConnectionWriter = (data: ArrayBuffer) => void;
+export type ConnectionWriter = (data: ArrayBuffer) => Promise<void>;
 export type ConnectionReader = (cb: (data: ArrayBuffer) => void) => void;
 
 export interface MessageTransportProvider {
@@ -19,6 +19,7 @@ export interface MessageTransport {
     write: ConnectionWriter;
     read: ConnectionReader;
     dispose(): void;
+    onReconnect: Event<void>;
     onDisconnect: Event<void>;
     onError: Event<string>;
 }
