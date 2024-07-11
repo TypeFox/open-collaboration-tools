@@ -23,12 +23,18 @@ export class SocketIoTransport implements MessageTransport {
 
     readonly id = 'socket.io';
 
+    private onReconnectEmitter = new Emitter<void>();
     private onDisconnectEmitter = new Emitter<void>();
     private onErrorEmitter = new Emitter<string>();
+    private disconnectTimeout?: NodeJS.Timeout;
     private ready = new Deferred();
 
     get onDisconnect(): Event<void> {
         return this.onDisconnectEmitter.event;
+    }
+
+    get onReconnect(): Event<void> {
+        return this.onReconnectEmitter.event;
     }
 
     get onError(): Event<string> {
@@ -36,13 +42,25 @@ export class SocketIoTransport implements MessageTransport {
     }
 
     constructor(protected socket: Socket) {
-        this.socket.on('disconnect', () => this.onDisconnectEmitter.fire());
+        this.socket.on('disconnect', (_reason, _description) => {
+            this.ready = new Deferred();
+            // Give it 30 seconds to reconnect before firing the disconnect event
+            this.disconnectTimeout = setTimeout(() => this.onDisconnectEmitter.fire(), 30_000);
+        });
+        this.socket.io.on('reconnect', () => {
+            if (this.disconnectTimeout) {
+                clearTimeout(this.disconnectTimeout);
+                this.disconnectTimeout = undefined;
+                this.ready.resolve();
+            }
+            this.onReconnectEmitter.fire();
+        });
         this.socket.on('error', () => this.onErrorEmitter.fire('Websocket connection closed unexpectedly.'));
         this.socket.on('connect', () => this.ready.resolve());
     }
 
-    write(data: ArrayBuffer): void {
-        this.ready.promise.then(() => this.socket.send(data));
+    async write(data: ArrayBuffer): Promise<void> {
+        await this.ready.promise.then(() => this.socket.send(data));
     }
 
     read(cb: (data: ArrayBuffer) => void): void {

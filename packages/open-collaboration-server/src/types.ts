@@ -4,10 +4,13 @@
 // terms of the MIT License, which is available in the project root.
 // ******************************************************************************
 
-import { Channel } from './channel';
+import { Channel, TransportChannel } from './channel';
 import * as protocol from 'open-collaboration-protocol';
 
 export class Room {
+
+    clock = 0;
+
     constructor(public id: string, public host: Peer, public guests: Peer[]) {
     }
 
@@ -38,21 +41,24 @@ export function isUser(obj: unknown): obj is User {
 export const PeerInfo = Symbol('PeerInfo');
 
 export interface PeerInfo {
+    jwt: string;
     user: User;
     host: boolean;
+    channel: TransportChannel;
     client: string;
     publicKey: string;
     supportedCompression: string[];
-    channel: Channel;
 }
 
-export interface Peer {
+export interface Peer extends protocol.Disposable {
+    jwt: string;
     id: string;
     client: string;
     host: boolean;
     user: User;
     channel: Channel;
     room: Room;
+    onDispose: protocol.Event<void>;
     toProtocol(): protocol.Peer
     toEncryptionKey(): protocol.Encryption.AsymmetricKey
 }

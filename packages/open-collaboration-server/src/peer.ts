@@ -25,6 +25,10 @@ export class PeerImpl implements Peer {
 
     readonly id = nanoid(24);
 
+    get jwt(): string {
+        return this.peerInfo.jwt;
+    }
+
     get publicKey(): string {
         return this.peerInfo.publicKey;
     }
@@ -43,10 +47,6 @@ export class PeerImpl implements Peer {
 
     get host(): boolean {
         return this.peerInfo.host;
-    }
-
-    get channel(): Channel {
-        return this.peerInfo.channel;
     }
 
     get room(): Room {
@@ -69,9 +69,25 @@ export class PeerImpl implements Peer {
     @inject(CredentialsManager)
     private readonly credentials: CredentialsManager;
 
+    private _channel?: Channel;
+    private readonly onDisposeEmitter = new protocol.Emitter<void>();
+
+    get onDispose(): protocol.Event<void> {
+        return this.onDisposeEmitter.event;
+    }
+
+    get channel(): Channel {
+        if (!this._channel) {
+            throw new Error('Not initialized');
+        }
+        return this._channel;
+    }
+
     @postConstruct()
-    protected init(): void {
-        this.channel.onMessage(message => this.receiveMessage(message));
+    protected initialize(): void {
+        this._channel = new Channel(this.peerInfo.channel);
+        this._channel.onMessage(message => this.receiveMessage(message));
+        this._channel.onClose(() => this.dispose());
     }
 
     private async receiveMessage(message: protocol.Message): Promise<void> {
@@ -102,6 +118,10 @@ export class PeerImpl implements Peer {
             }
         } else if (protocol.NotificationMessage.isBinary(message)) {
             message.origin = this.id;
+            if (message.target === '') {
+                this.handleServerMessage(message);
+                return;
+            }
             try {
                 this.messageRelay.sendNotification(this.getTargetPeer(message.target), message);
             } catch (error) {
@@ -109,6 +129,20 @@ export class PeerImpl implements Peer {
             }
         } else if (protocol.BroadcastMessage.isBinary(message)) {
             this.messageRelay.sendBroadcast(this, message);
+        }
+    }
+
+    private async handleServerMessage(notification: protocol.BinaryNotificationMessage): Promise<void> {
+        try {
+            const privateKey = await this.credentials.getPrivateKey();
+            const decrypted = await protocol.Encryption.decrypt(notification, { privateKey });
+            if (decrypted.content.method === protocol.Messages.Room.Leave.method) {
+                this.dispose();
+            } else {
+                throw new Error('Unknown server message method: ' + decrypted.content.method);
+            }
+        } catch (err) {
+            this.logger.error('Failed to handle server message', err)
         }
     }
 
@@ -143,5 +177,11 @@ export class PeerImpl implements Peer {
             peerId: this.id,
             supportedCompression: this.supportedCompression
         };
+    }
+
+    dispose(): void {
+        this.onDisposeEmitter.fire(undefined);
+        this.onDisposeEmitter.dispose();
+        this.logger.info(`Peer '${this.id}' disposed`);
     }
 }

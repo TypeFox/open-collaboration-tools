@@ -40,7 +40,7 @@ export class MessageRelay {
             clearTimeout(timeout);
             deferred.reject(new Error('Request timed out'));
         };
-        const timeout = setTimeout(dispose, 300_000);
+        const timeout = setTimeout(dispose, 30_000);
         this.requestMap.set(key, {
             id: messageId,
             response: deferred,

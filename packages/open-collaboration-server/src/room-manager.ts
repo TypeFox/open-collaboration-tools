@@ -12,14 +12,15 @@ import { JoinResponse, Messages, BroadcastMessage, Encryption, NotificationMessa
 import { Logger, LoggerSymbol } from './utils/logging';
 
 export interface PreparedRoom {
-    id: string
+    id: string;
     jwt: string;
 }
 
 export interface RoomClaim {
-    room: string
-    user: User
-    host?: boolean
+    room: string;
+    roomClock: number;
+    user: User;
+    host?: boolean;
 }
 
 export function isRoomClaim(obj: unknown): obj is RoomClaim {
@@ -66,7 +67,8 @@ export class RoomManager {
                 name: user.name,
                 email: user.email
             },
-            host: true
+            host: true,
+            roomClock: 0
         };
         this.logger.info(`Prepared room [id: '${claim.room}'] for user [provider: '${user.authProvider || '<none>'}' | id: '${user.id}' | name: '${user.name}' | email: '${user.email || '<none>'}']`)
         const jwt = await this.credentials.generateJwt(claim);
@@ -83,10 +85,10 @@ export class RoomManager {
             room = new Room(roomId, peer, []);
             this.rooms.set(room.id, room);
             this.peers.set(peer.id, room);
-            this.logger.info(`Host [id: '${peer.id}' | client: '${peer.client}' | userId: '${peer.user.id}' | name: '${peer.user.name}' | email: '${peer.user.email || '<none>'}'] created room [id: '${room.id}']`);
-            peer.channel.onClose(() => {
+            peer.onDispose(() => {
                 this.closeRoom(room.id);
             });
+            this.logger.info(`Host [id: '${peer.id}' | client: '${peer.client}' | userId: '${peer.user.id}' | name: '${peer.user.name}' | email: '${peer.user.email || '<none>'}'] created room [id: '${room.id}']`);
         } else {
             room = this.rooms.get(roomId)!;
             if (!room) {
@@ -108,25 +110,8 @@ export class RoomManager {
                     this.logger.error('Failed to send join broadcast', err);
                 }
             }
-            peer.channel.onClose(async () => {
-                const otherPeerKeys = room.peers
-                    .filter(roomPeer => roomPeer.id !== peer.id)
-                    .map(roomPeer => roomPeer.toEncryptionKey());
-                if (otherPeerKeys.length > 0) {
-                    try {
-                        const broadcastMessage = BroadcastMessage.create(Messages.Room.Left, '', [peer.toProtocol()]);
-                        const encryptedMessage = await Encryption.encrypt(broadcastMessage, { symmetricKey }, ...otherPeerKeys);
-                        this.messageRelay.sendBroadcast(
-                            peer,
-                            encryptedMessage
-                        );
-                    } catch (err) {
-                        this.logger.error('Failed to send leave broadcast', err);
-                    }
-                }
-                // Remove the peer from the room as the last step
-                this.peers.delete(peer.id);
-                room.removeGuest(peer.id);
+            peer.onDispose(() => {
+                this.leaveRoom(peer);
             });
         }
         // Send the identity info to the user (i.e. what the user needs to know about itself)
@@ -142,6 +127,36 @@ export class RoomManager {
             encryptedInfo
         );
         return room;
+    }
+
+    async leaveRoom(peer: Peer): Promise<void> {
+        const room = this.getRoomByPeerId(peer.id);
+        if (!room) {
+            return;
+        }
+        if (peer.host) {
+            this.closeRoom(room.id);
+        } else {
+            const symmetricKey = await this.credentials.getSymmetricKey();
+            const otherPeerKeys = room.peers
+                .filter(roomPeer => roomPeer.id !== peer.id)
+                .map(roomPeer => roomPeer.toEncryptionKey());
+            if (otherPeerKeys.length > 0) {
+                try {
+                    const broadcastMessage = BroadcastMessage.create(Messages.Room.Left, '', [peer.toProtocol()]);
+                    const encryptedMessage = await Encryption.encrypt(broadcastMessage, { symmetricKey }, ...otherPeerKeys);
+                    this.messageRelay.sendBroadcast(
+                        peer,
+                        encryptedMessage
+                    );
+                } catch (err) {
+                    this.logger.error('Failed to send leave broadcast', err);
+                }
+            }
+            // Remove the peer from the room as the last step
+            this.peers.delete(peer.id);
+            room.removeGuest(peer.id);
+        }
     }
 
     getRoomById(id: string): Room | undefined {
@@ -171,7 +186,12 @@ export class RoomManager {
                 }
                 const claim: RoomClaim = {
                     room: room.id,
-                    user: { ...user }
+                    user: { ...user },
+                    // Increment the clock to identify unique sessions
+                    // If a user joins a room multiple times, the clock will be incremented
+                    // This way, they get a new JWT for each session
+                    // If a user reconnects using an old JWT, we can identify a reconnect attempt
+                    roomClock: ++room.clock
                 };
                 return {
                     jwt: await this.credentials.generateJwt(claim),

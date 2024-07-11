@@ -17,6 +17,7 @@ import { SimpleLoginEndpoint } from './auth-endpoints/simple-login-endpoint';
 import { AuthEndpoint } from './auth-endpoints/auth-endpoint';
 import { GitHubOAuthEndpoint, GoogleOAuthEndpoint  } from './auth-endpoints/oauth-endpoint';
 import { Configuration, DefaultConfiguration } from './utils/configuration';
+import { PeerManager } from './peer-manager';
 
 export default new ContainerModule(bind => {
     bind(LoggerSymbol).to(ConsoleLogger).inSingletonScope();
@@ -35,6 +36,7 @@ export default new ContainerModule(bind => {
         child.bind(PeerInfo).toConstantValue(peerInfo);
         return child.get(PeerImpl);
     });
+    bind(PeerManager).toSelf().inSingletonScope();
 
     bind(SimpleLoginEndpoint).toSelf().inSingletonScope();
     bind(AuthEndpoint).toService(SimpleLoginEndpoint);

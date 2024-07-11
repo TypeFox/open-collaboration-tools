@@ -21,6 +21,7 @@ export async function activate(context: vscode.ExtensionContext) {
 }
 
 export async function deactivate(): Promise<void> {
+    await CollaborationInstance.Current?.leave();
     CollaborationInstance.Current?.dispose();
     await closeSharedEditors();
     removeWorkspaceFolders();
