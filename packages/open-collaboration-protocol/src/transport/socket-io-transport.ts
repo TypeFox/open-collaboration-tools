@@ -45,7 +45,10 @@ export class SocketIoTransport implements MessageTransport {
         this.socket.on('disconnect', (_reason, _description) => {
             this.ready = new Deferred();
             // Give it 30 seconds to reconnect before firing the disconnect event
-            this.disconnectTimeout = setTimeout(() => this.onDisconnectEmitter.fire(), 30_000);
+            this.disconnectTimeout = setTimeout(() => {
+                this.onDisconnectEmitter.fire();
+                this.disconnectTimeout = undefined;
+            }, 30_000);
         });
         this.socket.io.on('reconnect', () => {
             if (this.disconnectTimeout) {
