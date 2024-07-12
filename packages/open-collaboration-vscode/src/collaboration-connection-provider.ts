@@ -30,7 +30,7 @@ export class CollaborationConnectionProvider {
         if (serverUrl) {
             return new ConnectionProvider({
                 url: serverUrl,
-                client: 'OCT-VSCode@' + version,
+                client: 'OCT-VSCode@' + packageVersion,
                 opener: (url) => vscode.env.openExternal(vscode.Uri.parse(url)),
                 transports: [SocketIoTransportProvider],
                 userToken,
