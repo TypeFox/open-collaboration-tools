@@ -13,13 +13,22 @@ export interface Disposable {
     dispose(): void;
 }
 
+type PeerDecorationOptions = {
+    before: monaco.editor.IModelDecorationOptions,
+    after: monaco.editor.IModelDecorationOptions,
+    nameTags: {
+        default: monaco.editor.IModelDecorationOptions,
+        inverted: monaco.editor.IModelDecorationOptions
+    }
+};
+
 export class DisposablePeer implements Disposable {
 
     readonly peer: types.Peer;
     private disposables:  Disposable[] = [];
     private yjsAwareness: awarenessProtocol.Awareness;
 
-    readonly decoration: ClientTextEditorDecorationType;
+    readonly decoration: PeerDecorationOptions;
 
     get clientId(): number | undefined {
         const states = this.yjsAwareness.getStates() as Map<number, types.ClientAwareness>;
@@ -45,56 +54,88 @@ export class DisposablePeer implements Disposable {
     constructor(yAwareness: awarenessProtocol.Awareness, peer: types.Peer) {
         this.peer = peer;
         this.yjsAwareness = yAwareness;
-        // this.decoration = this.createDecorationType();
-        this.disposables.push(this.decoration);
+        this.decoration = this.createDecorations();
     }
 
-    // private createDecorationType(): ClientTextEditorDecorationType {
-    //     const color = createColor();
-    //     const colorCss = typeof color === 'string' ? `var(--vscode-${color.replaceAll('.', '-')})` : `rgb(${color[0]}, ${color[1]}, ${color[2]})`
-    //     const selection: vscode.DecorationRenderOptions = {
-    //         backgroundColor: `color-mix(in srgb, ${colorCss} 25%, transparent)`,
-    //         borderRadius: '0.1em'
-    //     };
-    //     const cursor: vscode.ThemableDecorationAttachmentRenderOptions = {
-    //         color: colorCss,
-    //         contentText: 'ᛙ',
-    //         margin: '0px 0px 0px -0.25ch',
-    //         fontWeight: 'bold',
-    //         textDecoration: 'none; position: absolute; display: inline-block; top: 0; font-size: 200%; font-weight: bold; z-index: 1;'
-    //     };
-    //     const before = vscode.window.createTextEditorDecorationType({
-    //         rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
-    //         ...selection,
-    //         before: cursor
-    //     });
-    //     const after = vscode.window.createTextEditorDecorationType({
-    //         rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
-    //         ...selection,
-    //         after: cursor
-    //     });
-    //     const beforeNameTag = this.createNameTag(colorCss, 'top: -1rem;')
-    //     const beforeInvertedNameTag = this.createNameTag(colorCss, 'bottom: -1rem;');
+    private createDecorations(): PeerDecorationOptions {
+        const color = createColor();
+        const colorCss = typeof color === 'string' ? color : `rgb(${color[0]}, ${color[1]}, ${color[2]})`;
+        const className = `peer-${this.peer.id}`;
+        const cursorClassName = `${className}-cursor`;
+        const selectionClassName = `${className}-selection`;
+        const cursorCss = `.${cursorClassName} {
+            background-color: ${color} !important;
+            margin: 0px 0px 0px -0.25ch;
+            fontWeight: bold;
+            textDecoration: none;
+            position: absolute;
+            display: inline-block;
+            top: 0;
+            font-size: 200%;
+            z-index: 1;
+        }`;
+        generateCSS(cursorClassName, cursorCss);
+        const selectionCss = `.${selectionClassName} {
+            backgroundColor: color-mix(in srgb, ${color} 25%, transparent);
+            borderRadius: '0.1em';
+        }`;
+        generateCSS(selectionClassName, selectionCss);
+        const cursor: monaco.editor.InjectedTextOptions = {
+            inlineClassName: cursorClassName,
+            content: 'ᛙ'
+        };
+        const beforeNameTag = this.createNameTag('default', colorCss, 'top: -1rem;')
+        const beforeInvertedNameTag = this.createNameTag('inverted', colorCss, 'bottom: -1rem;');
 
-    //     return new ClientTextEditorDecorationType(before, after, {
-    //         default: beforeNameTag,
-    //         inverted: beforeInvertedNameTag
-    //     }, color);
-    // }
+        return {
+            before: {
+                stickiness: monaco.editor.TrackedRangeStickiness.NeverGrowsWhenTypingAtEdges,
+                before: cursor,
+                className: selectionClassName
+            },
+            after: {
+                stickiness: monaco.editor.TrackedRangeStickiness.NeverGrowsWhenTypingAtEdges,
+                after: cursor,
+                className: selectionClassName
+            },
+            nameTags: {
+                default: beforeNameTag,
+                inverted: beforeInvertedNameTag
+            }
+        }
+    }
 
-    // private createNameTag(color: string, textDecoration?: string): vscode.TextEditorDecorationType {
-    //     const options: vscode.ThemableDecorationAttachmentRenderOptions = {
-    //         contentText: this.peer.name,
-    //         backgroundColor: color,
-    //         textDecoration: `none; position: absolute; border-radius: 0.15rem; padding:0px 0.5ch; display: inline-block;
-    //                             pointer-events: none; color: #000; font-size: 0.7rem; z-index: 10; font-weight: bold;${textDecoration ?? ''}`
-    //     }
-    //     return vscode.window.createTextEditorDecorationType({
-    //         backgroundColor: color,
-    //         rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
-    //         before: options
-    //     });
-    // }
+    private createNameTag(prefix: string, color: string, textPosition?: string): monaco.editor.IModelDecorationOptions {
+        const className = `peer-${this.peer.id}-nametag-${prefix}`;
+        const inlineClassName = `${className}-inline`;
+        const inlineCss = `.${inlineClassName} {
+            text-decoration: none;
+            position: absolute;
+            border-radius: 0.15rem;
+            padding: 0px 0.5ch;
+            display: inline-block;
+            pointer-events: none;
+            color: #000;
+            font-size: 0.7rem;
+            z-index: 10;
+            font-weight: bold;
+            ${textPosition ?? ''}
+        }`;
+        generateCSS(inlineClassName, inlineCss);
+        const options: monaco.editor.InjectedTextOptions = {
+            content: this.peer.name,
+            inlineClassName
+        }
+        const css = `.${className} {
+            background-color: ${color};
+        }`;
+        generateCSS(className, css);
+        return {
+            className,
+            stickiness: monaco.editor.TrackedRangeStickiness.NeverGrowsWhenTypingAtEdges,
+            before: options
+        };
+    }
 
     dispose() {
         for (const disposable of this.disposables) {
@@ -104,60 +145,66 @@ export class DisposablePeer implements Disposable {
 
 }
 
-// let colorIndex = 0;
-// const defaultColors: ([number, number, number] | string)[] = [
-//     'oct.user.yellow', // Yellow
-//     'oct.user.green', // Green
-//     'oct.user.magenta', // Magenta
-//     'oct.user.lightGreen', // Light green
-//     'oct.user.lightOrange', // Light orange
-//     'oct.user.lightMagenta', // Light magenta
-//     [92, 45, 145], // Purple
-//     [0, 178, 148], // Light teal
-//     [255, 241, 0], // Light yellow
-//     [180, 160, 255] // Light purple
-// ];
+let colorIndex = 0;
+const defaultColors: ([number, number, number] | string)[] = [
+    'yellow', // Yellow
+    'green', // Green
+    'magenta', // Magenta
+    'lightGreen', // Light green
+    [255, 178, 123], // Light orange
+    [255, 157, 242], // Light magenta
+    [92, 45, 145], // Purple
+    [0, 178, 148], // Light teal
+    [255, 241, 0], // Light yellow
+    [180, 160, 255] // Light purple
+];
 
-// const knownColors = new Set<string>();
-// function createColor(): [number, number, number] | string {
-//     if (colorIndex < defaultColors.length) {
-//         return defaultColors[colorIndex++];
-//     }
-//     const o = Math.round, r = Math.random, s = 255;
-//     let color: [number, number, number];
-//     do {
-//         color = [o(r() * s), o(r() * s), o(r() * s)];
-//     } while (knownColors.has(JSON.stringify(color)));
-//     knownColors.add(JSON.stringify(color));
-//     return color;
-// }
-
-export class ClientTextEditorDecorationType implements Disposable {
-    protected readonly toDispose: Disposable;
-    // constructor(
-    //     readonly before: vscode.TextEditorDecorationType,
-    //     readonly after: vscode.TextEditorDecorationType,
-    //     readonly nameTags: {
-    //         default: vscode.TextEditorDecorationType,
-    //         inverted: vscode.TextEditorDecorationType
-    //     },
-    //     readonly color: [number, number, number] | string
-    // ) {
-    //     this.toDispose = vscode.Disposable.from(
-    //         before, after,
-    //         nameTags.default,
-    //         nameTags.inverted,
-    //     );
-    // }
-
-    dispose(): void {
-        this.toDispose.dispose();
+const knownColors = new Set<string>();
+function createColor(): [number, number, number] | string {
+    if (colorIndex < defaultColors.length) {
+        return defaultColors[colorIndex++];
     }
-
-    // getThemeColor(): vscode.ThemeColor | undefined {
-    //     return typeof this.color === 'string' ?  new vscode.ThemeColor(this.color) : undefined;
-    // }
+    const o = Math.round, r = Math.random, s = 255;
+    let color: [number, number, number];
+    do {
+        color = [o(r() * s), o(r() * s), o(r() * s)];
+    } while (knownColors.has(JSON.stringify(color)));
+    knownColors.add(JSON.stringify(color));
+    return color;
 }
+
+function generateCSS(className: string, cssText: string) {
+    const style: HTMLStyleElement = document.createElement('style');
+    style.textContent = cssText;
+    document.head.appendChild(style);
+}
+
+// export class ClientTextEditorDecorationType implements Disposable {
+//     protected readonly toDispose: Disposable;
+//     constructor(
+//         readonly before: vscode.TextEditorDecorationType,
+//         readonly after: vscode.TextEditorDecorationType,
+//         readonly nameTags: {
+//             default: vscode.TextEditorDecorationType,
+//             inverted: vscode.TextEditorDecorationType
+//         },
+//         readonly color: [number, number, number] | string
+//     ) {
+//         this.toDispose = vscode.Disposable.from(
+//             before, after,
+//             nameTags.default,
+//             nameTags.inverted,
+//         );
+//     }
+
+//     dispose(): void {
+//         this.toDispose.dispose();
+//     }
+
+//     // getThemeColor(): vscode.ThemeColor | undefined {
+//     //     return typeof this.color === 'string' ?  new vscode.ThemeColor(this.color) : undefined;
+//     // }
+// }
 
 export interface CollaborationInstanceOptions {
     connection: ProtocolBroadcastConnection;
@@ -322,10 +369,10 @@ export class CollaborationInstance implements Disposable {
         //     this.documentDisposables.delete(uri);
         // }));
 
-        // this.toDispose.push(vscode.window.onDidChangeTextEditorSelection(event => {
-        //     this.updateTextSelection(event.textEditor);
-        // }));
-        // this.toDispose.push(vscode.window.onDidChangeTextEditorVisibleRanges(event => {
+        this.toDispose.push(this.options.editor.onDidChangeCursorSelection(_e => {
+            this.updateTextSelection(this.options.editor);
+        }));
+        // this.toDispose.push(this.options.editor.onDidChangeTextEditorVisibleRanges(_e => {
         //     this.updateTextSelection(event.textEditor);
         // }));
 
@@ -379,42 +426,47 @@ export class CollaborationInstance implements Disposable {
         }
     }
 
-    // protected updateTextSelection(editor: vscode.TextEditor): void {
-    //     const uri = editor.document.uri;
-    //     const path = this.getProtocolPath(uri);
-    //     if (path) {
-    //         const ytext = this.yjs.getText(path);
-    //         const selections: types.RelativeTextSelection[] = [];
-    //         for (const selection of editor.selections) {
-    //             const start = editor.document.offsetAt(selection.start);
-    //             const end = editor.document.offsetAt(selection.end);
-    //             const direction = selection.isReversed
-    //                 ? types.SelectionDirection.RightToLeft
-    //                 : types.SelectionDirection.LeftToRight;
-    //             const editorSelection: types.RelativeTextSelection = {
-    //                 start: Y.createRelativePositionFromTypeIndex(ytext, start),
-    //                 end: Y.createRelativePositionFromTypeIndex(ytext, end),
-    //                 direction
-    //             };
-    //             selections.push(editorSelection);
-    //         }
-    //         const textSelection: types.ClientTextSelection = {
-    //             path,
-    //             textSelections: selections,
-    //             visibleRanges: editor.visibleRanges.map(range => ({
-    //                 start: {
-    //                     line: range.start.line,
-    //                     character: range.start.character
-    //                 },
-    //                 end: {
-    //                     line: range.end.line,
-    //                     character: range.end.character
-    //                 }
-    //             }))
-    //         };
-    //         this.setSharedSelection(textSelection);
-    //     }
-    // }
+    protected updateTextSelection(editor: monaco.editor.IStandaloneCodeEditor): void {
+        const document = editor.getModel();
+        const selections = editor.getSelections();
+        if(!document || !selections) {
+            return;
+        }
+        const uri = document.uri;
+        const path = this.getProtocolPath(uri);
+        if (path) {
+            const ytext = this.yjs.getText(path);
+            const textSelections: types.RelativeTextSelection[] = [];
+            for (const selection of selections) {
+                const start = document.getOffsetAt(selection.getSelectionStart());
+                const end = document.getOffsetAt(selection.getEndPosition());
+                const direction = selection.getDirection() === monaco.SelectionDirection.RTL
+                    ? types.SelectionDirection.RightToLeft
+                    : types.SelectionDirection.LeftToRight;
+                const editorSelection: types.RelativeTextSelection = {
+                    start: Y.createRelativePositionFromTypeIndex(ytext, start),
+                    end: Y.createRelativePositionFromTypeIndex(ytext, end),
+                    direction
+                };
+                textSelections.push(editorSelection);
+            }
+            const textSelection: types.ClientTextSelection = {
+                path,
+                textSelections,
+                visibleRanges: editor.getVisibleRanges().map(range => ({
+                    start: {
+                        line: range.startLineNumber,
+                        character: range.startColumn
+                    },
+                    end: {
+                        line: range.endLineNumber,
+                        character: range.endColumn
+                    }
+                }))
+            };
+            this.setSharedSelection(textSelection);
+        }
+    }
 
     protected async registerTextDocument(document: monaco.editor.ITextModel): Promise<void> {
         const uri = document.uri;
@@ -429,7 +481,7 @@ export class CollaborationInstance implements Disposable {
                     yjsText.insert(0, text);
                 });
                 ytextContent = yjsText.toString();
-            } 
+            }
             if (text !== ytextContent) {
                 document.setValue(ytextContent);
             }
@@ -544,51 +596,73 @@ export class CollaborationInstance implements Disposable {
         const { path, textSelections } = selection;
         const uri = this.getResourceUri(path);
         if (uri) {
-            const editors = [this.options.editor]; // TODO are there other editors later?
-            if (editors.length > 0) {
-                const model = editors[0].getModel();
-                const afterRanges: monaco.Range[] = [];
-                const beforeRanges: monaco.Range[] = [];
-                const beforeNameTags: monaco.Range[] = [];
-                const beforeInvertedNameTags: monaco.Range[] = [];
-                for (const selection of textSelections) {
-                    const forward = selection.direction === 1;
-                    const startIndex = Y.createAbsolutePositionFromRelativePosition(selection.start, this.yjs);
-                    const endIndex = Y.createAbsolutePositionFromRelativePosition(selection.end, this.yjs);
-                    if (model && startIndex && endIndex) {
-                        const start = model.getPositionAt(startIndex.index);
-                        const end = model.getPositionAt(endIndex.index);
-                        const inverted = (forward && end.lineNumber === 0) || (!forward && start.lineNumber === 0);
-                        const range = new monaco.Range(start.lineNumber, start.column, end.lineNumber, end.column);
-                        if (forward) {
-                            afterRanges.push(range);
-                            if (nameTagVisible) {
-                                const endRange = new monaco.Range(end.lineNumber, end.column, end.lineNumber, end.column);
-                                (inverted ? beforeInvertedNameTags : beforeNameTags).push(endRange);
-                            }
-                        } else {
-                            beforeRanges.push(range);
-                            if (nameTagVisible) {
-                                const startRange = new monaco.Range(start.lineNumber, start.column, start.lineNumber, start.column);
-                                (inverted ? beforeInvertedNameTags : beforeNameTags).push(startRange);
-                            }
+            const model = this.options.editor.getModel();
+            const afterRanges: monaco.IRange[] = [];
+            const beforeRanges: monaco.IRange[] = [];
+            const beforeNameTags: monaco.IRange[] = [];
+            const beforeInvertedNameTags: monaco.IRange[] = [];
+            for (const selection of textSelections) {
+                const forward = selection.direction === 1;
+                const startIndex = Y.createAbsolutePositionFromRelativePosition(selection.start, this.yjs);
+                const endIndex = Y.createAbsolutePositionFromRelativePosition(selection.end, this.yjs);
+                if (model && startIndex && endIndex) {
+                    const start = model.getPositionAt(startIndex.index);
+                    const end = model.getPositionAt(endIndex.index);
+                    const inverted = (forward && end.lineNumber === 0) || (!forward && start.lineNumber === 0);
+                    const range: monaco.IRange = {
+                        startLineNumber: start.lineNumber,
+                        startColumn: start.column,
+                        endLineNumber: end.lineNumber,
+                        endColumn: end.column
+                    };
+                    if (forward) {
+                        afterRanges.push(range);
+                        if (nameTagVisible) {
+                            const endRange: monaco.IRange = {
+                                startLineNumber:end.lineNumber,
+                                startColumn: end.column,
+                                endLineNumber: end.lineNumber,
+                                endColumn: end.column
+                            };
+                            (inverted ? beforeInvertedNameTags : beforeNameTags).push(endRange);
+                        }
+                    } else {
+                        beforeRanges.push(range);
+                        if (nameTagVisible) {
+                            const startRange: monaco.IRange = {
+                                startLineNumber: start.lineNumber,
+                                startColumn: start.column,
+                                endLineNumber: start.lineNumber,
+                                endColumn: start.column};
+                            (inverted ? beforeInvertedNameTags : beforeNameTags).push(startRange);
                         }
                     }
                 }
-                // TODO implement this
-                // for (const editor of editors) {
-                //     editor.setDecorations(peer.decoration.before, beforeRanges);
-                //     editor.setDecorations(peer.decoration.after, afterRanges);
-                //     editor.setDecorations(peer.decoration.nameTags.default, beforeNameTags);
-                //     editor.setDecorations(peer.decoration.nameTags.inverted, beforeInvertedNameTags);
-                // }
             }
+            const beforeDecorations = beforeRanges.map<monaco.editor.IModelDeltaDecoration>(range => ({
+                range,
+                options: peer.decoration.before
+            }));
+            const afterDecorations = afterRanges.map<monaco.editor.IModelDeltaDecoration>(range => ({
+                range,
+                options: peer.decoration.after
+            }));
+            const beforeNameTagDecorations = beforeNameTags.map<monaco.editor.IModelDeltaDecoration>(range => ({
+                range,
+                options: peer.decoration.nameTags.default
+            }));
+            const beforeInvertedNameTagDecorations = beforeInvertedNameTags.map<monaco.editor.IModelDeltaDecoration>(range => ({
+                range,
+                options: peer.decoration.nameTags.inverted
+            }));
+            const decorations = beforeDecorations.concat(afterDecorations, beforeNameTagDecorations, beforeInvertedNameTagDecorations);
+            this.options.editor.createDecorationsCollection(decorations);
         }
     }
 
-    // private setSharedSelection(selection?: types.ClientSelection): void {
-    //     this.yjsAwareness.setLocalStateField('selection', selection);
-    // }
+    private setSharedSelection(selection?: types.ClientSelection): void {
+        this.yjsAwareness.setLocalStateField('selection', selection);
+    }
 
     protected createSelectionFromRelative(selection: types.RelativeTextSelection, model: monaco.editor.ITextModel): monaco.Selection | undefined {
         const start = Y.createAbsolutePositionFromRelativePosition(selection.start, this.yjs);
