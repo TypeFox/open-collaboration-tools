@@ -399,6 +399,7 @@ export class CollaborationInstance implements vscode.Disposable {
         }));
 
         this.toDispose.push(vscode.window.onDidChangeVisibleTextEditors(() => {
+            this.updateTextSelection(vscode.window.activeTextEditor);
             this.rerenderPresence();
         }));
 
@@ -469,7 +470,11 @@ export class CollaborationInstance implements vscode.Disposable {
         }
     }
 
-    protected updateTextSelection(editor: vscode.TextEditor): void {
+    protected updateTextSelection(editor?: vscode.TextEditor): void {
+        if (!editor) {
+            this.setSharedSelection(undefined);
+            return;
+        }
         const uri = editor.document.uri;
         const path = this.getProtocolPath(uri);
         if (path) {
@@ -503,6 +508,8 @@ export class CollaborationInstance implements vscode.Disposable {
                 }))
             };
             this.setSharedSelection(textSelection);
+        } else {
+            this.setSharedSelection(undefined);
         }
     }
 
@@ -624,6 +631,12 @@ export class CollaborationInstance implements vscode.Disposable {
         const nameTagVisible = peer.lastUpdated !== undefined && Date.now() - peer.lastUpdated < 1900;
         const { path, textSelections } = selection;
         const uri = this.getResourceUri(path);
+        for (const visibleEditor of vscode.window.visibleTextEditors) {
+            visibleEditor.setDecorations(peer.decoration.before, []);
+            visibleEditor.setDecorations(peer.decoration.after, []);
+            visibleEditor.setDecorations(peer.decoration.nameTags.default, []);
+            visibleEditor.setDecorations(peer.decoration.nameTags.inverted, []);
+        }
         if (uri) {
             const editors = vscode.window.visibleTextEditors.filter(e => e.document.uri.toString() === uri.toString());
             if (editors.length > 0) {
