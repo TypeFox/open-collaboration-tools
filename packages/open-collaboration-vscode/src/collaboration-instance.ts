@@ -6,10 +6,10 @@ import * as types from 'open-collaboration-protocol';
 import { CollaborationFileSystemProvider } from "./collaboration-file-system";
 import * as paths from 'path';
 import { LOCAL_ORIGIN, OpenCollaborationYjsProvider } from 'open-collaboration-yjs';
-import { createMutex } from 'lib0/mutex';
 import debounce from 'lodash/debounce';
 import { inject, injectable, postConstruct } from "inversify";
 import { removeWorkspaceFolders } from "./utils/workspace";
+import { Mutex } from 'async-mutex';
 
 export class DisposablePeer implements vscode.Disposable {
 
@@ -180,7 +180,7 @@ export class CollaborationInstance implements vscode.Disposable {
     private identity = new Deferred<types.Peer>();
     private toDispose = new DisposableCollection();
     protected yjsProvider: OpenCollaborationYjsProvider;
-    private yjsMutex = createMutex();
+    private yjsMutex = new Mutex();
     private updates = new Set<string>();
     private documentDisposables = new Map<string, DisposableCollection>();
     private peers = new Map<string, DisposablePeer>();
@@ -399,6 +399,7 @@ export class CollaborationInstance implements vscode.Disposable {
         }));
 
         this.toDispose.push(vscode.window.onDidChangeVisibleTextEditors(() => {
+            this.updateTextSelection(vscode.window.activeTextEditor);
             this.rerenderPresence();
         }));
 
@@ -469,7 +470,11 @@ export class CollaborationInstance implements vscode.Disposable {
         }
     }
 
-    protected updateTextSelection(editor: vscode.TextEditor): void {
+    protected updateTextSelection(editor?: vscode.TextEditor): void {
+        if (!editor) {
+            this.setSharedSelection(undefined);
+            return;
+        }
         const uri = editor.document.uri;
         const path = this.getProtocolPath(uri);
         if (path) {
@@ -503,6 +508,8 @@ export class CollaborationInstance implements vscode.Disposable {
                 }))
             };
             this.setSharedSelection(textSelection);
+        } else {
+            this.setSharedSelection(undefined);
         }
     }
 
@@ -526,32 +533,35 @@ export class CollaborationInstance implements vscode.Disposable {
                 edit.replace(uri, new vscode.Range(0, 0, document.lineCount, 0), ytextContent);
                 vscode.workspace.applyEdit(edit);
             }
-
             const resyncThrottle = this.getOrCreateThrottle(path, document);
             const observer = (textEvent: Y.YTextEvent) => {
-                this.yjsMutex(async () => {
+                if (textEvent.transaction.local) {
+                    // Ignore own events
+                    return;
+                }
+                let index = 0;
+                const edit = new vscode.WorkspaceEdit();
+                textEvent.delta.forEach(delta => {
+                    if (delta.retain !== undefined) {
+                        index += delta.retain;
+                    } else if (delta.insert !== undefined) {
+                        const pos = document.positionAt(index);
+                        const insert = delta.insert as string;
+                        edit.insert(uri, pos, insert);
+                        index += insert.length;
+                    } else if (delta.delete !== undefined) {
+                        const pos = document.positionAt(index);
+                        const endPos = document.positionAt(index + delta.delete);
+                        const range = new vscode.Range(pos.line, pos.character, endPos.line, endPos.character);
+                        edit.delete(uri, range);
+                    }
+                });
+                this.yjsMutex.runExclusive(async () => {
                     this.updates.add(path);
-                    let index = 0;
-                    const edit = new vscode.WorkspaceEdit();
-                    textEvent.delta.forEach(delta => {
-                        if (delta.retain !== undefined) {
-                            index += delta.retain;
-                        } else if (delta.insert !== undefined) {
-                            const pos = document.positionAt(index);
-                            const insert = delta.insert as string;
-                            edit.insert(uri, pos, insert);
-                            index += insert.length;
-                        } else if (delta.delete !== undefined) {
-                            const pos = document.positionAt(index);
-                            const endPos = document.positionAt(index + delta.delete);
-                            const range = new vscode.Range(pos.line, pos.character, endPos.line, endPos.character);
-                            edit.delete(uri, range);
-                        }
-                    });
                     await vscode.workspace.applyEdit(edit);
                     this.updates.delete(path);
                     resyncThrottle();
-                });
+                }, 1000);
             };
             yjsText.observe(observer);
             this.pushDocumentDisposable(path, { dispose: () => yjsText.unobserve(observer) });
@@ -566,7 +576,7 @@ export class CollaborationInstance implements vscode.Disposable {
                 return;
             }
             const ytext = this.yjs.getText(path);
-            this.yjsMutex(() => {
+            this.yjsMutex.runExclusive(() => {
                 this.yjs.transact(() => {
                     for (const change of event.contentChanges) {
                         ytext.delete(change.rangeOffset, change.rangeLength);
@@ -574,7 +584,7 @@ export class CollaborationInstance implements vscode.Disposable {
                     }
                 });
                 this.getOrCreateThrottle(path, event.document)();
-            });
+            }, 500);
         }
     }
 
@@ -582,7 +592,7 @@ export class CollaborationInstance implements vscode.Disposable {
         let value = this.throttles.get(path);
         if (!value) {
             value = debounce(() => {
-                this.yjsMutex(async () => {
+                this.yjsMutex.runExclusive(async () => {
                     const yjsText = this.yjs.getText(path);
                     const newContent = yjsText.toString();
                     if (newContent !== document.getText()) {
@@ -621,6 +631,12 @@ export class CollaborationInstance implements vscode.Disposable {
         const nameTagVisible = peer.lastUpdated !== undefined && Date.now() - peer.lastUpdated < 1900;
         const { path, textSelections } = selection;
         const uri = this.getResourceUri(path);
+        for (const visibleEditor of vscode.window.visibleTextEditors) {
+            visibleEditor.setDecorations(peer.decoration.before, []);
+            visibleEditor.setDecorations(peer.decoration.after, []);
+            visibleEditor.setDecorations(peer.decoration.nameTags.default, []);
+            visibleEditor.setDecorations(peer.decoration.nameTags.inverted, []);
+        }
         if (uri) {
             const editors = vscode.window.visibleTextEditors.filter(e => e.document.uri.toString() === uri.toString());
             if (editors.length > 0) {
