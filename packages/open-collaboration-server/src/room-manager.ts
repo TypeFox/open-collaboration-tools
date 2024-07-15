@@ -8,7 +8,7 @@ import { inject, injectable } from 'inversify';
 import { CredentialsManager } from './credentials-manager';
 import { MessageRelay } from './message-relay';
 import { Peer, Room, User, isUser } from './types';
-import { JoinResponse, Messages, BroadcastMessage, Encryption, NotificationMessage, RequestMessage, ResponseMessage, isObject } from 'open-collaboration-protocol';
+import { JoinResponse, Messages, BroadcastMessage, Encryption, NotificationMessage, RequestMessage, ResponseMessage, isObject, Info, Event, Disposable, Emitter, JoinRoomResponse, JoinRoomPollResponse } from 'open-collaboration-protocol';
 import { Logger, LoggerSymbol } from './utils/logging';
 
 export interface PreparedRoom {
@@ -27,11 +27,24 @@ export function isRoomClaim(obj: unknown): obj is RoomClaim {
     return isObject<RoomClaim>(obj) && typeof obj.room === 'string' && isUser(obj.user);
 }
 
+export interface RoomJoinInfo extends Info {
+    failure: boolean;
+}
+
+export interface JoinPollResult extends Disposable {
+    update(result: JoinRoomResponse | JoinRoomPollResponse): void;
+    onUpdate: Event<JoinRoomResponse | JoinRoomPollResponse>;
+    result?: JoinRoomResponse | JoinRoomPollResponse;
+}
+
+
+
 @injectable()
 export class RoomManager {
 
     protected rooms = new Map<string, Room>();
     protected peers = new Map<string, Room>();
+    protected pollResults = new Map<string, JoinPollResult>();
 
     @inject(MessageRelay)
     private readonly messageRelay: MessageRelay;
@@ -167,42 +180,103 @@ export class RoomManager {
         return this.peers.get(id);
     }
 
-    async requestJoin(room: Room, user: User): Promise<{ jwt: string, response: JoinResponse } | string> {
+    async requestJoin(room: Room, user: User): Promise<string> {
+        this.logger.info(`Request to join room [id: '${room.id}'] by user [id: '${user.id}' | name: '${user.name}' | email: '${user.email ?? '<none>'}']`);
+        const responseId = this.credentials.secureId();
+        const timeout = setTimeout(() => {
+            pollResult.update({
+                code: 'JoinTimeout',
+                message: 'Join request has timed out',
+                params: [],
+                failure: true
+            });
+            pollResult.dispose();
+        }, 300_000); // 5 minutes of timeout
+        const updateEmitter = new Emitter<JoinRoomResponse | RoomJoinInfo>();
+        const pollResult: JoinPollResult = {
+            update: result => {
+                pollResult.result = result;
+                updateEmitter.fire(result);
+            },
+            onUpdate: updateEmitter.event,
+            dispose: () => {
+                updateEmitter.dispose();
+                this.pollResults.delete(responseId);
+                clearTimeout(timeout);
+            }
+        };
+        this.pollResults.set(responseId, pollResult);
         try {
-        	this.logger.info(`Request to join room [id: '${room.id}'] by user [id: '${user.id}' | name: '${user.name}' | email: '${user.email ?? '<none>'}']`);
             const symmetricKey = await this.credentials.getSymmetricKey();
             const privateKey = await this.credentials.getPrivateKey();
             const requestMessage = RequestMessage.create(Messages.Peer.Join, this.credentials.secureId(), '', room.host.id, [user]);
             const encryptedRequest = await Encryption.encrypt(requestMessage, { symmetricKey }, room.host.toEncryptionKey());
-            const response = await this.messageRelay.sendRequest(
+            const responsePromise = this.messageRelay.sendRequest(
                 room.host,
-                encryptedRequest
+                encryptedRequest,
+                300_000
             );
-            const decryptedResponse = await Encryption.decrypt(response, { privateKey });
-            if (ResponseMessage.is(decryptedResponse)) {
-                const joinResponse = decryptedResponse.content as JoinResponse;
-                if (joinResponse === undefined) {
-                    return 'Join request has been rejected';
+            responsePromise.then(async response => {
+                const decryptedResponse = await Encryption.decrypt(response, { privateKey });
+                if (ResponseMessage.is(decryptedResponse)) {
+                    const joinResponse = decryptedResponse.content as JoinResponse;
+                    if (joinResponse === undefined) {
+                        updateEmitter.fire({
+                            failure: true,
+                            code: 'JoinRejected',
+                            params: [],
+                            message: 'Join request has been rejected'
+                        });
+                        return;
+                    }
+                    const claim: RoomClaim = {
+                        room: room.id,
+                        user: { ...user },
+                        // Increment the clock to identify unique sessions
+                        // If a user joins a room multiple times, the clock will be incremented
+                        // This way, they get a new JWT for each session
+                        // If a user reconnects using an old JWT, we can identify a reconnect attempt
+                        roomClock: ++room.clock
+                    };
+                    const jwt = await this.credentials.generateJwt(claim);
+                    const response: JoinRoomResponse = {
+                        roomId: room.id,
+                        roomToken: jwt,
+                        workspace: joinResponse.workspace,
+                        host: room.host.toProtocol()
+                    };
+                    pollResult.result = response;
+                    updateEmitter.fire(response);
+                } else {
+                    updateEmitter.fire({
+                        failure: true,
+                        code: 'JoinRejected',
+                        params: [],
+                        message: 'Join request has been rejected'
+                    });
                 }
-                const claim: RoomClaim = {
-                    room: room.id,
-                    user: { ...user },
-                    // Increment the clock to identify unique sessions
-                    // If a user joins a room multiple times, the clock will be incremented
-                    // This way, they get a new JWT for each session
-                    // If a user reconnects using an old JWT, we can identify a reconnect attempt
-                    roomClock: ++room.clock
-                };
-                return {
-                    jwt: await this.credentials.generateJwt(claim),
-                    response: joinResponse
-                };
-            } else {
-                return 'Join request has failed';
-            }
+            }).catch(err => {
+                updateEmitter.fire({
+                    code: 'JoinTimeout',
+                    message: 'Join request has timed out',
+                    params: [],
+                    failure: true
+                });
+            });
+            pollResult.update({
+                failure: false,
+                code: 'WaitingForHost',
+                params: [],
+                message: 'Waiting for host to accept join request',
+            })
+            return responseId;
         } catch {
-            return 'Join request has timed out';
+            throw this.logger.createErrorAndLog('Failed to request join');
         }
+    }
+
+    pollJoin(responseId: string): JoinPollResult | undefined {
+        return this.pollResults.get(responseId);
     }
 
 }

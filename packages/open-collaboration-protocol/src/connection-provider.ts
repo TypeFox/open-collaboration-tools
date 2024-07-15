@@ -10,6 +10,8 @@ import { ProtocolBroadcastConnection, createConnection } from "./connection";
 import * as semver from 'semver';
 import * as types from './types';
 import { SEM_VERSION, compatibleVersions } from "./utils/version";
+import { ServerError } from "./utils";
+import { Info } from "./utils/info";
 
 export type Fetch = (url: string, options?: FetchRequestOptions) => Promise<FetchResponse>;
 
@@ -26,6 +28,7 @@ export interface ConnectionProviderOptions {
 export interface FetchRequestOptions {
     method?: string;
     headers?: Record<string, string>;
+    signal?: AbortSignal | null;
 }
 
 export interface FetchResponse {
@@ -34,6 +37,24 @@ export interface FetchResponse {
     json(): Promise<any>;
     text(): Promise<string>;
 }
+
+export interface LoginOptions {
+    abortSignal?: AbortSignal;
+    reporter?: ResponseReporter;
+}
+
+export interface JoinRoomOptions {
+    roomId: string;
+    reporter?: ResponseReporter;
+    abortSignal?: AbortSignal;
+}
+
+export interface CreateRoomOptions {
+    reporter?: ResponseReporter;
+    abortSignal?: AbortSignal;
+}
+
+export type ResponseReporter = (info: Info) => void;
 
 export class ConnectionProvider {
 
@@ -75,104 +96,214 @@ export class ConnectionProvider {
         return `${url}/${path}`;
     }
 
-    async login(): Promise<string> {
+    async login(options: LoginOptions): Promise<string> {
+        options.reporter?.({
+            code: 'PerformingLogin',
+            params: [],
+            message: 'Performing login'
+        });
         const loginResponse = await this.fetch(this.getUrl('/api/login/url'), {
+            signal: options.abortSignal,
             method: 'POST'
         });
+        if (!loginResponse.ok) {
+            throw new Error('Failed to get login URL');
+        }
         const loginBody = await loginResponse.json();
-        const confirmToken = loginBody.token;
-        const url = loginBody.url as string;
+        if (!types.LoginInitialResponse.is(loginBody)) {
+            throw new Error('Invalid login response');
+        }
+        const confirmToken = loginBody.pollToken;
+        const url = loginBody.url;
         const fullUrl = url.startsWith('/') ? this.getUrl(url) : url;
         this.options.opener(fullUrl);
-        const confirmResponse = await this.fetch(this.getUrl(`/api/login/confirm/${confirmToken}`), {
-            method: 'POST'
-        });
-        const confirmBody = await confirmResponse.json();
-        this.userAuthToken = confirmBody.token;
-        return confirmBody.token;
+        const authToken = await this.pollLogin(confirmToken, options);
+        this.userAuthToken = authToken;
+        return authToken;
+    }
+
+    private async pollLogin(confirmToken: string, options: LoginOptions): Promise<string> {
+        while (true) {
+            const confirmResponse = await this.fetch(this.getUrl(`/api/login/confirm/${confirmToken}`), {
+                signal: options.abortSignal,
+                method: 'POST'
+            });
+            if (confirmResponse.ok) {
+                try {
+                    const confirmBody = await confirmResponse.json();
+                    if (types.LoginPollResponse.is(confirmBody) && confirmBody.loginToken) {
+                        return confirmBody.loginToken;
+                    }
+                } catch {
+                    // No token yet, keep polling
+                }
+            } else {
+                throw await this.readError(confirmResponse);
+            }
+        }
     }
 
     async ensureCompatibility(): Promise<void> {
         const metadata = await this.getMetaData();
         const serverVersion = semver.parse(metadata.version);
         if (!serverVersion) {
-            throw new Error('Invalid protocol version returned by server: ' + metadata.version);
+            throw new ServerError({
+                code: 'InvalidServerVersion',
+                message: 'Invalid protocol version returned by server: ' + metadata.version,
+                params: [metadata.version]
+            });
         }
         if (!compatibleVersions(serverVersion, this.protocolVersion)) {
-            throw new Error(`Incompatible protocol versions: client ${this.protocolVersion.format()}, server ${serverVersion.format()}`);
+            throw new ServerError({
+                code: 'IncompatibleProtocolVersions',
+                message: `Incompatible protocol versions: client ${this.protocolVersion.format()}, server ${serverVersion.format()}`,
+                params: [this.protocolVersion.format(), serverVersion.format()]
+            });
         }
     }
 
     async validate(): Promise<boolean> {
         if (this.userAuthToken) {
-            const validateResponse = await this.fetch(this.getUrl('/api/login/validate'), {
+            try {
+                const validateResponse = await this.fetch(this.getUrl('/api/login/validate'), {
+                    method: 'POST',
+                    headers: {
+                        'x-oct-jwt': this.userAuthToken!
+                    }
+                });
+                const body = await validateResponse.json();
+                if (types.LoginValidateResponse.is(body)) {
+                    return body.valid;
+                }
+            } catch {
+                return false;
+            }
+        }
+        return false;
+    }
+
+    async createRoom(options: CreateRoomOptions): Promise<types.CreateRoomResponse> {
+        await this.ensureCompatibility();
+        const valid = await this.validate();
+        let loginToken: string | undefined;
+        if (!valid) {
+            loginToken = await this.login({
+                abortSignal: options.abortSignal,
+                reporter: options.reporter
+            });
+        }
+        options.reporter?.({
+            code: 'AwaitingServerResponse',
+            params: [],
+            message: 'Awaiting server response'
+        });
+        const response = await this.fetch(this.getUrl('/api/session/create'), {
+            method: 'POST',
+            signal: options.abortSignal,
+            headers: {
+                'x-oct-jwt': this.userAuthToken!
+            }
+        });
+        if (!response.ok) {
+            throw await this.readError(response);
+        }
+        const body = await response.json();
+        if (!types.CreateRoomResponse.is(body)) {
+            throw new Error('Invalid create room response');
+        }
+        return types.CreateRoomResponse.create(body.roomId, body.roomToken, loginToken);
+    }
+
+    async joinRoom(options: JoinRoomOptions): Promise<types.JoinRoomResponse> {
+        await this.ensureCompatibility();
+        const valid = await this.validate();
+        let loginToken: string | undefined;
+        if (!valid) {
+            loginToken = await this.login({
+                abortSignal: options.abortSignal,
+                reporter: options.reporter
+            });
+        }
+        options.reporter?.({
+            code: 'AwaitingServerResponse',
+            params: [],
+            message: 'Awaiting server response'
+        });
+        const response = await this.fetch(this.getUrl(`/api/session/join/${options.roomId}`), {
+            method: 'POST',
+            signal: options.abortSignal,
+            headers: {
+                'x-oct-jwt': this.userAuthToken!
+            }
+        });
+        if (!response.ok) {
+            throw await this.readError(response);
+        }
+        const body = await response.json();
+        if (!types.JoinRoomInitialResponse.is(body)) {
+            throw new Error('Invalid join room response');
+        }
+        const joinToken = body.pollToken;
+        const joinRoomResponse = await this.pollJoin(joinToken, options);
+        return {
+            loginToken,
+            roomId: joinRoomResponse.roomId,
+            roomToken: joinRoomResponse.roomToken,
+            workspace: joinRoomResponse.workspace,
+            host: joinRoomResponse.host
+        };
+    }
+
+    async pollJoin(joinToken: string, options: JoinRoomOptions): Promise<types.JoinRoomResponse> {
+        while (true) {
+            const response = await this.fetch(this.getUrl(`/api/session/join-poll/${joinToken}`), {
                 method: 'POST',
+                signal: options.abortSignal,
                 headers: {
                     'x-oct-jwt': this.userAuthToken!
                 }
             });
-            return validateResponse.ok;
-        } else {
-            return false;
-        }
-    }
-
-    async createRoom(): Promise<types.CreateRoomResponse> {
-        await this.ensureCompatibility();
-        const valid = await this.validate();
-        let loginToken: string | undefined;
-        if (!valid) {
-            loginToken = await this.login();
-        }
-        const response = await this.fetch(this.getUrl('/api/session/create'), {
-            method: 'POST',
-            headers: {
-                'x-oct-jwt': this.userAuthToken!
+            if (response.ok) {
+                const body = await response.json();
+                if (types.JoinRoomPollResponse.is(body)) {
+                    // No token yet, report status
+                    if (body.failure) {
+                        throw new ServerError({
+                            code: body.code,
+                            params: body.params,
+                            message: body.message
+                        });
+                    } else {
+                        // Keep polling
+                        options.reporter?.(body);
+                    }
+                } else if (types.JoinRoomResponse.is(body)) {
+                    return body;
+                } else {
+                    throw new Error('Received invalid join room poll response');
+                }
+            } else {
+                // Something went wrong
+                throw await this.readError(response);
             }
-        });
-        if (!response.ok) {
-            throw new Error(await this.readError(response));
         }
-        const body: types.CreateRoomResponse = await response.json();
-        return {
-            loginToken,
-            roomId: body.roomId,
-            roomToken: body.roomToken
-        };
     }
 
-    async joinRoom(roomId: string): Promise<types.JoinRoomResponse> {
-        await this.ensureCompatibility();
-        const valid = await this.validate();
-        let loginToken: string | undefined;
-        if (!valid) {
-            loginToken = await this.login();
-        }
-        const response = await this.fetch(this.getUrl(`/api/session/join/${roomId}`), {
-            method: 'POST',
-            headers: {
-                'x-oct-jwt': this.userAuthToken!
-            }
-        });
-        if (!response.ok) {
-            throw new Error(await this.readError(response));
-        }
-        const body: types.JoinRoomResponse = await response.json();
-        const roomAuthToken = body.roomToken;
-        return {
-            loginToken,
-            roomId,
-            roomToken: roomAuthToken,
-            workspace: body.workspace,
-            host: body.host
-        };
-    }
-
-    private async readError(response: FetchResponse): Promise<string> {
+    private async readError(response: FetchResponse): Promise<Error> {
         try {
-            return await response.text();
+            const text = await response.text();
+            try {
+                const body = JSON.parse(text);
+                if (Info.is(body)) {
+                    return new ServerError(body);
+                } else {
+                    return new Error(text);
+                }
+            } catch {
+                return new Error(text);
+            }
         } catch (error) {
-            return 'Unknown error';
+            return new Error('Unknown error');
         }
     }
 

@@ -1,5 +1,5 @@
-import { ConnectionProvider, Peer } from "open-collaboration-protocol";
 import * as vscode from 'vscode';
+import { ConnectionProvider, Peer } from "open-collaboration-protocol";
 import { CollaborationInstance, CollaborationInstanceFactory } from "./collaboration-instance";
 import { CollaborationUri } from "./utils/uri";
 import { inject, injectable } from "inversify";
@@ -50,38 +50,44 @@ export class CollaborationRoomService {
         return undefined;
     }
 
-    async createRoom(connectionProvider: ConnectionProvider): Promise<CollaborationInstance | undefined> {
-        if (!connectionProvider) {
-            return undefined;
-        }
-        const roomClaim = await connectionProvider.createRoom();
-        if (roomClaim.loginToken) {
-            const userToken = roomClaim.loginToken;
-            await this.context.secrets.store(OCT_USER_TOKEN, userToken);
-        }
-        const connection = await connectionProvider.connect(roomClaim.roomToken);
-        const instance = this.instanceFactory({
-            connection,
-            host: true,
-            roomId: roomClaim.roomId
-        });
-        await vscode.env.clipboard.writeText(roomClaim.roomId);
-        vscode.window.showInformationMessage(`Joined room '${roomClaim.roomId}'. ID was automatically written to clipboard.`, 'Copy to Clipboard').then(value => {
-            if (value === 'Copy to Clipboard') {
-                vscode.env.clipboard.writeText(roomClaim.roomId);
+    async createRoom(connectionProvider: ConnectionProvider): Promise<CollaborationInstance> {
+        return await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: 'Creating room', cancellable: true }, async (progress, cancelToken) => {
+            const roomClaim = await connectionProvider.createRoom({
+                abortSignal: this.toAbortSignal(cancelToken),
+                reporter: info => progress.report({ message: info.message })
+            });
+            if (roomClaim.loginToken) {
+                const userToken = roomClaim.loginToken;
+                await this.context.secrets.store(OCT_USER_TOKEN, userToken);
             }
+            const connection = await connectionProvider.connect(roomClaim.roomToken);
+            const instance = this.instanceFactory({
+                connection,
+                host: true,
+                roomId: roomClaim.roomId
+            });
+            await vscode.env.clipboard.writeText(roomClaim.roomId);
+            vscode.window.showInformationMessage(`Created room '${roomClaim.roomId}'. ID was automatically written to clipboard.`, 'Copy to Clipboard').then(value => {
+                if (value === 'Copy to Clipboard') {
+                    vscode.env.clipboard.writeText(roomClaim.roomId);
+                }
+            });
+            this.onDidJoinRoomEmitter.fire(instance);
+            return instance;
         });
-        this.onDidJoinRoomEmitter.fire(instance);
-        return instance;
     }
 
     async joinRoom(connectionProvider: ConnectionProvider, roomId?: string): Promise<void> {
         if (!roomId) {
             roomId = await vscode.window.showInputBox({ placeHolder: 'Enter the room ID' })
         }
-        await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: 'Joining Room' }, async () => {
+        await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: 'Joining Room', cancellable: true }, async (progress, cancelToken) => {
             if (roomId && connectionProvider) {
-                const roomClaim = await connectionProvider.joinRoom(roomId);
+                const roomClaim = await connectionProvider.joinRoom({
+                    roomId,
+                    reporter: info => progress.report({ message: info.message }),
+                    abortSignal: this.toAbortSignal(cancelToken)
+                });
                 if (roomClaim.loginToken) {
                     const userToken = roomClaim.loginToken;
                     await this.context.secrets.store(OCT_USER_TOKEN, userToken);
@@ -104,4 +110,9 @@ export class CollaborationRoomService {
         });
     }
 
+    private toAbortSignal(token: vscode.CancellationToken): AbortSignal {
+        const controller = new AbortController();
+        token.onCancellationRequested(() => controller.abort());
+        return controller.signal;
+    }
 }

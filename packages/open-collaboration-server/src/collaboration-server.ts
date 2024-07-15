@@ -12,7 +12,7 @@ import { Server } from 'socket.io';
 import express from 'express';
 import { SocketIoChannel, TransportChannel } from './channel';
 import { PeerFactory } from './peer';
-import { RoomManager, isRoomClaim } from './room-manager';
+import { RoomJoinInfo, RoomManager, isRoomClaim } from './room-manager';
 import { UserManager } from './user-manager';
 import { CredentialsManager } from './credentials-manager';
 import { User } from './types';
@@ -173,8 +173,8 @@ export class CollaborationServer {
         const loginPageUrlConfig = this.configuration.getValue('oct-login-page-url') ?? '';
         app.post('/api/login/url', async (req, res) => {
             try {
-                const token = this.credentials.secureId();
-                let loginPage
+                const token = await this.credentials.startAuth();
+                let loginPage: string;
                 try {
                     const loginPageURL = new URL(loginPageUrlConfig);
                     loginPageURL.searchParams.set('token', token);
@@ -182,10 +182,12 @@ export class CollaborationServer {
                 } catch (error) {
                     loginPage = `/login.html?token=${encodeURIComponent(token)}`
                 }
-                res.send({
-                    url: loginPage,
-                    token
-                });
+                const result: types.LoginInitialResponse = {
+                    pollToken: token,
+                    url: loginPage
+                }
+                res.status(200);
+                res.send(result);
             } catch (error) {
                 this.logger.error('Error occurred during login', error);
                 res.status(400);
@@ -194,27 +196,69 @@ export class CollaborationServer {
         });
         app.post('/api/login/validate', async (req, res) => {
             const user = await this.getUserFromAuth(req);
-            if (user) {
-                res.status(200);
-                res.send('true');
-            } else {
-                res.status(400);
-                res.send('false');
+            const result: types.LoginValidateResponse = {
+                valid: !!user
             }
+            res.status(200);
+            res.send(result);
         });
         app.post('/api/login/confirm/:token', async (req, res) => {
             try {
+                const authTimeoutResponse: types.ProtocolServerInfo = {
+                    code: 'AuthTimeout',
+                    params: [],
+                    message: 'Authentication timed out'
+                };
                 const token = req.params.token;
-                const jwt = await this.credentials.confirmAuth(token);
-                const user = await this.credentials.getUser(jwt);
-                res.send({
-                    user,
-                    token: jwt
-                });
+                const delayedAuth = await this.credentials.getAuth(token);
+                if (!delayedAuth) {
+                    res.status(400);
+                    res.send(authTimeoutResponse);
+                    return;
+                }
+
+                if (delayedAuth.jwt) {
+                    const result: types.LoginPollResponse = {
+                        loginToken: delayedAuth.jwt
+                    }
+                    res.send(result);
+                    // Don't dispose the delayed auth here, as it might be used for polling
+                    // It will be disposed after 5 minutes anyway
+                } else {
+                    const end = async (value?: string | Error | undefined) => {
+                        clearTimeout(timeout);
+                        update.dispose();
+                        failure.dispose();
+                        if (value === undefined) {
+                            // No content
+                            res.status(204);
+                            res.send({});
+                        } else if (typeof value === 'string') {
+                            const result: types.LoginPollResponse = {
+                                loginToken: value
+                            }
+                            res.status(200);
+                            res.send(result);
+                        } else {
+                            res.status(400);
+                            res.send(authTimeoutResponse);
+                            delayedAuth.dispose();
+                        }
+                    };
+                    const timeout = setTimeout(() => {
+                        end(undefined);
+                    }, 30_000);
+                    const update = delayedAuth.onUpdate(jwt => end(jwt));
+                    const failure = delayedAuth.onFail(err => end(err));
+                }
             } catch (error) {
                 this.logger.error('Error occurred during login token confirmation', error);
-                res.status(400);
-                res.send('Failed to confirm login token');
+                res.status(500);
+                res.send({
+                    code: 'AuthInternalError',
+                    params: [],
+                    message: 'Internal authentication server error'
+                });
             }
         });
         app.get('/api/meta', async (_, res) => {
@@ -237,22 +281,66 @@ export class CollaborationServer {
                 if (!room) {
                     this.logger.warn(`User tried joining non-existing room with id '${roomId}'`);
                     res.status(404);
-                    res.send('Room not found');
+                    const roomNotFound: types.ProtocolServerInfo = {
+                        code: 'RoomNotFound',
+                        params: [],
+                        message: 'Room not found'
+                    };
+                    res.send(roomNotFound);
                     return;
                 }
                 const result = await this.roomManager.requestJoin(room, user!);
-                if (typeof result === 'string') {
-                    res.status(400);
-                    res.send(result);
-                } else {
-                    const response: types.JoinRoomResponse = {
-                        roomId: room.id,
-                        roomToken: result.jwt,
-                        workspace: result.response.workspace,
-                        host: room.host.toProtocol()
+                res.status(200);
+                const response: types.JoinRoomInitialResponse = {
+                    pollToken: result,
+                    roomId: roomId
+                };
+                res.send(response);
+            } catch (error) {
+                this.logger.error('Error occurred while joining a room', error);
+                res.status(500);
+                res.send('An internal server error occurred');
+            }
+        });
+        app.post('/api/session/join-poll/:token', async (req, res) => {
+            try {
+                const joinToken = req.params.token;
+                const poll = this.roomManager.pollJoin(joinToken);
+                if (!poll) {
+                    res.status(404);
+                    const joinNotFound: types.ProtocolServerInfo = {
+                        code: 'JoinRequestNotFound',
+                        params: [],
+                        message: 'Join request not found'
                     };
-                    res.send(response);
+                    res.send(joinNotFound);
+                    return;
                 }
+
+                if (poll.result) {
+                    res.status(200);
+                    res.send(poll.result);
+                    // Don't dispose the result here, as it might be used for polling
+                    // It will be disposed after 5 minutes anyway
+                    return;
+                }
+
+                const end = async (value?: types.JoinRoomResponse | RoomJoinInfo) => {
+                    clearTimeout(timeout);
+                    update.dispose();
+                    if (value === undefined) {
+                        // No content
+                        res.status(204);
+                        res.send({});
+                    } else {
+                        res.status(200);
+                        res.send(value);
+                    }
+                };
+                const timeout = setTimeout(() => {
+                    end(undefined);
+                }, 30_000);
+                const update = poll.onUpdate(response => end(response));
             } catch (error) {
                 this.logger.error('Error occurred while joining a room', error);
                 res.status(500);

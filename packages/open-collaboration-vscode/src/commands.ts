@@ -9,7 +9,7 @@ import { ContextKeyService } from './context-key-service';
 import { CollaborationRoomService } from './collaboration-room-service';
 import { CollaborationStatusService } from './collaboration-status-service';
 import { closeSharedEditors, removeWorkspaceFolders } from './utils/workspace';
-import { stringifyError } from './utils/errors';
+import { stringifyError } from 'open-collaboration-protocol';
 
 @injectable()
 export class Commands {

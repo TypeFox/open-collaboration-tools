@@ -31,7 +31,7 @@ export class MessageRelay {
         }
     }
 
-    sendRequest(target: Peer, message: BinaryRequestMessage): Promise<BinaryResponseMessage | BinaryResponseErrorMessage> {
+    sendRequest(target: Peer, message: BinaryRequestMessage, timeoutMs?: number): Promise<BinaryResponseMessage | BinaryResponseErrorMessage> {
         const deferred = new Deferred<BinaryResponseMessage | BinaryResponseErrorMessage>();
         const messageId = message.id;
         const key = nanoid(24);
@@ -40,7 +40,7 @@ export class MessageRelay {
             clearTimeout(timeout);
             deferred.reject(new Error('Request timed out'));
         };
-        const timeout = setTimeout(dispose, 30_000);
+        const timeout = setTimeout(dispose, timeoutMs ?? 30_000);
         this.requestMap.set(key, {
             id: messageId,
             response: deferred,

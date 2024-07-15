@@ -9,14 +9,16 @@ import { User, isUser } from './types';
 import { UserManager } from './user-manager';
 import jose = require('jose');
 import { nanoid } from 'nanoid';
-import { Deferred, Encryption } from 'open-collaboration-protocol';
+import { Disposable, Emitter, Encryption, Event } from 'open-collaboration-protocol';
 import { Logger, LoggerSymbol } from './utils/logging';
 import { UserInfo } from './auth-endpoints/auth-endpoint';
 import { Configuration } from './utils/configuration';
 
-export interface DelayedAuth {
-    deferred: Deferred<string>
-    dispose: () => void
+export interface DelayedAuth extends Disposable {
+    update(jwt: string): void;
+    onUpdate: Event<string>;
+    onFail: Event<Error>;
+    jwt?: string;
 }
 
 @injectable()
@@ -38,18 +40,22 @@ export class CredentialsManager {
         if (this.configuration.getValue('oct-jwt-private-key') === undefined) {
             this.logger.warn('OCT_JWT_PRIVATE_KEY env variable is not set. Using a static key for development purposes.');
         }
+        if (this.configuration.getValue('oct-rsa-public-key') === undefined) {
+            this.logger.warn('OCT_RSA_PUBLIC_KEY env variable is not set. Using a dynamic key for development purposes.');
+        }
+        if (this.configuration.getValue('oct-rsa-private-key') === undefined) {
+            this.logger.warn('OCT_RSA_PRIVATE_KEY env variable is not set. Using a dynamic key for development purposes.');
+        }
     }
 
-    private keyPair = Encryption.generateKeyPair();
+    protected keyPair = Encryption.generateKeyPair();
 
     async getPublicKey(): Promise<string> {
-        const keys = await this.keyPair;
-        return keys.publicKey;
+        return this.configuration.getValue('oct-rsa-public-key') ?? (await this.keyPair).publicKey;
     }
 
     async getPrivateKey(): Promise<string> {
-        const keys = await this.keyPair;
-        return keys.privateKey;
+        return this.configuration.getValue('oct-rsa-private-key') ?? (await this.keyPair).privateKey;
     }
 
     async getSymmetricKey(): Promise<string> {
@@ -69,26 +75,41 @@ export class CredentialsManager {
             email: registeredUser.email,
             authProvider: registeredUser.authProvider
         };
-        this.logger.info(`Will generate Jwt for user [id: ${userClaim.id} | name: ${userClaim.name} | email: ${userClaim.email}]`);
+        this.logger.info(`Will generate JWT for user [id: ${userClaim.id} | name: ${userClaim.name} | email: ${userClaim.email}]`);
         const jwt = await this.generateJwt(userClaim);
-        auth.deferred.resolve(jwt);
-        auth.dispose();
+        auth.update(jwt);
         return jwt;
     }
 
-    async confirmAuth(confirmToken: string): Promise<string> {
-        const deferred = new Deferred<string>();
+    async startAuth(): Promise<string> {
+        const confirmToken = this.secureId();
+        const updateEmitter = new Emitter<string>();
+        const failureEmitter = new Emitter<Error>();
         const dispose = () => {
             clearTimeout(timeout);
             this.deferredAuths.delete(confirmToken);
-            deferred.reject(new Error('Auth request timed out'));
+            updateEmitter.dispose();
+            failureEmitter.dispose();
         };
-        const timeout = setTimeout(dispose, 300_000); // 5 minutes of timeout
-        this.deferredAuths.set(confirmToken, {
-            deferred,
+        const timeout = setTimeout(() => {
+            failureEmitter.fire(new Error('Request timed out'));
+            dispose();
+        }, 300_000); // 5 minutes of timeout
+        const delayedAuth: DelayedAuth = {
+            update: jwt => {
+                delayedAuth.jwt = jwt;
+                updateEmitter.fire(jwt);
+            },
+            onUpdate: updateEmitter.event,
+            onFail: failureEmitter.event,
             dispose
-        });
-        return deferred.promise;
+        };
+        this.deferredAuths.set(confirmToken, delayedAuth);
+        return confirmToken;
+    }
+
+    async getAuth(confirmToken: string): Promise<DelayedAuth | undefined> {
+        return this.deferredAuths.get(confirmToken);
     }
 
     async getUser(token: string): Promise<User | undefined> {

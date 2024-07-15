@@ -4,7 +4,7 @@
 // terms of the MIT License, which is available in the project root.
 // ******************************************************************************
 
-type UnknownObject<T extends object> = Record<string | number | symbol, unknown> & { [K in keyof T]: unknown };
+type UnknownObject<T extends object> = { [K in keyof T]: unknown };
 
 export function isObject<T extends object>(value: unknown): value is UnknownObject<T> {
     // eslint-disable-next-line no-null/no-null
