@@ -9,7 +9,6 @@ import { ContextKeyService } from './context-key-service';
 import { CollaborationRoomService } from './collaboration-room-service';
 import { CollaborationStatusService } from './collaboration-status-service';
 import { closeSharedEditors, removeWorkspaceFolders } from './utils/workspace';
-import { stringifyError } from 'open-collaboration-protocol';
 
 @injectable()
 export class Commands {
@@ -71,17 +70,9 @@ export class Commands {
                     ];
                     const index = await showQuickPick(quickPick);
                     if (index === 0) {
-                        try {
-                            await this.roomService.createRoom(connectionProvider);
-                        } catch (error) {
-                            vscode.window.showErrorMessage('Failed to create room: ' + stringifyError(error));
-                        }
+                        await this.roomService.createRoom(connectionProvider);
                     } else if (index === 1) {
-                        try {
-                            await this.roomService.joinRoom(connectionProvider);
-                        } catch (error) {
-                            vscode.window.showErrorMessage('Failed to join room: ' + stringifyError(error));
-                        }
+                        await this.roomService.joinRoom(connectionProvider);
                     }
                 }
             }),
