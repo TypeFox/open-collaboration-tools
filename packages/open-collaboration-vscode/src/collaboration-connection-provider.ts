@@ -19,13 +19,16 @@ export class CollaborationConnectionProvider {
         } catch (error) {
             console.error('Failed to get the extension version', error);
         }
+        const apiVersion = vscode.version;
+        const appName = vscode.env.appName;
+        const platform = vscode.env.appRoot === '' ? 'web' : 'desktop';
         const serverUrl = vscode.workspace.getConfiguration().get<string>('oct.serverUrl');
         userToken ??= await this.context.secrets.get(OCT_USER_TOKEN);
 
         if (serverUrl) {
             return new ConnectionProvider({
                 url: serverUrl,
-                client: 'OCT-VSCode@' + version,
+                client: `OCT-Code@${version} (${appName}@${apiVersion} on ${platform})`,
                 opener: (url) => vscode.env.openExternal(vscode.Uri.parse(url)),
                 transports: [SocketIoTransportProvider],
                 userToken,
