@@ -1,6 +1,5 @@
 import * as monaco from 'monaco-editor';
-import { ConnectionProvider } from 'open-collaboration-protocol';
-import { WebSocketTransportProvider } from 'open-collaboration-rpc';
+import { ConnectionProvider, SocketIoTransportProvider } from 'open-collaboration-protocol';
 import { CollaborationInstance } from './collaboration-instance';
 import * as types from 'open-collaboration-protocol';
 import { createRoom, joinRoom, login } from './collaboration-connection';
@@ -94,11 +93,12 @@ function createConnectionProvider(url: string): ConnectionProvider {
     return new ConnectionProvider({
         url,
         opener: (url) => window.open(url, '_blank'), // vscode.env.openExternal(vscode.Uri.parse(url)),
-        transports: [WebSocketTransportProvider],
+        transports: [SocketIoTransportProvider],
         userToken,
         fetch: async (url, options) => {
             const response = await fetch(url, options);
             return {
+                ok: response.ok,
                 status: response.status,
                 json: async () => response.json(),
                 text: async () => response.text()

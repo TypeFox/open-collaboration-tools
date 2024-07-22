@@ -11,11 +11,11 @@ export default defineConfig(() => {
                 }
             },
             commonjsOptions: {
-                include: [/open-collaboration-protocol/, /open-collaboration-rpc/ , /open-collaboration-yjs/],
+                include: [/open-collaboration-protocol/, /open-collaboration-yjs/],
             }
         },
         optimizeDeps: {
-            include: ['open-collaboration-protocol', 'open-collaboration-rpc', 'open-collaboration-yjs'],
+            include: ['open-collaboration-protocol', 'open-collaboration-yjs'],
         }
     };
     return config;

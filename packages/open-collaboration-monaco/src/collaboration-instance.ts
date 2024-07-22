@@ -1,9 +1,8 @@
-import { ProtocolBroadcastConnection } from "open-collaboration-protocol";
+import { Deferred, DisposableCollection, ProtocolBroadcastConnection } from "open-collaboration-protocol";
 import * as Y from 'yjs';
 import * as monaco from 'monaco-editor';
 import * as awarenessProtocol from 'y-protocols/awareness';
 import * as types from 'open-collaboration-protocol';
-import { Deferred, DisposableCollection } from "open-collaboration-rpc";
 import { LOCAL_ORIGIN, OpenCollaborationYjsProvider } from 'open-collaboration-yjs';
 import { createMutex } from 'lib0/mutex';
 import debounce from 'lodash/debounce';
