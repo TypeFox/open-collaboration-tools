@@ -268,8 +268,7 @@ export class CollaborationServer {
                 transports: [
                     // 'websocket',
                     'socket.io'
-                ],
-                publicKey: await this.credentials.getPublicKey()
+                ]
             };
             res.send(data);
         });
@@ -320,6 +319,9 @@ export class CollaborationServer {
                 if (poll.result) {
                     res.status(200);
                     res.send(poll.result);
+                    if (types.JoinRoomPollResponse.is(poll.result)) {
+                        poll.result = undefined;
+                    }
                     // Don't dispose the result here, as it might be used for polling
                     // It will be disposed after 5 minutes anyway
                     return;
@@ -335,6 +337,9 @@ export class CollaborationServer {
                     } else {
                         res.status(200);
                         res.send(value);
+                        if ('failure' in value) {
+                            poll.result = undefined;
+                        }
                     }
                 };
                 const timeout = setTimeout(() => {

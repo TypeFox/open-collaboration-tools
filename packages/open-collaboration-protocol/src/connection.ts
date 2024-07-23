@@ -72,7 +72,6 @@ export interface ProtocolBroadcastConnection extends BroadcastConnection {
 
 export interface ProtocolBroadcastConnectionOptions {
     privateKey: string;
-    publicServerKey: string;
     host?: types.Peer;
     transport: MessageTransport;
 }
@@ -172,8 +171,8 @@ export class ProtocolBroadcastConnectionImpl extends AbstractBroadcastConnection
     constructor(options: ProtocolBroadcastConnectionOptions) {
         super({
             privateKey: options.privateKey,
-            publicKey: options.publicServerKey
-        }, options.transport);
+            transport: options.transport
+        });
         if (options.host) {
             this.onDidJoinRoom(options.host);
         } else {
@@ -187,13 +186,6 @@ export class ProtocolBroadcastConnectionImpl extends AbstractBroadcastConnection
     }
 
     protected override getPublicKey(origin: string): Encryption.AsymmetricKey {
-        if (origin === '') {
-            return {
-                peerId: '',
-                publicKey: this.keys.publicKey,
-                supportedCompression: ['none']
-            };
-        }
         const peer = this.peers.get(origin);
         if (peer) {
             return {

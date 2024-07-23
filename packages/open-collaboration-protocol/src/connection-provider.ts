@@ -321,7 +321,6 @@ export class ConnectionProvider {
         const connection = createConnection(
             {
                 privateKey: keyPair.privateKey,
-                publicServerKey: metadata.publicKey,
                 transport,
                 host
             }

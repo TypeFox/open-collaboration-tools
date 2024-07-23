@@ -4,6 +4,7 @@
 // terms of the MIT License, which is available in the project root.
 // ******************************************************************************
 
+import { isArray, isObject, isString } from '../utils';
 import { VERSION } from '../utils/version';
 
 /**
@@ -23,6 +24,12 @@ export interface MessageMetadata {
     compression: MessageCompression;
 }
 
+export namespace MessageMetadata {
+    export function is(item: unknown): item is MessageMetadata {
+        return isObject<MessageMetadata>(item) && MessageEncryption.is(item.encryption) && MessageCompression.is(item.compression);
+    }
+}
+
 export const DEFAULT_METADATA: MessageMetadata = {
     encryption: {
         keys: []
@@ -36,14 +43,32 @@ export interface MessageEncryption {
     keys: MessageContentKey[];
 }
 
+export namespace MessageEncryption {
+    export function is(item: unknown): item is MessageEncryption {
+        return isObject<MessageEncryption>(item) && isArray(item.keys, MessageContentKey.is);
+    }
+}
+
 export interface MessageCompression {
     algorithm: CompressionAlgorithm;
+}
+
+export namespace MessageCompression {
+    export function is(item: unknown): item is MessageCompression {
+        return isObject<MessageCompression>(item) && isString(item.algorithm);
+    }
 }
 
 export interface MessageContentKey {
     target: MessageTarget;
     key: string;
     iv: string;
+}
+
+export namespace MessageContentKey {
+    export function is(item: unknown): item is MessageContentKey {
+        return isObject<MessageContentKey>(item) && isString(item.target) && isString(item.key) && isString(item.iv);
+    }
 }
 
 export type CompressionAlgorithm = 'none' | 'gzip' | (string & {});
@@ -58,10 +83,9 @@ export type MessageId = number | string;
 
 export namespace Message {
     export function is(item: unknown): item is Message {
-        const message = item as Message;
-        return typeof message === 'object' && message && typeof message.version === 'string' && typeof message.kind === 'string';
+        return isObject<Message>(item) && isString(item.version) && isString(item.kind) && MessageMetadata.is(item.metadata);
     }
-    export function isBinary(item: Message): item is BinaryMessage {
+    export function isEncrypted(item: Message): item is BinaryMessage {
         return (item as BinaryMessage).content instanceof Uint8Array;
     }
 }
@@ -75,6 +99,7 @@ export interface ErrorMessageContent {
     message: string;
 }
 
+export type UnknownErrorMessage = AbstractErrorMessage<unknown>;
 export type ErrorMessage = AbstractErrorMessage<ErrorMessageContent>;
 export type BinaryErrorMessage = AbstractErrorMessage<Uint8Array>;
 
@@ -89,11 +114,14 @@ export namespace ErrorMessage {
             }
         };
     }
-    export function is(message: unknown): message is ErrorMessage {
+    export function isAny(message: unknown): message is UnknownErrorMessage {
         return Message.is(message) && message.kind === 'error';
     }
+    export function is(message: unknown): message is ErrorMessage {
+        return isAny(message) && isObject<ErrorMessageContent>(message.content) && isString(message.content.message);
+    }
     export function isBinary(message: unknown): message is BinaryErrorMessage {
-        return is(message) && message.content instanceof Uint8Array;
+        return isAny(message) && Message.isEncrypted(message);
     }
 }
 
@@ -131,8 +159,9 @@ export interface RequestMessageContent {
     params?: unknown[];
 }
 
+export type UnknownRequestMessage = AbstractRequestMessage<unknown>;
 export type RequestMessage = AbstractRequestMessage<RequestMessageContent>;
-export type BinaryRequestMessage = AbstractRequestMessage<Uint8Array>;
+export type EncryptedRequestMessage = AbstractRequestMessage<Uint8Array>;
 
 export namespace RequestMessage {
     export function create(
@@ -155,11 +184,18 @@ export namespace RequestMessage {
             }
         };
     }
-    export function is(message: unknown): message is RequestMessage {
+    export function isAny(message: unknown): message is UnknownRequestMessage {
         return Message.is(message) && message.kind === 'request';
     }
-    export function isBinary(message: unknown): message is BinaryRequestMessage {
-        return is(message) && message.content instanceof Uint8Array;
+    export function is(message: unknown): message is RequestMessage {
+        if (!isAny(message)) {
+            return false;
+        }
+        const content = message.content;
+        return isObject<RequestMessageContent>(content) && isString(content.method);
+    }
+    export function isEncrypted(message: unknown): message is EncryptedRequestMessage {
+        return isAny(message) && Message.isEncrypted(message);
     }
 }
 
@@ -172,24 +208,37 @@ export interface AbstractResponseMessage<T> extends Message {
     content: T;
 }
 
-export type ResponseMessage<T = unknown> = AbstractResponseMessage<T>;
-export type BinaryResponseMessage = AbstractResponseMessage<Uint8Array>;
+export interface ResponseMessageContent {
+    /**
+     * The response content.
+     */
+    response: unknown;
+}
+
+export type UnknownResponseMessage = AbstractResponseMessage<unknown>;
+export type ResponseMessage = AbstractResponseMessage<ResponseMessageContent>;
+export type EncryptedResponseMessage = AbstractResponseMessage<Uint8Array>;
 
 export namespace ResponseMessage {
-    export function create<T extends object>(id: number | string, response: T): ResponseMessage<T> {
+    export function create(id: number | string, response: unknown): ResponseMessage {
         return {
             kind: 'response',
             version: VERSION,
             id,
             metadata: DEFAULT_METADATA,
-            content: response
+            content: {
+                response
+            }
         };
     }
-    export function is(message: unknown): message is ResponseMessage {
+    export function isAny(message: unknown): message is UnknownResponseMessage {
         return Message.is(message) && message.kind === 'response';
     }
-    export function isBinary(message: unknown): message is BinaryResponseMessage {
-        return is(message) && message.content instanceof Uint8Array;
+    export function is(message: unknown): message is ResponseMessage {
+        return isAny(message) && isObject<ResponseMessageContent>(message.content) && 'response' in message.content;
+    }
+    export function isEncrypted(message: unknown): message is EncryptedResponseMessage {
+        return isAny(message) && Message.isEncrypted(message);
     }
 }
 
@@ -206,13 +255,14 @@ export interface ResponseErrorMessageContent {
     message: string;
 }
 
+export type UnknownResponseErrorMessage = AbstractResponseErrorMessage<unknown>;
 export type ResponseErrorMessage = AbstractResponseErrorMessage<ResponseErrorMessageContent>;
-export type BinaryResponseErrorMessage = AbstractResponseErrorMessage<Uint8Array>;
+export type EncryptedResponseErrorMessage = AbstractResponseErrorMessage<Uint8Array>;
 
 export namespace ResponseErrorMessage {
     export function create(id: number | string, message: string): ResponseErrorMessage;
-    export function create(id: number | string, message: Uint8Array): BinaryResponseErrorMessage;
-    export function create(id: number | string, message: string | Uint8Array): ResponseErrorMessage | BinaryResponseErrorMessage {
+    export function create(id: number | string, message: Uint8Array): EncryptedResponseErrorMessage;
+    export function create(id: number | string, message: string | Uint8Array): ResponseErrorMessage | EncryptedResponseErrorMessage {
         if (typeof message === 'string') {
             return {
                 kind: 'response-error',
@@ -233,11 +283,14 @@ export namespace ResponseErrorMessage {
             };
         }
     }
-    export function is(message: unknown): message is ResponseErrorMessage {
+    export function isAny(message: unknown): message is UnknownResponseErrorMessage {
         return Message.is(message) && message.kind === 'response-error';
     }
-    export function isBinary(message: unknown): message is BinaryResponseErrorMessage {
-        return is(message) && message.content instanceof Uint8Array;
+    export function is(message: unknown): message is ResponseErrorMessage {
+        return isAny(message) && isObject<ResponseErrorMessageContent>(message.content) && isString(message.content.message);
+    }
+    export function isEncrypted(message: unknown): message is EncryptedResponseErrorMessage {
+        return isAny(message) && Message.isEncrypted(message);
     }
 }
 
@@ -265,8 +318,9 @@ export interface NotificationMessageContent {
     params?: unknown[];
 }
 
+export type UnknownNotificationMessage = AbstractNotificationMessage<unknown>;
 export type NotificationMessage = AbstractNotificationMessage<NotificationMessageContent>;
-export type BinaryNotificationMessage = AbstractNotificationMessage<Uint8Array>;
+export type EncryptedNotificationMessage = AbstractNotificationMessage<Uint8Array>;
 
 export namespace NotificationMessage {
     export function create(signature: NotificationType<any> | string, origin: MessageOrigin, target: MessageTarget, params?: any[]): NotificationMessage {
@@ -282,11 +336,18 @@ export namespace NotificationMessage {
             }
         };
     }
-    export function is(message: unknown): message is NotificationMessage {
+    export function isAny(message: unknown): message is UnknownNotificationMessage {
         return Message.is(message) && message.kind === 'notification';
     }
-    export function isBinary(message: unknown): message is BinaryNotificationMessage {
-        return is(message) && message.content instanceof Uint8Array;
+    export function is(message: unknown): message is NotificationMessage {
+        if (!isAny(message)) {
+            return false;
+        }
+        const content = message.content;
+        return isObject<NotificationMessageContent>(content) && isString(content.method);
+    }
+    export function isEncrypted(message: unknown): message is EncryptedNotificationMessage {
+        return isAny(message) && Message.isEncrypted(message);
     }
 }
 
@@ -301,8 +362,9 @@ export interface BroadcastMessageContent {
     params?: unknown[];
 }
 
+export type UnknownBroadcastMessage = AbstractBroadcastMessage<unknown>;
 export type BroadcastMessage = AbstractBroadcastMessage<BroadcastMessageContent>;
-export type BinaryBroadcastMessage = AbstractBroadcastMessage<Uint8Array>;
+export type EncryptedBroadcastMessage = AbstractBroadcastMessage<Uint8Array>;
 
 export namespace BroadcastMessage {
     export function create(signature: BroadcastType<any> | string, origin: string, params?: any[]): BroadcastMessage {
@@ -317,11 +379,18 @@ export namespace BroadcastMessage {
             }
         };
     }
-    export function is(message: unknown): message is BroadcastMessage {
+    export function isAny(message: unknown): message is UnknownBroadcastMessage {
         return Message.is(message) && message.kind === 'broadcast';
     }
-    export function isBinary(message: unknown): message is BinaryBroadcastMessage {
-        return is(message) && message.content instanceof Uint8Array;
+    export function is(message: unknown): message is BroadcastMessage {
+        if (!isAny(message)) {
+            return false;
+        }
+        const content = message.content;
+        return isObject<BroadcastMessageContent>(content) && isString(content.method);
+    }
+    export function isEncrypted(message: unknown): message is EncryptedBroadcastMessage {
+        return isAny(message) && Message.isEncrypted(message);
     }
 }
 

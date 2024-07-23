@@ -59,8 +59,7 @@ export interface Peer extends protocol.Disposable {
     channel: Channel;
     room: Room;
     onDispose: protocol.Event<void>;
-    toProtocol(): protocol.Peer
-    toEncryptionKey(): protocol.Encryption.AsymmetricKey
+    toProtocol(): protocol.Peer;
 }
 
 export type Permissions = Record<string, string>;

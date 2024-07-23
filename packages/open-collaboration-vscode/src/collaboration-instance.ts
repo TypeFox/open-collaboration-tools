@@ -631,12 +631,7 @@ export class CollaborationInstance implements vscode.Disposable {
         const nameTagVisible = peer.lastUpdated !== undefined && Date.now() - peer.lastUpdated < 1900;
         const { path, textSelections } = selection;
         const uri = this.getResourceUri(path);
-        for (const visibleEditor of vscode.window.visibleTextEditors) {
-            visibleEditor.setDecorations(peer.decoration.before, []);
-            visibleEditor.setDecorations(peer.decoration.after, []);
-            visibleEditor.setDecorations(peer.decoration.nameTags.default, []);
-            visibleEditor.setDecorations(peer.decoration.nameTags.inverted, []);
-        }
+        const editorsToRemove = new Set(vscode.window.visibleTextEditors);
         if (uri) {
             const editors = vscode.window.visibleTextEditors.filter(e => e.document.uri.toString() === uri.toString());
             if (editors.length > 0) {
@@ -670,12 +665,19 @@ export class CollaborationInstance implements vscode.Disposable {
                     }
                 }
                 for (const editor of editors) {
+                    editorsToRemove.delete(editor);
                     editor.setDecorations(peer.decoration.before, beforeRanges);
                     editor.setDecorations(peer.decoration.after, afterRanges);
                     editor.setDecorations(peer.decoration.nameTags.default, beforeNameTags);
                     editor.setDecorations(peer.decoration.nameTags.inverted, beforeInvertedNameTags);
                 }
             }
+        }
+        for (const editor of editorsToRemove) {
+            editor.setDecorations(peer.decoration.before, []);
+            editor.setDecorations(peer.decoration.after, []);
+            editor.setDecorations(peer.decoration.nameTags.default, []);
+            editor.setDecorations(peer.decoration.nameTags.inverted, []);
         }
     }
 

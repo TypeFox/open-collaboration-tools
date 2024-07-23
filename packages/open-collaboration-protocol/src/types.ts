@@ -121,7 +121,6 @@ export interface ProtocolServerMetaData {
     owner: string;
     version: string;
     transports: string[];
-    publicKey: string;
 }
 
 export interface ProtocolServerInfo {

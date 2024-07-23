@@ -10,3 +10,23 @@ export function isObject<T extends object>(value: unknown): value is UnknownObje
     // eslint-disable-next-line no-null/no-null
     return typeof value === 'object' && value !== null;
 }
+
+export function isArray(value: unknown): value is unknown[];
+export function isArray<T>(value: unknown, test: (item: unknown) => item is T): value is T[];
+export function isArray(value: unknown, test?: (item: unknown) => boolean): boolean {
+    if (!Array.isArray(value)) {
+        return false;
+    }
+    if (test) {
+        return value.every(test);
+    }
+    return true;
+}
+
+export function isStringArray(value: unknown): value is string[] {
+    return isArray(value, isString);
+}
+
+export function isString(value: unknown): value is string {
+    return typeof value === 'string';
+}
