@@ -1,5 +1,5 @@
-import { ConnectionProvider, Peer } from "open-collaboration-protocol";
 import * as vscode from 'vscode';
+import { ConnectionProvider, Peer, stringifyError } from "open-collaboration-protocol";
 import { CollaborationInstance, CollaborationInstanceFactory } from "./collaboration-instance";
 import { CollaborationUri } from "./utils/uri";
 import { inject, injectable } from "inversify";
@@ -29,6 +29,8 @@ export class CollaborationRoomService {
     private readonly onDidJoinRoomEmitter = new vscode.EventEmitter<CollaborationInstance>();
     readonly onDidJoinRoom = this.onDidJoinRoomEmitter.event;
 
+    private tokenSource = new vscode.CancellationTokenSource();
+
     async tryConnect(): Promise<CollaborationInstance | undefined> {
         const roomDataJson = await this.context.secrets.get(OCT_ROOM_DATA);
         // Instantly delete the room token - it will become invalid after the first connection attempt
@@ -50,58 +52,101 @@ export class CollaborationRoomService {
         return undefined;
     }
 
-    async createRoom(connectionProvider: ConnectionProvider): Promise<CollaborationInstance | undefined> {
-        if (!connectionProvider) {
-            return undefined;
-        }
-        const roomClaim = await connectionProvider.createRoom();
-        if (roomClaim.loginToken) {
-            const userToken = roomClaim.loginToken;
-            await this.context.secrets.store(OCT_USER_TOKEN, userToken);
-        }
-        const connection = await connectionProvider.connect(roomClaim.roomToken);
-        const instance = this.instanceFactory({
-            connection,
-            host: true,
-            roomId: roomClaim.roomId
-        });
-        await vscode.env.clipboard.writeText(roomClaim.roomId);
-        vscode.window.showInformationMessage(`Joined room '${roomClaim.roomId}'. ID was automatically written to clipboard.`, 'Copy to Clipboard').then(value => {
-            if (value === 'Copy to Clipboard') {
-                vscode.env.clipboard.writeText(roomClaim.roomId);
-            }
-        });
-        this.onDidJoinRoomEmitter.fire(instance);
-        return instance;
-    }
-
-    async joinRoom(connectionProvider: ConnectionProvider, roomId?: string): Promise<void> {
-        if (!roomId) {
-            roomId = await vscode.window.showInputBox({ placeHolder: 'Enter the room ID' })
-        }
-        await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: 'Joining Room' }, async () => {
-            if (roomId && connectionProvider) {
-                const roomClaim = await connectionProvider.joinRoom(roomId);
+    async createRoom(connectionProvider: ConnectionProvider): Promise<void> {
+        this.tokenSource.cancel();
+        this.tokenSource = new vscode.CancellationTokenSource();
+        await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: 'Creating room', cancellable: true }, async (progress, cancelToken) => {
+            const outerToken = this.tokenSource.token;
+            try {
+                const roomClaim = await connectionProvider.createRoom({
+                    abortSignal: this.toAbortSignal(this.tokenSource.token, cancelToken),
+                    reporter: info => progress.report({ message: info.message })
+                });
                 if (roomClaim.loginToken) {
                     const userToken = roomClaim.loginToken;
                     await this.context.secrets.store(OCT_USER_TOKEN, userToken);
                 }
-                const roomData: RoomData = {
-                    roomToken: roomClaim.roomToken,
-                    roomId: roomClaim.roomId,
-                    host: roomClaim.host
-                }
-                const roomDataJson = JSON.stringify(roomData);
-                await this.context.secrets.store(OCT_ROOM_DATA, roomDataJson);
-                const workspaceFolders = (vscode.workspace.workspaceFolders ?? []);
-                const workspace = roomClaim.workspace;
-                const newFolders = workspace.folders.map(folder => ({
-                    name: folder,
-                    uri: CollaborationUri.create(workspace.name, folder)
-                }));
-                vscode.workspace.updateWorkspaceFolders(0, workspaceFolders.length, ...newFolders);
+                const connection = await connectionProvider.connect(roomClaim.roomToken);
+                const instance = this.instanceFactory({
+                    connection,
+                    host: true,
+                    roomId: roomClaim.roomId
+                });
+                await vscode.env.clipboard.writeText(roomClaim.roomId);
+                vscode.window.showInformationMessage(`Created room '${roomClaim.roomId}'. ID was automatically written to clipboard.`, 'Copy to Clipboard').then(value => {
+                    if (value === 'Copy to Clipboard') {
+                        vscode.env.clipboard.writeText(roomClaim.roomId);
+                    }
+                });
+                this.onDidJoinRoomEmitter.fire(instance);
+            } catch (error) {
+                this.showError(true, error, outerToken, cancelToken);
             }
         });
     }
 
+    async joinRoom(connectionProvider: ConnectionProvider, roomId?: string): Promise<void> {
+        if (!roomId) {
+            roomId = await vscode.window.showInputBox({ placeHolder: 'Enter the room ID' });
+            if (!roomId) {
+                return;
+            }
+        }
+        this.tokenSource.cancel();
+        this.tokenSource = new vscode.CancellationTokenSource();
+        await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: 'Joining room', cancellable: true }, async (progress, cancelToken) => {
+            if (roomId && connectionProvider) {
+                const outerToken = this.tokenSource.token;
+                try {
+                    const roomClaim = await connectionProvider.joinRoom({
+                        roomId,
+                        reporter: info => progress.report({ message: info.message }),
+                        abortSignal: this.toAbortSignal(outerToken, cancelToken)
+                    });
+                    if (roomClaim.loginToken) {
+                        const userToken = roomClaim.loginToken;
+                        await this.context.secrets.store(OCT_USER_TOKEN, userToken);
+                    }
+                    const roomData: RoomData = {
+                        roomToken: roomClaim.roomToken,
+                        roomId: roomClaim.roomId,
+                        host: roomClaim.host
+                    }
+                    const roomDataJson = JSON.stringify(roomData);
+                    await this.context.secrets.store(OCT_ROOM_DATA, roomDataJson);
+                    const workspaceFolders = (vscode.workspace.workspaceFolders ?? []);
+                    const workspace = roomClaim.workspace;
+                    const newFolders = workspace.folders.map(folder => ({
+                        name: folder,
+                        uri: CollaborationUri.create(workspace.name, folder)
+                    }));
+                    vscode.workspace.updateWorkspaceFolders(0, workspaceFolders.length, ...newFolders);
+                } catch (error) {
+                    this.showError(false, error, outerToken, cancelToken);
+                }
+            }
+        });
+    }
+
+    private showError(create: boolean, error: unknown, outerToken: vscode.CancellationToken, innerToken: vscode.CancellationToken): void {
+        if (outerToken.isCancellationRequested) {
+            // The user already attempts to join another room
+            // Simply ignore the error
+            return;
+        } else if (innerToken.isCancellationRequested) {
+            // The user cancelled the operation
+            // We simply show a notification
+            vscode.window.showInformationMessage('Action was cancelled by the user');
+        } else if (create) {
+            vscode.window.showErrorMessage('Failed to create room: ' + stringifyError(error));
+        } else {
+            vscode.window.showErrorMessage('Failed to join room: ' + stringifyError(error));
+        }
+    }
+
+    private toAbortSignal(...tokens: vscode.CancellationToken[]): AbortSignal {
+        const controller = new AbortController();
+        tokens.forEach(token => token.onCancellationRequested(() => controller.abort()));
+        return controller.signal;
+    }
 }

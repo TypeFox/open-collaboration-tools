@@ -40,6 +40,11 @@ export interface RelayedRequest {
     dispose(): void;
 }
 
+export interface AbstractBroadcastConnectionOptions {
+    privateKey: string;
+    transport: MessageTransport;
+}
+
 export abstract class AbstractBroadcastConnection implements BroadcastConnection {
 
     protected messageHandlers = new Map<string, Handler<any[], any>>();
@@ -72,14 +77,14 @@ export abstract class AbstractBroadcastConnection implements BroadcastConnection
     protected maxCacheSize = 50;
     protected _ready = new Deferred();
 
-    constructor(readonly keys: Encryption.KeyPair, readonly transport: MessageTransport) {
-        transport.read(data => this.handleMessage(new Uint8Array(data)));
-        transport.onDisconnect(() => this.dispose());
-        transport.onError(message => {
+    constructor(readonly options: AbstractBroadcastConnectionOptions) {
+        options.transport.read(data => this.handleMessage(new Uint8Array(data)));
+        options.transport.onDisconnect(() => this.dispose());
+        options.transport.onError(message => {
             this.onConnectionErrorEmitter.fire(message);
             this.dispose();
         });
-        transport.onReconnect(() => this.onReconnectEmitter.fire());
+        options.transport.onReconnect(() => this.onReconnectEmitter.fire());
     }
 
     dispose(): void {
@@ -87,7 +92,7 @@ export abstract class AbstractBroadcastConnection implements BroadcastConnection
         this.onDisconnectEmitter.dispose();
         this.onErrorEmitter.dispose();
         this.messageHandlers.clear();
-        this.transport.dispose();
+        this.options.transport.dispose();
     }
 
     protected ready(): void {
@@ -112,74 +117,116 @@ export abstract class AbstractBroadcastConnection implements BroadcastConnection
 
     protected async handleMessage(data: Uint8Array): Promise<void> {
         this.cleanupCaches();
-        const message = Encoding.decode(data);
-        if (msg.ResponseMessage.isBinary(message)) {
+        let message: unknown;
+        try {
+            message = Encoding.decode(data);
+        } catch (err) {
+            console.error('Decoding message error', err);
+            return;
+        }
+        if (msg.ResponseMessage.isAny(message)) {
             const request = this.requestMap.get(message.id);
             try {
-                const decrypted = await Encryption.decrypt(message, {
-                    privateKey: this.keys.privateKey,
-                    cache: this.decryptionKeyCache
-                });
+                let response: msg.ResponseMessage;
+                if (msg.ResponseMessage.isEncrypted(message)) {
+                    response = await Encryption.decrypt(message, {
+                        privateKey: this.options.privateKey,
+                        cache: this.decryptionKeyCache
+                    });
+                } else if (msg.ResponseMessage.is(message)) {
+                    response = message;
+                } else {
+                    console.error(`Received invalid response message`);
+                    return;
+                }
                 if (request) {
-                    request.response.resolve(decrypted.content);
+                    request.response.resolve(response.content.response);
                 }
             } catch (err) {
                 console.error(`Failed to handle response message`, err);
                 request?.response.reject(err);
             }
-        } else if (msg.ResponseErrorMessage.isBinary(message)) {
+        } else if (msg.ResponseErrorMessage.isAny(message)) {
             const request = this.requestMap.get(message.id);
             try {
-                const decrypted = await Encryption.decrypt(message, {
-                    privateKey: this.keys.privateKey,
-                    cache: this.decryptionKeyCache
-                });
+                let response: msg.ResponseErrorMessage;
+                if (msg.ResponseErrorMessage.isEncrypted(message)) {
+                    response = await Encryption.decrypt(message, {
+                        privateKey: this.options.privateKey,
+                        cache: this.decryptionKeyCache
+                    });
+                } else if (msg.ResponseErrorMessage.is(message)) {
+                    response = message;
+                } else {
+                    console.error(`Received invalid response error message`);
+                    return;
+                }
                 if (request) {
-                    request.response.reject(new Error(decrypted.content.message));
+                    request.response.reject(new Error(response.content.message));
                 }
             } catch (err) {
                 console.error(`Failed to handle response error message`, err);
                 request?.response.reject(err);
             }
-        } else if (msg.RequestMessage.isBinary(message)) {
+        } else if (msg.RequestMessage.isAny(message)) {
             try {
-                const decrypted = await Encryption.decrypt(message, {
-                    privateKey: this.keys.privateKey,
-                    cache: this.decryptionKeyCache
-                });
+                let decrypted: msg.RequestMessage;
+                if (msg.RequestMessage.isEncrypted(message)) {
+                    decrypted = await Encryption.decrypt(message, {
+                        privateKey: this.options.privateKey,
+                        cache: this.decryptionKeyCache
+                    });
+                } else if (msg.RequestMessage.is(message)) {
+                    decrypted = message;
+                } else {
+                    console.error(`Received invalid request message`);
+                    return;
+                }
                 const handler = this.messageHandlers.get(decrypted.content.method);
                 if (!handler) {
                     console.error(`No handler registered for ${decrypted.kind} method ${decrypted.content.method}.`);
                     return;
                 }
+                await this._ready.promise;
+                let response: msg.ResponseMessage | msg.ResponseErrorMessage;
+
                 try {
                     const result = await handler(decrypted.origin, ...(decrypted.content.params ?? []));
-                    await this._ready.promise;
-                    const responseMessage = msg.ResponseMessage.create(decrypted.id, result);
+                    response = msg.ResponseMessage.create(decrypted.id, result);
+                } catch (error) {
+                    response = msg.ResponseErrorMessage.create(decrypted.id, String(error));
+                }
+
+                if (decrypted.origin === '') {
+                    // Write server responses as they are, without encryption
+                    await this.write(response);
+                } else {
+                    // Encrypt responses to other peers
                     const publicKey = this.getPublicKey(decrypted.origin);
-                    const encryptedResponseMessage = await Encryption.encrypt(responseMessage, {
+                    const encryptedResponseMessage = await Encryption.encrypt(response, {
                         symmetricKey: this.symKey,
                         cache: this.encryptionKeyCache
                     }, publicKey);
                     await this.write(encryptedResponseMessage);
-                } catch (error) {
-                    const responseErrorMessage = msg.ResponseErrorMessage.create(decrypted.id, String(error));
-                    const publicKey = this.getPublicKey(decrypted.origin);
-                    const encryptedResponseErrorMessage = await Encryption.encrypt(responseErrorMessage, {
-                        symmetricKey: this.symKey,
-                        cache: this.encryptionKeyCache
-                    }, publicKey);
-                    await this.write(encryptedResponseErrorMessage);
                 }
+
             } catch (err) {
                 console.error(`Failed to handle request message`, err);
             }
-        } else if (msg.BroadcastMessage.isBinary(message) || msg.NotificationMessage.isBinary(message)) {
+        } else if (msg.BroadcastMessage.isAny(message) || msg.NotificationMessage.isAny(message)) {
             try {
-                const decrypted = await Encryption.decrypt(message, {
-                    privateKey: this.keys.privateKey,
-                    cache: this.decryptionKeyCache
-                });
+                let decrypted: msg.BroadcastMessage | msg.NotificationMessage;
+                if (msg.NotificationMessage.isEncrypted(message) || msg.BroadcastMessage.isEncrypted(message)) {
+                    decrypted = await Encryption.decrypt(message, {
+                        privateKey: this.options.privateKey,
+                        cache: this.decryptionKeyCache
+                    });
+                } else if (msg.NotificationMessage.is(message) || msg.BroadcastMessage.is(message)){
+                    decrypted = message;
+                } else {
+                    console.error(`Received invalid ${message.kind} message`);
+                    return;
+                }
                 const handler = this.messageHandlers.get(decrypted.content.method);
                 if (!handler) {
                     console.error(`No handler registered for ${message.kind} method ${decrypted.content.method}.`);
@@ -189,12 +236,20 @@ export abstract class AbstractBroadcastConnection implements BroadcastConnection
             } catch (err) {
                 console.error(`Failed to handle ${message.kind} message`, err);
             }
-        } else if (msg.ErrorMessage.isBinary(message)) {
+        } else if (msg.ErrorMessage.isAny(message)) {
             try {
-                const decrypted = await Encryption.decrypt(message, {
-                    privateKey: this.keys.privateKey,
-                    cache: this.decryptionKeyCache
-                });
+                let decrypted: msg.ErrorMessage;
+                if (msg.ErrorMessage.isBinary(message)) {
+                    decrypted = await Encryption.decrypt(message, {
+                        privateKey: this.options.privateKey,
+                        cache: this.decryptionKeyCache
+                    });
+                } else if (msg.ErrorMessage.is(message)) {
+                    decrypted = message;
+                } else {
+                    console.error(`Received invalid error message`);
+                    return;
+                }
                 this.onErrorEmitter.fire(decrypted.content.message);
             } catch (err) {
                 console.error(`Failed to handle error message`, err);
@@ -206,8 +261,8 @@ export abstract class AbstractBroadcastConnection implements BroadcastConnection
     protected abstract getPublicKeys(): Encryption.AsymmetricKey[];
     protected abstract getPublicKeysLength(): number;
 
-    private async write(message: msg.BinaryBroadcastMessage | msg.BinaryErrorMessage | msg.BinaryNotificationMessage | msg.BinaryRequestMessage | msg.BinaryResponseErrorMessage | msg.BinaryResponseMessage): Promise<void> {
-        await this.transport.write(Encoding.encode(message));
+    private async write(message: msg.Message): Promise<void> {
+        await this.options.transport.write(Encoding.encode(message));
     }
 
     onRequest(type: string, handler: Handler<any[], any>): void;
@@ -250,11 +305,15 @@ export abstract class AbstractBroadcastConnection implements BroadcastConnection
         };
         this.requestMap.set(id, relayedMessage);
         const message = msg.RequestMessage.create(type, id, '', target, parameters);
-        const encryptedMessage = await Encryption.encrypt(message, {
-            symmetricKey: this.symKey,
-            cache: this.encryptionKeyCache
-        }, this.getPublicKey(target));
-        await this.write(encryptedMessage);
+        if (target === '') {
+            await this.write(message);
+        } else {
+            const encryptedMessage = await Encryption.encrypt(message, {
+                symmetricKey: this.symKey,
+                cache: this.encryptionKeyCache
+            }, this.getPublicKey(target));
+            await this.write(encryptedMessage);
+        }
         return deferred.promise;
     }
 
@@ -263,11 +322,15 @@ export abstract class AbstractBroadcastConnection implements BroadcastConnection
     async sendNotification(type: msg.NotificationType<any> | string, target: msg.MessageTarget, ...parameters: any[]): Promise<void> {
         await this._ready.promise;
         const message = msg.NotificationMessage.create(type, '', target, parameters);
-        const encryptedMessage = await Encryption.encrypt(message, {
-            symmetricKey: this.symKey,
-            cache: this.encryptionKeyCache
-        }, this.getPublicKey(target));
-        await this.write(encryptedMessage);
+        if (target === '') {
+            await this.write(message);
+        } else {
+            const encryptedMessage = await Encryption.encrypt(message, {
+                symmetricKey: this.symKey,
+                cache: this.encryptionKeyCache
+            }, this.getPublicKey(target));
+            await this.write(encryptedMessage);
+        }
     }
 
     sendBroadcast(type: string, ...parameters: any[]): Promise<void>;

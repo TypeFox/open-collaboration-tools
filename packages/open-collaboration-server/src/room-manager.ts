@@ -8,7 +8,7 @@ import { inject, injectable } from 'inversify';
 import { CredentialsManager } from './credentials-manager';
 import { MessageRelay } from './message-relay';
 import { Peer, Room, User, isUser } from './types';
-import { JoinResponse, Messages, BroadcastMessage, Encryption, NotificationMessage, RequestMessage, ResponseMessage, isObject } from 'open-collaboration-protocol';
+import { JoinResponse, Messages, BroadcastMessage, NotificationMessage, RequestMessage, ResponseMessage, isObject, Info, Event, Disposable, Emitter, JoinRoomResponse, JoinRoomPollResponse } from 'open-collaboration-protocol';
 import { Logger, LoggerSymbol } from './utils/logging';
 
 export interface PreparedRoom {
@@ -27,11 +27,22 @@ export function isRoomClaim(obj: unknown): obj is RoomClaim {
     return isObject<RoomClaim>(obj) && typeof obj.room === 'string' && isUser(obj.user);
 }
 
+export interface RoomJoinInfo extends Info {
+    failure: boolean;
+}
+
+export interface JoinPollResult extends Disposable {
+    update(result: JoinRoomResponse | JoinRoomPollResponse): void;
+    onUpdate: Event<JoinRoomResponse | JoinRoomPollResponse>;
+    result?: JoinRoomResponse | JoinRoomPollResponse;
+}
+
 @injectable()
 export class RoomManager {
 
     protected rooms = new Map<string, Room>();
     protected peers = new Map<string, Room>();
+    protected pollResults = new Map<string, JoinPollResult>();
 
     @inject(MessageRelay)
     private readonly messageRelay: MessageRelay;
@@ -44,14 +55,11 @@ export class RoomManager {
     async closeRoom(id: string): Promise<void> {
         const room = this.getRoomById(id);
         if (room) {
-            const symmetricKey = await this.credentials.getSymmetricKey();
             const broadcastMessage = BroadcastMessage.create(Messages.Room.Closed, '');
-            const allKeys = room.peers.map(peer => peer.toEncryptionKey());
-            const encryptedMessage = await Encryption.encrypt(broadcastMessage, { symmetricKey }, ...allKeys);
-            this.messageRelay.sendBroadcast(room.host, encryptedMessage);
+            this.messageRelay.sendBroadcast(room.host, broadcastMessage);
             for (const peer of room.peers) {
                 this.peers.delete(peer.id);
-                peer.channel.close();
+                peer.dispose();
             }
             this.rooms.delete(id);
             this.logger.info(`Deleted room '${room.id}'`);
@@ -79,7 +87,6 @@ export class RoomManager {
     }
 
     async join(peer: Peer, roomId: string): Promise<Room> {
-        const symmetricKey = await this.credentials.getSymmetricKey();
         let room: Room;
         if (peer.host) {
             room = new Room(roomId, peer, []);
@@ -95,20 +102,16 @@ export class RoomManager {
                 throw this.logger.createErrorAndLog(`Could not find room to join from id: ${roomId}`);
             }
             const broadcastMessage = BroadcastMessage.create(Messages.Room.Joined, '', [peer.toProtocol()]);
-            const allKeys = room.peers.map(peer => peer.toEncryptionKey());
             this.peers.set(peer.id, room);
             room.guests.push(peer);
             this.logger.info(`Peer [id: '${peer.id}' | client: '${peer.client}' | userId: '${peer.user.id}' | name: '${peer.user.name}' | email: '${peer.user.email || '<none>'}'] joined room [id: '${room.id}']`);
-            if (allKeys.length > 0) {
-                try {
-                    const encryptedMessage = await Encryption.encrypt(broadcastMessage, { symmetricKey }, ...allKeys);
-                    this.messageRelay.sendBroadcast(
-                        peer,
-                        encryptedMessage
-                    );
-                } catch (err) {
-                    this.logger.error('Failed to send join broadcast', err);
-                }
+            try {
+                this.messageRelay.sendBroadcast(
+                    peer,
+                    broadcastMessage
+                );
+            } catch (err) {
+                this.logger.error('Failed to send join broadcast', err);
             }
             peer.onDispose(() => {
                 this.leaveRoom(peer);
@@ -121,10 +124,9 @@ export class RoomManager {
             peer.id,
             [peer.toProtocol()]
         );
-        const encryptedInfo = await Encryption.encrypt(infoNotification, { symmetricKey }, peer.toEncryptionKey());
         this.messageRelay.sendNotification(
             peer,
-            encryptedInfo
+            infoNotification
         );
         return room;
     }
@@ -137,21 +139,14 @@ export class RoomManager {
         if (peer.host) {
             this.closeRoom(room.id);
         } else {
-            const symmetricKey = await this.credentials.getSymmetricKey();
-            const otherPeerKeys = room.peers
-                .filter(roomPeer => roomPeer.id !== peer.id)
-                .map(roomPeer => roomPeer.toEncryptionKey());
-            if (otherPeerKeys.length > 0) {
-                try {
-                    const broadcastMessage = BroadcastMessage.create(Messages.Room.Left, '', [peer.toProtocol()]);
-                    const encryptedMessage = await Encryption.encrypt(broadcastMessage, { symmetricKey }, ...otherPeerKeys);
-                    this.messageRelay.sendBroadcast(
-                        peer,
-                        encryptedMessage
-                    );
-                } catch (err) {
-                    this.logger.error('Failed to send leave broadcast', err);
-                }
+            try {
+                const broadcastMessage = BroadcastMessage.create(Messages.Room.Left, '', [peer.toProtocol()]);
+                this.messageRelay.sendBroadcast(
+                    peer,
+                    broadcastMessage
+                );
+            } catch (err) {
+                this.logger.error('Failed to send leave broadcast', err);
             }
             // Remove the peer from the room as the last step
             this.peers.delete(peer.id);
@@ -167,42 +162,98 @@ export class RoomManager {
         return this.peers.get(id);
     }
 
-    async requestJoin(room: Room, user: User): Promise<{ jwt: string, response: JoinResponse } | string> {
-        try {
-        	this.logger.info(`Request to join room [id: '${room.id}'] by user [id: '${user.id}' | name: '${user.name}' | email: '${user.email ?? '<none>'}']`);
-            const symmetricKey = await this.credentials.getSymmetricKey();
-            const privateKey = await this.credentials.getPrivateKey();
-            const requestMessage = RequestMessage.create(Messages.Peer.Join, this.credentials.secureId(), '', room.host.id, [user]);
-            const encryptedRequest = await Encryption.encrypt(requestMessage, { symmetricKey }, room.host.toEncryptionKey());
-            const response = await this.messageRelay.sendRequest(
-                room.host,
-                encryptedRequest
-            );
-            const decryptedResponse = await Encryption.decrypt(response, { privateKey });
-            if (ResponseMessage.is(decryptedResponse)) {
-                const joinResponse = decryptedResponse.content as JoinResponse;
-                if (joinResponse === undefined) {
-                    return 'Join request has been rejected';
-                }
-                const claim: RoomClaim = {
-                    room: room.id,
-                    user: { ...user },
-                    // Increment the clock to identify unique sessions
-                    // If a user joins a room multiple times, the clock will be incremented
-                    // This way, they get a new JWT for each session
-                    // If a user reconnects using an old JWT, we can identify a reconnect attempt
-                    roomClock: ++room.clock
-                };
-                return {
-                    jwt: await this.credentials.generateJwt(claim),
-                    response: joinResponse
-                };
-            } else {
-                return 'Join request has failed';
+    async requestJoin(room: Room, user: User): Promise<string> {
+        this.logger.info(`Request to join room [id: '${room.id}'] by user [id: '${user.id}' | name: '${user.name}' | email: '${user.email ?? '<none>'}']`);
+        const responseId = this.credentials.secureId();
+        const timeout = setTimeout(() => {
+            pollResult.update({
+                code: 'JoinTimeout',
+                message: 'Join request has timed out',
+                params: [],
+                failure: true
+            });
+            pollResult.dispose();
+        }, 300_000); // 5 minutes of timeout
+        const updateEmitter = new Emitter<JoinRoomResponse | RoomJoinInfo>();
+        const pollResult: JoinPollResult = {
+            update: result => {
+                pollResult.result = result;
+                updateEmitter.fire(result);
+            },
+            onUpdate: updateEmitter.event,
+            dispose: () => {
+                updateEmitter.dispose();
+                this.pollResults.delete(responseId);
+                clearTimeout(timeout);
             }
+        };
+        this.pollResults.set(responseId, pollResult);
+        try {
+            const requestMessage = RequestMessage.create(Messages.Peer.Join, this.credentials.secureId(), '', room.host.id, [user]);
+            const responsePromise = this.messageRelay.sendRequest(
+                room.host,
+                requestMessage,
+                300_000
+            );
+            responsePromise.then(async response => {
+                if (ResponseMessage.is(response)) {
+                    const joinResponse = response.content.response as JoinResponse;
+                    if (joinResponse === undefined) {
+                        pollResult.update({
+                            failure: true,
+                            code: 'JoinRejected',
+                            params: [],
+                            message: 'Join request has been rejected'
+                        });
+                        return;
+                    }
+                    const claim: RoomClaim = {
+                        room: room.id,
+                        user: { ...user },
+                        // Increment the clock to identify unique sessions
+                        // If a user joins a room multiple times, the clock will be incremented
+                        // This way, they get a new JWT for each session
+                        // If a user reconnects using an old JWT, we can identify a reconnect attempt
+                        roomClock: ++room.clock
+                    };
+                    const jwt = await this.credentials.generateJwt(claim);
+                    const joinRoomResponse: JoinRoomResponse = {
+                        roomId: room.id,
+                        roomToken: jwt,
+                        workspace: joinResponse.workspace,
+                        host: room.host.toProtocol()
+                    };
+                    pollResult.update(joinRoomResponse);
+                } else {
+                    pollResult.update({
+                        failure: true,
+                        code: 'JoinRejected',
+                        params: [],
+                        message: 'Join request has been rejected'
+                    });
+                }
+            }).catch(err => {
+                pollResult.update({
+                    code: 'JoinTimeout',
+                    message: 'Join request has timed out',
+                    params: [],
+                    failure: true
+                });
+            });
+            pollResult.update({
+                failure: false,
+                code: 'WaitingForHost',
+                params: [],
+                message: 'Waiting for host to accept join request',
+            })
+            return responseId;
         } catch {
-            return 'Join request has timed out';
+            throw this.logger.createErrorAndLog('Failed to request join');
         }
+    }
+
+    pollJoin(responseId: string): JoinPollResult | undefined {
+        return this.pollResults.get(responseId);
     }
 
 }

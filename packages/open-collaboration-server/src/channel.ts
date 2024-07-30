@@ -6,14 +6,14 @@
 
 import { Socket } from 'socket.io';
 import * as ws from 'ws';
-import { Disposable, Emitter, Encoding, BinaryMessage, Event, DisposableCollection } from 'open-collaboration-protocol';
+import { Disposable, Emitter, Encoding, Event, DisposableCollection, Message } from 'open-collaboration-protocol';
 
 export class Channel {
 
     private onDidCloseEmitter = new Emitter<void>();
     private onDidDisconnectEmitter = new Emitter<void>();
     private onDidReconnectEmitter = new Emitter<void>();
-    private onMessageEmitter = new Emitter<BinaryMessage>();
+    private onMessageEmitter = new Emitter<Message>();
 
     get onClose(): Event<void> {
         return this.onDidCloseEmitter.event;
@@ -52,7 +52,7 @@ export class Channel {
 
     private _transport?: TransportChannel;
     // Buffer to store messages that couldn't be sent yet due to a disconnect
-    private buffer: BinaryMessage[] = [];
+    private buffer: Message[] = [];
     private toDispose = new DisposableCollection();
     private closeTimeout: NodeJS.Timeout | undefined;
 
@@ -78,11 +78,11 @@ export class Channel {
         });
     }
 
-    get onMessage(): Event<BinaryMessage> {
+    get onMessage(): Event<Message> {
         return this.onMessageEmitter.event;
     }
 
-    sendMessage(message: BinaryMessage): void {
+    sendMessage(message: Message): void {
         if (this._transport) {
             this._transport.sendMessage(message);
         } else {
@@ -102,8 +102,8 @@ export class Channel {
 }
 
 export interface TransportChannel {
-    onMessage(cb: (message: BinaryMessage) => void): Disposable;
-    sendMessage(message: BinaryMessage): void;
+    onMessage(cb: (message: Message) => void): Disposable;
+    sendMessage(message: Message): void;
     close(): void;
     onClose: Event<void>;
 }
@@ -124,9 +124,9 @@ export class WebSocketChannel implements TransportChannel {
         };
     }
 
-    onMessage(cb: (message: BinaryMessage) => void): Disposable {
+    onMessage(cb: (message: Message) => void): Disposable {
         const decode = (message: ArrayBuffer) => {
-            const data = Encoding.decode(new Uint8Array(message)) as BinaryMessage;
+            const data = Encoding.decode(new Uint8Array(message)) as Message;
             cb(data);
         };
         this._socket.on('message', decode);
@@ -135,7 +135,7 @@ export class WebSocketChannel implements TransportChannel {
         });
     }
 
-    sendMessage(message: BinaryMessage): void {
+    sendMessage(message: Message): void {
         const buffer = Encoding.encode(message);
         this._socket.send(buffer);
     }
@@ -164,9 +164,9 @@ export class SocketIoChannel implements TransportChannel {
         });
     }
 
-    onMessage(cb: (message: BinaryMessage) => void): Disposable {
+    onMessage(cb: (message: Message) => void): Disposable {
         const decode = (message: ArrayBuffer) => {
-            const data = Encoding.decode(new Uint8Array(message)) as BinaryMessage;
+            const data = Encoding.decode(new Uint8Array(message)) as Message;
             cb(data);
         };
         this._socket.on('message', decode);
@@ -175,7 +175,7 @@ export class SocketIoChannel implements TransportChannel {
         });
     }
 
-    sendMessage(message: BinaryMessage): void {
+    sendMessage(message: Message): void {
         const buffer = Encoding.encode(message);
         this._socket.send(buffer);
     }

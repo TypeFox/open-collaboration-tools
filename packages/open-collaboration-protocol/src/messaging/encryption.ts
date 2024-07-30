@@ -4,7 +4,7 @@
 // terms of the MIT License, which is available in the project root.
 // ******************************************************************************
 
-import { NotificationMessage, BinaryNotificationMessage, RequestMessage, BinaryRequestMessage, ErrorMessage, ResponseErrorMessage, BinaryResponseErrorMessage, BroadcastMessage, BinaryBroadcastMessage, BinaryErrorMessage, ResponseMessage, BinaryResponseMessage, Message, MessageContentKey, CompressionAlgorithm } from './messages';
+import { NotificationMessage, EncryptedNotificationMessage, RequestMessage, EncryptedRequestMessage, ErrorMessage, ResponseErrorMessage, EncryptedResponseErrorMessage, BroadcastMessage, EncryptedBroadcastMessage, BinaryErrorMessage, ResponseMessage, EncryptedResponseMessage, Message, MessageContentKey, CompressionAlgorithm } from './messages';
 import { Encoding } from './encoding';
 import { Compression } from './compression';
 import { MaybePromise, fromBase64, toBase64, getCryptoLib } from '../utils';
@@ -55,12 +55,12 @@ export namespace Encryption {
     export async function generateIV(): Promise<string> {
         return crypto.generateIV();
     }
-    export async function encrypt(message: NotificationMessage, symKey: EncryptionKey, ...keys: AsymmetricKey[]): Promise<BinaryNotificationMessage>;
-    export async function encrypt(message: RequestMessage, symKey: EncryptionKey, ...keys: AsymmetricKey[]): Promise<BinaryRequestMessage>;
-    export async function encrypt(message: ResponseMessage, symKey: EncryptionKey, ...keys: AsymmetricKey[]): Promise<BinaryResponseMessage>;
+    export async function encrypt(message: NotificationMessage, symKey: EncryptionKey, ...keys: AsymmetricKey[]): Promise<EncryptedNotificationMessage>;
+    export async function encrypt(message: RequestMessage, symKey: EncryptionKey, ...keys: AsymmetricKey[]): Promise<EncryptedRequestMessage>;
+    export async function encrypt(message: ResponseMessage, symKey: EncryptionKey, ...keys: AsymmetricKey[]): Promise<EncryptedResponseMessage>;
     export async function encrypt(message: ErrorMessage, symKey: EncryptionKey, ...keys: AsymmetricKey[]): Promise<BinaryErrorMessage>;
-    export async function encrypt(message: ResponseErrorMessage, symKey: EncryptionKey, ...keys: AsymmetricKey[]): Promise<BinaryResponseErrorMessage>;
-    export async function encrypt(message: BroadcastMessage, symKey: EncryptionKey, ...keys: AsymmetricKey[]): Promise<BinaryBroadcastMessage>;
+    export async function encrypt(message: ResponseErrorMessage, symKey: EncryptionKey, ...keys: AsymmetricKey[]): Promise<EncryptedResponseErrorMessage>;
+    export async function encrypt(message: BroadcastMessage, symKey: EncryptionKey, ...keys: AsymmetricKey[]): Promise<EncryptedBroadcastMessage>;
     export async function encrypt(message: Message & { content: unknown }, symKey: EncryptionKey, ...keys: AsymmetricKey[]): Promise<Message & { content: Uint8Array }>;
     export async function encrypt(message: Message & { content: unknown }, symKey: EncryptionKey, ...keys: AsymmetricKey[]): Promise<Message & { content: Uint8Array }> {
         const key = await symKey.symmetricKey;
@@ -99,13 +99,13 @@ export namespace Encryption {
             content: encrypted
         };
     }
-    export async function decrypt(message: BinaryNotificationMessage, privateKey: DecryptionKey): Promise<NotificationMessage>;
-    export async function decrypt(message: BinaryBroadcastMessage, privateKey: DecryptionKey): Promise<BroadcastMessage>;
-    export async function decrypt(message: BinaryRequestMessage, privateKey: DecryptionKey): Promise<RequestMessage>;
-    export async function decrypt(message: BinaryResponseMessage, privateKey: DecryptionKey): Promise<ResponseMessage>;
-    export async function decrypt(message: BinaryResponseErrorMessage, privateKey: DecryptionKey): Promise<ResponseErrorMessage>;
+    export async function decrypt(message: EncryptedNotificationMessage, privateKey: DecryptionKey): Promise<NotificationMessage>;
+    export async function decrypt(message: EncryptedBroadcastMessage, privateKey: DecryptionKey): Promise<BroadcastMessage>;
+    export async function decrypt(message: EncryptedRequestMessage, privateKey: DecryptionKey): Promise<RequestMessage>;
+    export async function decrypt(message: EncryptedResponseMessage, privateKey: DecryptionKey): Promise<ResponseMessage>;
+    export async function decrypt(message: EncryptedResponseErrorMessage, privateKey: DecryptionKey): Promise<ResponseErrorMessage>;
     export async function decrypt(message: BinaryErrorMessage, privateKey: DecryptionKey): Promise<ErrorMessage>;
-    export async function decrypt(message: BinaryBroadcastMessage | BinaryNotificationMessage, privateKey: DecryptionKey): Promise<BroadcastMessage | NotificationMessage>;
+    export async function decrypt(message: EncryptedBroadcastMessage | EncryptedNotificationMessage, privateKey: DecryptionKey): Promise<BroadcastMessage | NotificationMessage>;
     export async function decrypt(message: Message & { content: Uint8Array }, privateKey: DecryptionKey): Promise<Message & { content: unknown }>;
     export async function decrypt(message: Message & { content: Uint8Array }, privateKey: DecryptionKey): Promise<Message & { content: unknown }> {
         // We always expect exactly one key for every message we receive
