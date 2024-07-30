@@ -8,7 +8,7 @@ import { inject, injectable, postConstruct } from 'inversify';
 import { User, isUser } from './types';
 import { UserManager } from './user-manager';
 import jose = require('jose');
-import { nanoid } from 'nanoid';
+import { nanoid, customAlphabet } from 'nanoid';
 import { Disposable, Emitter, Event } from 'open-collaboration-protocol';
 import { Logger, LoggerSymbol } from './utils/logging';
 import { UserInfo } from './auth-endpoints/auth-endpoint';
@@ -32,6 +32,7 @@ export class CredentialsManager {
     @inject(Configuration) protected configuration: Configuration;
 
     protected deferredAuths = new Map<string, DelayedAuth>();
+    protected nanoid = this.generateAlphabet();
 
     @postConstruct()
     initialize() {
@@ -130,7 +131,22 @@ export class CredentialsManager {
         return undefined;
     }
 
+    protected generateAlphabet(): typeof nanoid {
+        let alphabet = '';
+        for (let digit = 48 /* '0' */; digit <= 57 /* '9' */; digit++) {
+            alphabet += String.fromCharCode(digit);
+        }
+        for (let letter = 65 /* 'A' */; letter <= 90 /* 'Z' */; letter++) {
+            alphabet += String.fromCharCode(letter);
+        }
+        for (let letter = 97 /* 'a' */; letter <= 122 /* 'z' */; letter++) {
+            alphabet += String.fromCharCode(letter);
+        }
+        
+        return customAlphabet(alphabet, 24);
+    }
+
     secureId(): string {
-        return nanoid(24);
+        return this.nanoid(24);
     }
 }

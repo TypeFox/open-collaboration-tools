@@ -157,7 +157,7 @@ export class CollaborationServer {
             next();
         });
         app.use(async (req, res, next) => {
-            if (req.method === 'POST' && req.url.startsWith('/api/') && !req.url.startsWith('/api/login/') && !req.url.startsWith('/api/meta')) {
+            if (req.method === 'POST' && req.url.startsWith('/api/session/')) {
                 const user = await this.getUserFromAuth(req);
                 if (!user) {
                     res.status(403);
@@ -171,7 +171,7 @@ export class CollaborationServer {
         });
         app.use(express.static(path.resolve(__dirname, '../src/static')));
         const loginPageUrlConfig = this.configuration.getValue('oct-login-page-url') ?? '';
-        app.post('/api/login/url', async (req, res) => {
+        app.post('/api/login/initial', async (req, res) => {
             try {
                 const token = await this.credentials.startAuth();
                 let loginPage: string;
@@ -202,7 +202,7 @@ export class CollaborationServer {
             res.status(200);
             res.send(result);
         });
-        app.post('/api/login/confirm/:token', async (req, res) => {
+        app.post('/api/login/poll/:token', async (req, res) => {
             try {
                 const authTimeoutResponse: types.ProtocolServerInfo = {
                     code: 'AuthTimeout',
@@ -301,7 +301,7 @@ export class CollaborationServer {
                 res.send('An internal server error occurred');
             }
         });
-        app.post('/api/session/join-poll/:token', async (req, res) => {
+        app.post('/api/session/poll/:token', async (req, res) => {
             try {
                 const joinToken = req.params.token;
                 const poll = this.roomManager.pollJoin(joinToken);

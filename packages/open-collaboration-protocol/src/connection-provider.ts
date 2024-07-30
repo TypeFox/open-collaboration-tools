@@ -102,7 +102,7 @@ export class ConnectionProvider {
             params: [],
             message: 'Performing login'
         });
-        const loginResponse = await this.fetch(this.getUrl('/api/login/url'), {
+        const loginResponse = await this.fetch(this.getUrl('/api/login/initial'), {
             signal: options.abortSignal,
             method: 'POST'
         });
@@ -124,7 +124,7 @@ export class ConnectionProvider {
 
     private async pollLogin(confirmToken: string, options: LoginOptions): Promise<string> {
         while (true) {
-            const confirmResponse = await this.fetch(this.getUrl(`/api/login/confirm/${confirmToken}`), {
+            const confirmResponse = await this.fetch(this.getUrl(`/api/login/poll/${confirmToken}`), {
                 signal: options.abortSignal,
                 method: 'POST'
             });
@@ -256,7 +256,7 @@ export class ConnectionProvider {
 
     async pollJoin(joinToken: string, options: JoinRoomOptions): Promise<types.JoinRoomResponse> {
         while (true) {
-            const response = await this.fetch(this.getUrl(`/api/session/join-poll/${joinToken}`), {
+            const response = await this.fetch(this.getUrl(`/api/session/poll/${joinToken}`), {
                 method: 'POST',
                 signal: options.abortSignal,
                 headers: {
