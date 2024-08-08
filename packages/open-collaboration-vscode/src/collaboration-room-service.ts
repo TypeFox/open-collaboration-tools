@@ -73,7 +73,7 @@ export class CollaborationRoomService {
                     roomId: roomClaim.roomId
                 });
                 await vscode.env.clipboard.writeText(roomClaim.roomId);
-                vscode.window.showInformationMessage(`Created room '${roomClaim.roomId}'. ID was automatically written to clipboard.`, 'Copy to Clipboard').then(value => {
+                vscode.window.showInformationMessage(`Created room '${roomClaim.roomId}'. Invitation code was automatically written to clipboard.`, 'Copy to Clipboard').then(value => {
                     if (value === 'Copy to Clipboard') {
                         vscode.env.clipboard.writeText(roomClaim.roomId);
                     }
@@ -87,7 +87,7 @@ export class CollaborationRoomService {
 
     async joinRoom(connectionProvider: ConnectionProvider, roomId?: string): Promise<void> {
         if (!roomId) {
-            roomId = await vscode.window.showInputBox({ placeHolder: 'Enter the room ID' });
+            roomId = await vscode.window.showInputBox({ placeHolder: 'Enter the invitation code' });
             if (!roomId) {
                 return;
             }

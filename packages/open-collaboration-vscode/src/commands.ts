@@ -4,11 +4,12 @@ import { FollowService } from './follow-service';
 import { CollaborationInstance, DisposablePeer } from './collaboration-instance';
 import { ExtensionContext } from './inversify';
 import { CollaborationConnectionProvider, OCT_USER_TOKEN } from './collaboration-connection-provider';
-import { showQuickPick } from './utils/quick-pick';
+import { QuickPickItem, showQuickPick } from './utils/quick-pick';
 import { ContextKeyService } from './context-key-service';
 import { CollaborationRoomService } from './collaboration-room-service';
 import { CollaborationStatusService } from './collaboration-status-service';
 import { closeSharedEditors, removeWorkspaceFolders } from './utils/workspace';
+import { ConnectionProvider } from 'open-collaboration-protocol';
 
 @injectable()
 export class Commands {
@@ -36,45 +37,73 @@ export class Commands {
             vscode.commands.registerCommand('oct.followPeer', (peer?: DisposablePeer) => this.followService.followPeer(peer)),
             vscode.commands.registerCommand('oct.stopFollowPeer', () => this.followService.unfollowPeer()),
             vscode.commands.registerCommand('oct.enter', async () => {
-                const connectionProvider = await this.connectionProvider.createConnection();
-                const instance = CollaborationInstance.Current;
-                if (!connectionProvider) {
-                    vscode.window.showInformationMessage('No OCT Server configured. Please set the server URL in the settings', 'Open Settings').then((selection) => {
-                        if (selection === 'Open Settings') {
-                            vscode.commands.executeCommand('workbench.action.openSettings', 'oct.serverUrl');
+                this.withConnectionProvider(async connectionProvider => {
+                    const instance = CollaborationInstance.Current;
+                    if (instance) {
+                        const items: QuickPickItem<'invite' | 'stop'>[] = [
+                            {
+                                key: 'invite',
+                                label: '$(clippy) Invite Others (Copy Code)',
+                                detail: 'Copy the invitation code to the clipboard to share with others'
+                            }
+                        ];
+                        if (instance.host) {
+                            items.push({
+                                key: 'stop',
+                                label: '$(circle-slash) Stop Collaboration Session',
+                                detail: 'Stop the collaboration session, stop sharing all content and remove all participants'
+                            });
+                        } else {
+                            items.push({
+                                key: 'stop',
+                                label: '$(circle-slash) Leave Collaboration Session',
+                                detail: 'Leave the collaboration session, closing the current workspace'
+                            });
                         }
-                    });
-                } else if (instance) {
-                    const quickPick = vscode.window.createQuickPick();
-                    quickPick.placeholder = 'Select collaboration option';
-                    const items: vscode.QuickPickItem[] = [
-                        { label: '$(close) Close Current Session' },
-                    ];
-                    if (instance.host) {
-                        items.push({ label: '$(clippy) Copy Invite Code' });
+                        const result = await showQuickPick(items, {
+                            placeholder: 'Select collaboration option'
+                        });
+                        if (result === 'invite') {
+                            vscode.env.clipboard.writeText(instance.roomId);
+                            vscode.window.showInformationMessage(`Invitation code ${instance.roomId} copied to clipboard!`);
+                        } else if (result === 'stop') {
+                            vscode.commands.executeCommand('oct.closeConnection');
+                        }
+                    } else {
+                        const items: QuickPickItem<'join' | 'create'>[] = [
+                            {
+                                key: 'join',
+                                label: '$(vm-connect) Join Collaboration Session',
+                                detail: 'Join an open collaboration session using an invitation code'
+                            }
+                        ];
+                        if (vscode.workspace.workspaceFolders?.length) {
+                            items.unshift({
+                                key: 'create',
+                                label: '$(add) Create New Collaboration Session',
+                                detail: 'Become the host of a new collaboration session in your current workspace'
+                            });
+                        }
+                        const index = await showQuickPick(items, {
+                            placeholder: 'Select collaboration option'
+                        });
+                        if (index === 'create') {
+                            await this.roomService.createRoom(connectionProvider);
+                        } else if (index === 'join') {
+                            await this.roomService.joinRoom(connectionProvider);
+                        }
                     }
-                    quickPick.items = items;
-                    const index = await showQuickPick(quickPick);
-                    if (index === 0) {
-                        vscode.commands.executeCommand('oct.closeConnection');
-                    } else if (index === 1) {
-                        vscode.env.clipboard.writeText(instance.roomId ?? '');
-                        vscode.window.showInformationMessage(`Room ID ${instance.roomId} copied to clipboard`);
-                    }
-                } else {
-                    const quickPick = vscode.window.createQuickPick();
-                    quickPick.placeholder = 'Select collaboration option';
-                    quickPick.items = [
-                        { label: '$(add) Create New Collaboration Session' },
-                        { label: '$(vm-connect) Join Collaboration Session' }
-                    ];
-                    const index = await showQuickPick(quickPick);
-                    if (index === 0) {
-                        await this.roomService.createRoom(connectionProvider);
-                    } else if (index === 1) {
-                        await this.roomService.joinRoom(connectionProvider);
-                    }
-                }
+                });
+            }),
+            vscode.commands.registerCommand('oct.joinRoom', async () => {
+                await this.withConnectionProvider(async connectionProvider => {
+                    await this.roomService.joinRoom(connectionProvider);
+                });
+            }),
+            vscode.commands.registerCommand('oct.createRoom', async () => {
+                await this.withConnectionProvider(async connectionProvider => {
+                    await this.roomService.createRoom(connectionProvider);
+                });
             }),
             vscode.commands.registerCommand('oct.closeConnection', async () => {
                 const instance = CollaborationInstance.Current;
@@ -91,10 +120,23 @@ export class Commands {
             vscode.commands.registerCommand('oct.signOut', async () => {
                 await vscode.commands.executeCommand('oct.closeConnection');
                 await this.context.secrets.delete(OCT_USER_TOKEN);
-                vscode.window.showInformationMessage('Signed out successfully');
+                vscode.window.showInformationMessage('Signed out successfully!');
             })
         );
         this.statusService.initialize('oct.enter');
+    }
+
+    private async withConnectionProvider(callback: (connectionProvider: ConnectionProvider) => (Promise<void> | void)): Promise<void> {
+        const connectionProvider = await this.connectionProvider.createConnection();
+        if (connectionProvider) {
+            await callback(connectionProvider);
+        } else {
+            vscode.window.showInformationMessage('No OCT Server configured. Please set the server URL in the settings.', 'Open Settings').then((selection) => {
+                if (selection === 'Open Settings') {
+                    vscode.commands.executeCommand('workbench.action.openSettings', 'oct.serverUrl');
+                }
+            });
+        }
     }
 
 }

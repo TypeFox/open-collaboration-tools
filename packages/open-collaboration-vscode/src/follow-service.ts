@@ -1,8 +1,8 @@
-import * as vscode from 'vscode';
 import { inject, injectable } from "inversify";
 import { CollaborationInstance, DisposablePeer } from "./collaboration-instance";
 import { showQuickPick } from './utils/quick-pick';
 import { CollaborationStatusViewDataProvider } from './collaboration-status-view';
+import { ContextKeyService } from './context-key-service';
 
 @injectable()
 export class FollowService {
@@ -10,16 +10,18 @@ export class FollowService {
     @inject(CollaborationStatusViewDataProvider)
     private viewDataProvider: CollaborationStatusViewDataProvider;
 
+    @inject(ContextKeyService)
+    private contextKeyService: ContextKeyService;
+
     async followPeer(peer?: DisposablePeer): Promise<void> {
         if (!CollaborationInstance.Current) {
             return;
         }
 
         if (!peer) {
-            const quickPick = vscode.window.createQuickPick();
-            const users = CollaborationInstance.Current.connectedUsers
-            quickPick.items = users.map(user => ({ label: user.peer.name, detail: user.peer.id }));
-            peer = users[(await showQuickPick(quickPick))];
+            const users = CollaborationInstance.Current.connectedUsers;
+            const items = users.map(user => ({ key: user, label: user.peer.name, detail: user.peer.id }));
+            peer = await showQuickPick(items);
         }
 
         if (!peer) {
@@ -28,6 +30,7 @@ export class FollowService {
 
         CollaborationInstance.Current.followUser(peer.peer.id);
         this.viewDataProvider.update();
+        this.contextKeyService.setFollowing(true);
     }
 
     async unfollowPeer() {
@@ -37,6 +40,7 @@ export class FollowService {
 
         CollaborationInstance.Current.followUser(undefined);
         this.viewDataProvider.update();
+        this.contextKeyService.setFollowing(false);
     }
 
 }
