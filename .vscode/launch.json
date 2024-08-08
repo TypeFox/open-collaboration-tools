@@ -35,6 +35,17 @@
 			"outFiles": [
 				"${workspaceFolder}/packages/open-collaboration-vscode/dist/**/*.js"
 			]
+		},
+        {
+			"name": "Run VS Code Web Extension",
+			"type": "extensionHost",
+			"request": "launch",
+			"args": [
+				"--extensionDevelopmentPath=${workspaceFolder}/packages/open-collaboration-vscode",
+                "--extensionDevelopmentKind=web"
+			],
+            // VS Code cannot debug the web extension directly, which is why we don't configure source maps here
+            // Instead, use VS Code browser dev tools (Help -> Toggle Developer Tools) to debug the web extension
 		}
     ]
 }
