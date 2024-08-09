@@ -36,6 +36,7 @@
     "url": "https://www.typefox.io"
   },
   "main": "./dist/extension.js",
+  "browser": "./dist/extension.web.js",
   "engines": {
     "vscode": "^1.60.0"
   },
@@ -178,7 +179,9 @@
   "devDependencies": {
     "@types/lodash.debounce": "^4.0.9",
     "@types/node-fetch": "^2.0.0",
+    "@types/path-browserify": "^1.0.2",
     "@types/vscode": "^1.60.0",
-    "@types/ws": "^8.5.10"
+    "@types/ws": "^8.5.10",
+    "path-browserify": "1.0.1"
   }
 }

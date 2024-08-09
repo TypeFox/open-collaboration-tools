@@ -5,6 +5,7 @@ import { CollaborationStatusViewDataProvider } from './collaboration-status-view
 import { ExtensionContext } from './inversify';
 import { ContextKeyService } from './context-key-service';
 import { closeSharedEditors, removeWorkspaceFolders } from './utils/workspace';
+import { isWeb } from './utils/system';
 
 export enum StatusBarState {
     Idle,
@@ -53,7 +54,14 @@ export class CollaborationStatusService {
     initialize(commandId: string): void {
         this.setState(StatusBarState.Idle);
         this.statusBarItem.command = commandId;
+        this.statusBarItem.tooltip = 'Start a collaboration session';
         this.statusBarItem.show();
+        if (isWeb) {
+            // For some reason, VS Code simply "swallows" our status bar item when running in web mode.
+            // This will attempt to show it again every 200ms. After 30s, we disable that again.
+            const interval = setInterval(() => this.statusBarItem.show(), 200);
+            setTimeout(() => clearInterval(interval), 30_000);
+        }
     }
 
     setState(state: StatusBarState) {
