@@ -162,7 +162,7 @@
   },
   "scripts": {
     "vscode:prepublish": "npm run check-types && node esbuild.js --production",
-    "build": "npm run check-types && node esbuild.js && webpack",
+    "build": "npm run check-types && node esbuild.js",
     "watch": "node esbuild.js --watch",
     "check-types": "tsc --noEmit"
   },
@@ -179,11 +179,9 @@
   "devDependencies": {
     "@types/lodash.debounce": "^4.0.9",
     "@types/node-fetch": "^2.0.0",
+    "@types/path-browserify": "^1.0.2",
     "@types/vscode": "^1.60.0",
     "@types/ws": "^8.5.10",
-    "path-browserify": "1.0.1",
-    "ts-loader": "^7.0.5",
-    "webpack": "^5.75.0",
-    "webpack-cli": "^5.0.1"
+    "path-browserify": "1.0.1"
   }
 }

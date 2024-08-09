@@ -4,7 +4,7 @@ import * as Y from 'yjs';
 import * as awarenessProtocol from 'y-protocols/awareness';
 import * as types from 'open-collaboration-protocol';
 import { CollaborationFileSystemProvider } from "./collaboration-file-system";
-import * as paths from 'path';
+import paths from 'path-browserify';
 import { LOCAL_ORIGIN, OpenCollaborationYjsProvider } from 'open-collaboration-yjs';
 import debounce from 'lodash/debounce';
 import { inject, injectable, postConstruct } from "inversify";
@@ -84,7 +84,7 @@ export class DisposablePeer implements vscode.Disposable {
         const options: vscode.ThemableDecorationAttachmentRenderOptions = {
             contentText: this.peer.name,
             backgroundColor: color,
-            textDecoration: `none; position: absolute; border-radius: 0.15rem; padding:0px 0.5ch; display: inline-block; 
+            textDecoration: `none; position: absolute; border-radius: 0.15rem; padding:0px 0.5ch; display: inline-block;
                                 pointer-events: none; color: #000; font-size: 0.7rem; z-index: 10; font-weight: bold;${textDecoration ?? ''}`
         }
         return vscode.window.createTextEditorDecorationType({
@@ -104,7 +104,7 @@ export class DisposablePeer implements vscode.Disposable {
 
 let colorIndex = 0;
 const defaultColors: ([number, number, number] | string)[] = [
-    'oct.user.yellow', // Yellow 
+    'oct.user.yellow', // Yellow
     'oct.user.green', // Green
     'oct.user.magenta', // Magenta
     'oct.user.lightGreen', // Light green
@@ -740,7 +740,7 @@ export class CollaborationInstance implements vscode.Disposable {
         const rest = parts.slice(1);
         const stat = (vscode.workspace.workspaceFolders ?? []).find(e => e.name === root);
         if (stat) {
-            const uriPath = paths.join(stat.uri.path, ...rest).replaceAll('\\', '/');
+            const uriPath = paths.posix.join(stat.uri.path, ...rest);
             const uri = stat.uri.with({ path: uriPath });
             return uri;
         } else {
