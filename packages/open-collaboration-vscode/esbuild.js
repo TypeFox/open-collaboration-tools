@@ -23,8 +23,8 @@ const esbuildProblemMatcherPlugin = {
 	},
 };
 
-async function main() {
-	const ctx = await esbuild.context({
+const main = async () => {
+	const nodeContext = await esbuild.context({
 		entryPoints: [
 			'src/extension.ts'
 		],
@@ -38,14 +38,40 @@ async function main() {
 		logLevel: 'silent',
 		plugins: [
 			/* add to the end of plugins array */
-			esbuildProblemMatcherPlugin,
-		],
+			esbuildProblemMatcherPlugin
+		]
 	});
+
+	const browserContext = await esbuild.context({
+		entryPoints: [
+			'src/extension-web.ts'
+		],
+		bundle: true,
+		format: 'cjs',
+		minify: production,
+		sourcemap: !production,
+		platform: 'browser',
+		outfile: 'dist/extension.web.js',
+		external: ['vscode'],
+		logLevel: 'silent',
+		plugins: [
+			/* add to the end of plugins array */
+			esbuildProblemMatcherPlugin
+		],
+         // Node.js global to browser globalThis
+        define: {
+            global: 'globalThis'
+        }
+	});
+
 	if (watch) {
-		await ctx.watch();
+		await nodeContext.watch();
+		await browserContext.watch();
 	} else {
-		await ctx.rebuild();
-		await ctx.dispose();
+		await nodeContext.rebuild();
+		await browserContext.rebuild();
+		await nodeContext.dispose();
+		await browserContext.dispose();
 	}
 }
 

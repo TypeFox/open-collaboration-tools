@@ -162,7 +162,7 @@
   },
   "scripts": {
     "vscode:prepublish": "npm run check-types && node esbuild.js --production",
-    "build": "npm run check-types && node esbuild.js && webpack",
+    "build": "npm run check-types && node esbuild.js",
     "watch": "node esbuild.js --watch",
     "check-types": "tsc --noEmit"
   },
