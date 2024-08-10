@@ -1,6 +1,10 @@
 {
-  "Follow Peer": "Follow Peer",
-  "Stop Following Peer": "Stop Following Peer",
-  "Close Current Connection": "Close Current Connection",
-  "Sign Out": "Sign Out"
+	"Follow Peer": "Follow Peer",
+	"Stop Following Peer": "Stop Following Peer",
+	"Close Current Connection": "Close Current Connection",
+	"Sign Out": "Sign Out",
+	"Copy to Clipboard": "Copy to Clipboard",
+	"Action was cancelled by the user": "Action was cancelled by the user",
+	"Failed to create room: ": "Failed to create room: ",
+	"Failed to join room: ": "Failed to join room: "
 }
