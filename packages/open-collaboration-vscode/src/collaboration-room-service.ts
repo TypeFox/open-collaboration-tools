@@ -14,6 +14,13 @@ interface RoomData {
     host: Peer;
 }
 
+var localeStr = null;
+try {
+    localeStr = require("../package.nls." + vscode.env.language + ".json");
+} catch {
+}
+if (localeStr == null) localeStr = require("../package.nls.json");        
+
 @injectable()
 export class CollaborationRoomService {
 
@@ -73,8 +80,8 @@ export class CollaborationRoomService {
                     roomId: roomClaim.roomId
                 });
                 await vscode.env.clipboard.writeText(roomClaim.roomId);
-                vscode.window.showInformationMessage(`Created room '${roomClaim.roomId}'. ID was automatically written to clipboard.`, 'Copy to Clipboard').then(value => {
-                    if (value === 'Copy to Clipboard') {
+                vscode.window.showInformationMessage(`Created room '${roomClaim.roomId}'. ID was automatically written to clipboard.`, localeStr['Copy to Clipboard']).then(value => {
+                    if (value === localeStr['Copy to Clipboard']) {
                         vscode.env.clipboard.writeText(roomClaim.roomId);
                     }
                 });
@@ -136,11 +143,11 @@ export class CollaborationRoomService {
         } else if (innerToken.isCancellationRequested) {
             // The user cancelled the operation
             // We simply show a notification
-            vscode.window.showInformationMessage('Action was cancelled by the user');
+            vscode.window.showInformationMessage(localeStr['Action was cancelled by the user']);
         } else if (create) {
-            vscode.window.showErrorMessage('Failed to create room: ' + stringifyError(error));
+            vscode.window.showErrorMessage(localeStr['Failed to create room: '] + stringifyError(error));
         } else {
-            vscode.window.showErrorMessage('Failed to join room: ' + stringifyError(error));
+            vscode.window.showErrorMessage(localeStr['Failed to join room: '] + stringifyError(error));
         }
     }
 
