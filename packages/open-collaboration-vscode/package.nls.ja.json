@@ -1,0 +1,10 @@
+{
+	"Follow Peer": "追跡をする",
+	"Stop Following Peer": "追跡をやめる",
+	"Close Current Connection": "共同編集を閉じる",
+	"Sign Out": "サインアウト",
+	"Copy to Clipboard": "クリップボードにコピー",
+	"Action was cancelled by the user": "操作はユーザーによってキャンセルされました",
+	"Failed to create room: ": "共同編集の開始に失敗: ",
+	"Failed to join room: ": "共同編集の参加に失敗: "
+}
