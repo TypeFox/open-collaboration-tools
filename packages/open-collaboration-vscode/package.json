@@ -84,26 +84,26 @@
     "commands": [
       {
         "command": "oct.followPeer",
-        "title": "Follow Peer",
+        "title": "%Follow Peer%",
         "category": "Open Collaboration Tools",
         "icon": "$(eye)"
       },
       {
         "command": "oct.stopFollowPeer",
-        "title": "Stop Following Peer",
+        "title": "%Stop Following Peer%",
         "category": "Open Collaboration Tools",
         "icon": "$(eye-closed)"
       },
       {
         "command": "oct.closeConnection",
-        "title": "Close Current Connection",
+        "title": "%Close Current Connection%",
         "category": "Open Collaboration Tools",
         "icon": "$(close)",
         "when": "oct.connection === true"
       },
       {
         "command": "oct.signOut",
-        "title": "Sign Out",
+        "title": "%Sign Out%",
         "category": "Open Collaboration Tools",
         "icon": "$(sign-out)"
       }
