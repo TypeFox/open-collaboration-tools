@@ -35,8 +35,8 @@ export interface EditorHandler {
 export interface FileSystemHandler {
     onReadFile(handler: Handler<[types.Path], types.FileData>): void;
     readFile(target: MessageTarget, path: types.Path): Promise<types.FileData>;
-    onWriteFile(handler: Handler<[types.Path, string]>): void;
-    writeFile(target: MessageTarget, path: types.Path, content: string): Promise<void>;
+    onWriteFile(handler: Handler<[types.Path, types.FileData]>): void;
+    writeFile(target: MessageTarget, path: types.Path, content: types.FileData): Promise<void>;
     onStat(handler: Handler<[types.Path], types.FileSystemStat>): void;
     stat(target: MessageTarget, path: types.Path): Promise<types.FileSystemStat>;
     onMkdir(handler: Handler<[types.Path]>): void;

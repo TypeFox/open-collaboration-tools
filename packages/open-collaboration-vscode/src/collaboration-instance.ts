@@ -13,6 +13,7 @@ import { CollaborationFileSystemProvider } from './collaboration-file-system';
 import paths from 'path-browserify';
 import { LOCAL_ORIGIN, OpenCollaborationYjsProvider } from 'open-collaboration-yjs';
 import debounce from 'lodash/debounce';
+import throttle from 'lodash/throttle';
 import { inject, injectable, postConstruct } from 'inversify';
 import { removeWorkspaceFolders } from './utils/workspace';
 import { Mutex } from 'async-mutex';
@@ -77,12 +78,12 @@ export class DisposablePeer implements vscode.Disposable {
             ...selection,
             after: cursor
         });
-        const beforeNameTag = this.createNameTag(colorCss, 'top: -1rem;');
-        const beforeInvertedNameTag = this.createNameTag(colorCss, 'bottom: -1rem;');
+        const nameTag = this.createNameTag(colorCss, 'top: -1rem;');
+        const invertedNameTag = this.createNameTag(colorCss, 'bottom: -1rem;');
 
         return new ClientTextEditorDecorationType(before, after, {
-            default: beforeNameTag,
-            inverted: beforeInvertedNameTag
+            default: nameTag,
+            inverted: invertedNameTag
         }, color);
     }
 
@@ -191,6 +192,7 @@ export class CollaborationInstance implements vscode.Disposable {
     private documentDisposables = new Map<string, DisposableCollection>();
     private peers = new Map<string, DisposablePeer>();
     private throttles = new Map<string, () => void>();
+    private fileSystem?: CollaborationFileSystemProvider;
 
     private _following?: string;
     get following(): string | undefined {
@@ -314,6 +316,22 @@ export class CollaborationInstance implements vscode.Disposable {
             this.yjsAwareness.setLocalStateField('peer', peer.id);
             this.identity.resolve(peer);
         });
+        
+        connection.editor.onOpen(async (_, path) => {
+            const uri = this.getResourceUri(path);
+            if (uri) {
+                await vscode.workspace.openTextDocument(uri);
+            } else {
+                throw new Error('Could not open file');
+            }
+        });
+        
+        this.registerFileEvents();
+        this.registerEditorEvents();
+    }
+
+    private registerFileEvents() {
+        const connection = this.connection;
         connection.fs.onStat(async (_, path) => {
             const uri = this.getResourceUri(path);
             if (uri) {
@@ -348,15 +366,68 @@ export class CollaborationInstance implements vscode.Disposable {
                 throw new Error('Could not read file');
             }
         });
-        connection.editor.onOpen(async (_, path) => {
+        connection.fs.onDelete(async (_, path) => {
             const uri = this.getResourceUri(path);
             if (uri) {
-                await vscode.workspace.openTextDocument(uri);
+                await vscode.workspace.fs.delete(uri, { recursive: true });
             } else {
-                throw new Error('Could not open file');
+                throw new Error('Could not delete file');
             }
         });
-        this.registerEditorEvents();
+        connection.fs.onRename(async (_, oldPath, newPath) => {
+            const oldUri = this.getResourceUri(oldPath);
+            const newUri = this.getResourceUri(newPath);
+            if (oldUri && newUri) {
+                await vscode.workspace.fs.rename(oldUri, newUri, { overwrite: true });
+            } else {
+                throw new Error('Could not rename file');
+            }
+        });
+        connection.fs.onMkdir(async (_, path) => {
+            const uri = this.getResourceUri(path);
+            if (uri) {
+                await vscode.workspace.fs.createDirectory(uri);
+            } else {
+                throw new Error('Could not create directory');
+            }
+        });
+        connection.fs.onChange(async (_, changes) => {
+            if (this.fileSystem) {
+                const vscodeChanges: vscode.FileChangeEvent[] = [];
+                for (const change of changes.changes) {
+                    const uri = this.getResourceUri(change.path);
+                    if (uri) {
+                        vscodeChanges.push({
+                            type: this.convertChangeType(change.type),
+                            uri
+                        });
+                    }
+                }
+                this.fileSystem.triggerEvent(vscodeChanges);
+            }
+        });
+        connection.fs.onWriteFile(async (_, path, content) => {
+            const uri = this.getResourceUri(path);
+            if (uri) {
+                const document = vscode.workspace.textDocuments.find(e => e.uri.toString() === uri.toString());
+                if (document) {
+                    await document.save();
+                } else {
+                    await vscode.workspace.fs.writeFile(uri, content.content);
+                }
+            }
+        });
+    }
+
+    private convertChangeType(type: types.FileChangeEventType): vscode.FileChangeType {
+        switch (type) {
+            case types.FileChangeEventType.Create:
+                return vscode.FileChangeType.Created;
+            case types.FileChangeEventType.Delete:
+                return vscode.FileChangeType.Deleted;
+            case types.FileChangeEventType.Update:
+                return vscode.FileChangeType.Changed;
+        }
     }
 
     async leave(): Promise<void> {
@@ -425,6 +496,11 @@ export class CollaborationInstance implements vscode.Disposable {
             this.updateTextSelection(event.textEditor);
         }));
 
+        if (this.host) {
+            // Only the host should create the watcher
+            this.createWatcher();
+        }
+
         const awarenessDebounce = debounce(() => {
             this.rerenderPresence();
         }, 2000);
@@ -436,6 +512,52 @@ export class CollaborationInstance implements vscode.Disposable {
                 awarenessDebounce();
             }
         });
+    }
+
+    protected createWatcher(): void {
+        // Batch all changes and send them in one go
+        // We don't want to send hundreds of messages in case of multiple changes in a short time
+        // However, we also don't want to wait too long to send the changes. This will send the changes every 200ms
+        const queue: types.FileChange[] = [];
+        const sendChanges = throttle(() => {
+            const changes = queue.splice(0, queue.length);
+            this.connection.fs.change({ changes });
+        }, 100, {
+            leading: false,
+            trailing: true
+        });
+        const watcher = vscode.workspace.createFileSystemWatcher('**/*');
+        watcher.onDidChange(uri => {
+            const path = this.getProtocolPath(uri);
+            if (path) {
+                queue.push({
+                    path,
+                    type: types.FileChangeEventType.Update
+                });
+                sendChanges();
+            }
+        });
+        watcher.onDidCreate(uri => {
+            const path = this.getProtocolPath(uri);
+            if (path) {
+                queue.push({
+                    path,
+                    type: types.FileChangeEventType.Create
+                });
+                sendChanges();
+            }
+        });
+        watcher.onDidDelete(uri => {
+            const path = this.getProtocolPath(uri);
+            if (path) {
+                queue.push({
+                    path,
+                    type: types.FileChangeEventType.Delete
+                });
+                sendChanges();
+            }
+        });
+        this.toDispose.push(watcher);
     }
 
     protected isNotebookCell(doc: vscode.TextDocument): boolean {
@@ -538,14 +660,17 @@ export class CollaborationInstance implements vscode.Disposable {
             }
             const ytextContent = yjsText.toString();
             if (text !== ytextContent) {
-                const edit = new vscode.WorkspaceEdit();
-                edit.replace(uri, new vscode.Range(0, 0, document.lineCount, 0), ytextContent);
-                vscode.workspace.applyEdit(edit);
+                this.yjsMutex.runExclusive(async () => {
+                    this.updates.add(path);
+                    vscode.workspace.applyEdit(this.createFullDocumentEdit(document, ytextContent));
+                    this.updates.delete(path);
+                    resyncThrottle();
+                });
             }
             const resyncThrottle = this.getOrCreateThrottle(path, document);
             const observer = (textEvent: Y.YTextEvent) => {
-                if (textEvent.transaction.local) {
-                    // Ignore own events
+                if (textEvent.transaction.local || yjsText.toString() === document.getText()) {
+                    // Ignore own events or if the document is already in sync
                     return;
                 }
                 let index = 0;
@@ -605,10 +730,8 @@ export class CollaborationInstance implements vscode.Disposable {
                     const yjsText = this.yjs.getText(path);
                     const newContent = yjsText.toString();
                     if (newContent !== document.getText()) {
-                        const edit = new vscode.WorkspaceEdit();
-                        edit.replace(document.uri, new vscode.Range(0, 0, document.lineCount, 0), newContent);
                         this.updates.add(path);
-                        await vscode.workspace.applyEdit(edit);
+                        await vscode.workspace.applyEdit(this.createFullDocumentEdit(document, newContent));
                         this.updates.delete(path);
                     }
                 });
@@ -616,6 +739,14 @@ export class CollaborationInstance implements vscode.Disposable {
             this.throttles.set(path, value);
         }
         return value;
+    }
+
+    private createFullDocumentEdit(document: vscode.TextDocument, content: string): vscode.WorkspaceEdit {
+        const edit = new vscode.WorkspaceEdit();
+        const startPosition = new vscode.Position(0, 0);
+        const endPosition = document.lineAt(document.lineCount - 1).range.end;
+        edit.replace(document.uri, new vscode.Range(startPosition, endPosition), content);
+        return edit;
     }
 
     protected rerenderPresence() {
@@ -722,7 +853,8 @@ export class CollaborationInstance implements vscode.Disposable {
         for (const peer of [data.host, ...data.guests]) {
             this.peers.set(peer.id, new DisposablePeer(this.yjsAwareness, peer));
         }
-        this.toDispose.push(vscode.workspace.registerFileSystemProvider('oct', new CollaborationFileSystemProvider(this.options.connection, this.yjs, data.host)));
+        this.fileSystem = new CollaborationFileSystemProvider(this.options.connection, this.yjs, data.host);
+        this.toDispose.push(vscode.workspace.registerFileSystemProvider('oct', this.fileSystem));
     }
 
     getProtocolPath(uri?: vscode.Uri): string | undefined {
