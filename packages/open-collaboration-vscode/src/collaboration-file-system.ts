@@ -68,6 +68,8 @@ export class CollaborationFileSystemProvider implements vscode.FileSystemProvide
     }
 
     protected getHostPath(uri: vscode.Uri): string {
+        // When creating a URI as a guest, we always prepend it with the name of the workspace
+        // This just removes the workspace name from the path to get the path expected by the protocol
         const path = uri.path.substring(1).split('/');
         return path.slice(1).join('/');
     }
