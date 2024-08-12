@@ -1,16 +1,20 @@
 import * as vscode from 'vscode';
 import { inject, injectable } from "inversify";
 import { ConnectionProvider, SocketIoTransportProvider } from 'open-collaboration-protocol'
-import fetch from 'node-fetch';
 import { ExtensionContext } from './inversify';
 
 export const OCT_USER_TOKEN = 'oct.userToken';
+
+export const Fetch = Symbol('Fetch');
 
 @injectable()
 export class CollaborationConnectionProvider {
 
     @inject(ExtensionContext)
     private context: vscode.ExtensionContext;
+
+    @inject(Fetch)
+    private fetch: typeof fetch;
 
     async createConnection(userToken?: string): Promise<ConnectionProvider | undefined> {
         let version = 'unknown';
@@ -29,7 +33,7 @@ export class CollaborationConnectionProvider {
                 opener: (url) => vscode.env.openExternal(vscode.Uri.parse(url)),
                 transports: [SocketIoTransportProvider],
                 userToken,
-                fetch
+                fetch: this.fetch
             });
         }
         return undefined;

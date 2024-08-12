@@ -6,7 +6,6 @@ import { closeSharedEditors, removeWorkspaceFolders } from './utils/workspace';
 import { createContainer } from './inversify';
 import { Commands } from './commands';
 import { Fetch } from './collaboration-connection-provider';
-import fetch from 'node-fetch';
 
 export async function activate(context: vscode.ExtensionContext) {
     const container = createContainer(context);
