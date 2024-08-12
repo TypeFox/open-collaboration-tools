@@ -64,11 +64,33 @@
         {
           "id": "oct-room-view",
           "name": "Current Collaboration Session",
-          "when": "oct.connection === true"
+          "when": "oct.connection"
         }
       ]
     },
     "menus": {
+      "commandPalette": [
+        {
+          "command": "oct.followPeer",
+          "when": "oct.connection"
+        },
+        {
+          "command": "oct.stopFollowPeer",
+          "when": "oct.connection && oct.following"
+        },
+        {
+          "command": "oct.closeConnection",
+          "when": "oct.connection"
+        },
+        {
+          "command": "oct.joinRoom",
+          "when": "!oct.connection"
+        },
+        {
+          "command": "oct.createRoom",
+          "when": "workbenchState != empty && !oct.connection"
+        }
+      ],
       "view/item/context": [
         {
           "command": "oct.followPeer",
@@ -99,8 +121,19 @@
         "command": "oct.closeConnection",
         "title": "Close Current Connection",
         "category": "Open Collaboration Tools",
-        "icon": "$(close)",
-        "when": "oct.connection === true"
+        "icon": "$(close)"
+      },
+      {
+        "command": "oct.joinRoom",
+        "title": "Join Collaboration Session",
+        "category": "Open Collaboration Tools",
+        "icon": "$(vm-connect)"
+      },
+      {
+        "command": "oct.createRoom",
+        "title": "Create Collaboration Session",
+        "category": "Open Collaboration Tools",
+        "icon": "$(vm-connect)"
       },
       {
         "command": "oct.signOut",

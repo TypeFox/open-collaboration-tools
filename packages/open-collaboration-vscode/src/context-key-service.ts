@@ -18,4 +18,8 @@ export class ContextKeyService {
         this.set('oct.roomId', instance?.roomId);
     }
 
+    setFollowing(following: boolean): void {
+        this.set('oct.following', following);
+    }
+
 }
