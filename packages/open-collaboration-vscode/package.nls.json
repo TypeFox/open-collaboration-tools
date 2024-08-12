@@ -1,10 +1,11 @@
 {
-	"Follow Peer": "Follow Peer",
-	"Stop Following Peer": "Stop Following Peer",
-	"Close Current Connection": "Close Current Connection",
-	"Sign Out": "Sign Out",
-	"Copy to Clipboard": "Copy to Clipboard",
-	"Action was cancelled by the user": "Action was cancelled by the user",
-	"Failed to create room: ": "Failed to create room: ",
-	"Failed to join room: ": "Failed to join room: "
+	"oct.followPeer": "Follow Peer",
+	"oct.stopFollowPeer": "Stop Following Peer",
+	"oct.closeConnection": "Close Current Connection",
+    "oct.joinRoom": "Join Collaboration Session",
+    "oct.createRoom": "Create Collaboration Session",
+	"oct.signOut": "Sign Out",
+    "oct.roomView": "Current Collaboration Session",
+    "oct.serverUrl": "URL of the Open Collaboration Tools Server instance for live collaboration sessions.",
+    "oct.user.color": "Color for users in collaboration sessions"
 }

@@ -1,10 +1,11 @@
 {
-	"Follow Peer": "追跡をする",
-	"Stop Following Peer": "追跡をやめる",
-	"Close Current Connection": "共同編集を閉じる",
-	"Sign Out": "サインアウト",
-	"Copy to Clipboard": "クリップボードにコピー",
-	"Action was cancelled by the user": "操作はユーザーによってキャンセルされました",
-	"Failed to create room: ": "共同編集の開始に失敗: ",
-	"Failed to join room: ": "共同編集の参加に失敗: "
+	"oct.followPeer": "追跡をする",
+	"oct.stopFollowPeer": "追跡をやめる",
+	"oct.closeConnection": "共同編集を閉じる",
+    "oct.joinRoom": "コラボレーション・セッションに参加",
+    "oct.createRoom": "コラボレーション・セッションの作成",
+	"oct.signOut": "サインアウト",
+    "oct.roomView": "現在のコラボレーション・セッション",
+    "oct.serverUrl": "ライブコラボレーションセッション用のOpen Collaboration Tools ServerインスタンスのURL。",
+    "oct.user.color": "コラボレーション・セッションにおけるユーザーの色"
 }

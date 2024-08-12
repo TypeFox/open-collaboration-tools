@@ -46,7 +46,7 @@ export class CollaborationStatusService {
             });
         });
         this.context.subscriptions.push(
-            vscode.window.registerTreeDataProvider('oct-room-view', this.viewDataProvider),
+            vscode.window.registerTreeDataProvider('oct.roomView', this.viewDataProvider),
             this.statusBarItem
         );
     }
@@ -54,7 +54,7 @@ export class CollaborationStatusService {
     initialize(commandId: string): void {
         this.setState(StatusBarState.Idle);
         this.statusBarItem.command = commandId;
-        this.statusBarItem.tooltip = 'Start a collaboration session';
+        this.statusBarItem.tooltip = vscode.l10n.t('Start a collaboration session');
         this.statusBarItem.show();
         if (isWeb) {
             // For some reason, VS Code simply "swallows" our status bar item when running in web mode.
@@ -67,13 +67,13 @@ export class CollaborationStatusService {
     setState(state: StatusBarState) {
         switch (state) {
             case StatusBarState.Idle:
-                this.statusBarItem.text = '$(git-compare) Collaborate';
+                this.statusBarItem.text = '$(git-compare) ' + vscode.l10n.t('Collaborate');
                 break;
             case StatusBarState.Sharing:
-                this.statusBarItem.text = '$(broadcast) Sharing';
+                this.statusBarItem.text = '$(broadcast) ' + vscode.l10n.t('Sharing');
                 break;
             case StatusBarState.Connected:
-                this.statusBarItem.text = '$(broadcast) Collaborating';
+                this.statusBarItem.text = '$(broadcast) ' + vscode.l10n.t('Collaborating');
                 break;
         }
     }

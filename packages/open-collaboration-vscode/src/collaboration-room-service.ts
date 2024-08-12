@@ -55,7 +55,7 @@ export class CollaborationRoomService {
     async createRoom(connectionProvider: ConnectionProvider): Promise<void> {
         this.tokenSource.cancel();
         this.tokenSource = new vscode.CancellationTokenSource();
-        await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: 'Creating room', cancellable: true }, async (progress, cancelToken) => {
+        await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: vscode.l10n.t('Creating Session'), cancellable: true }, async (progress, cancelToken) => {
             const outerToken = this.tokenSource.token;
             try {
                 const roomClaim = await connectionProvider.createRoom({
@@ -73,8 +73,10 @@ export class CollaborationRoomService {
                     roomId: roomClaim.roomId
                 });
                 await vscode.env.clipboard.writeText(roomClaim.roomId);
-                vscode.window.showInformationMessage(`Created room '${roomClaim.roomId}'. Invitation code was automatically written to clipboard.`, 'Copy to Clipboard').then(value => {
-                    if (value === 'Copy to Clipboard') {
+                const copyToClipboard = vscode.l10n.t('Copy to Clipboard');
+                const message = vscode.l10n.t('Created session {0}. Invitation code was automatically written to clipboard.', roomClaim.roomId);
+                vscode.window.showInformationMessage(message, copyToClipboard).then(value => {
+                    if (value === copyToClipboard) {
                         vscode.env.clipboard.writeText(roomClaim.roomId);
                     }
                 });
@@ -87,14 +89,14 @@ export class CollaborationRoomService {
 
     async joinRoom(connectionProvider: ConnectionProvider, roomId?: string): Promise<void> {
         if (!roomId) {
-            roomId = await vscode.window.showInputBox({ placeHolder: 'Enter the invitation code' });
+            roomId = await vscode.window.showInputBox({ placeHolder: vscode.l10n.t('Enter the invitation code') });
             if (!roomId) {
                 return;
             }
         }
         this.tokenSource.cancel();
         this.tokenSource = new vscode.CancellationTokenSource();
-        await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: 'Joining room', cancellable: true }, async (progress, cancelToken) => {
+        await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: vscode.l10n.t('Joining Session'), cancellable: true }, async (progress, cancelToken) => {
             if (roomId && connectionProvider) {
                 const outerToken = this.tokenSource.token;
                 try {
@@ -136,11 +138,11 @@ export class CollaborationRoomService {
         } else if (innerToken.isCancellationRequested) {
             // The user cancelled the operation
             // We simply show a notification
-            vscode.window.showInformationMessage('Action was cancelled by the user');
+            vscode.window.showInformationMessage(vscode.l10n.t('Action was cancelled by the user'));
         } else if (create) {
-            vscode.window.showErrorMessage('Failed to create room: ' + stringifyError(error));
+            vscode.window.showErrorMessage(vscode.l10n.t('Failed to create session: {0}', stringifyError(error)));
         } else {
-            vscode.window.showErrorMessage('Failed to join room: ' + stringifyError(error));
+            vscode.window.showErrorMessage(vscode.l10n.t('Failed to join session: {0}', stringifyError(error)));
         }
     }
 

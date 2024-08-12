@@ -231,7 +231,7 @@ export class CollaborationInstance implements vscode.Disposable {
             this.dispose();
         }))
         this.toDispose.push(connection.onConnectionError(message => {
-            vscode.window.showErrorMessage('Connection error: ' + message);
+            vscode.window.showErrorMessage(vscode.l10n.t('Connection error: {0}', message));
         }));
         this.toDispose.push(connection.onReconnect(() => {
             // Reconnect the Yjs provider
@@ -249,13 +249,16 @@ export class CollaborationInstance implements vscode.Disposable {
         this.toDispose.push(this.onDidDisposeEmitter);
 
         connection.peer.onJoinRequest(async (_, user) => {
-            const result = await vscode.window.showInformationMessage(
-                `User '${user.email ? `${user.name} (${user.email})` : user.name}' via ${user.authProvider ?? 'unknown'} login wants to join the collaboration room`,
-                'Allow',
-                'Deny'
+            const message = vscode.l10n.t(
+                'User {0} via {1} login wants to join the collaboration session',
+                user.email ? `${user.name} (${user.email})` : user.name,
+                user.authProvider ?? 'unknown'
             );
+            const allow = vscode.l10n.t('Allow');
+            const deny = vscode.l10n.t('Deny');
+            const result = await vscode.window.showInformationMessage(message, allow, deny);
             const roots = vscode.workspace.workspaceFolders ?? [];
-            return result === 'Allow' ? {
+            return result === allow ? {
                 workspace: {
                     name: vscode.workspace.name ?? 'Collaboration',
                     folders: roots.map(e => e.name)
@@ -296,7 +299,7 @@ export class CollaborationInstance implements vscode.Disposable {
         });
         connection.room.onClose(async () => {
             if (!this.options.host) {
-                vscode.window.showInformationMessage('Collaboration room closed');
+                vscode.window.showInformationMessage(vscode.l10n.t('Collaboration session closed'));
                 removeWorkspaceFolders();
                 this.dispose();
             }
