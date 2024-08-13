@@ -1,3 +1,9 @@
+// ******************************************************************************
+// Copyright 2024 TypeFox GmbH
+// This program and the accompanying materials are made available under the
+// terms of the MIT License, which is available in the project root.
+// ******************************************************************************
+
 import * as vscode from 'vscode';
 import { CollaborationUri } from './uri';
 
@@ -20,6 +26,6 @@ export async function closeSharedEditors(): Promise<void> {
     await vscode.window.tabGroups.close(
         vscode.window.tabGroups.all
             .flatMap(group => group.tabs)
-            .filter(tab => (tab.input as { uri: vscode.Uri })?.uri?.scheme === CollaborationUri.SCHEME)
-    )
+            .filter(tab => (tab.input as { uri?: vscode.Uri }).uri?.scheme === CollaborationUri.SCHEME)
+    );
 }

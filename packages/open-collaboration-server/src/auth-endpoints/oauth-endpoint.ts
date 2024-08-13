@@ -1,3 +1,9 @@
+// ******************************************************************************
+// Copyright 2024 TypeFox GmbH
+// This program and the accompanying materials are made available under the
+// terms of the MIT License, which is available in the project root.
+// ******************************************************************************
+
 import { inject, injectable, postConstruct } from 'inversify';
 import { type Express } from 'express';
 import { Emitter, Event } from 'open-collaboration-protocol';
@@ -50,11 +56,11 @@ export abstract class OAuthEndpoint implements AuthEndpoint {
 
         const loginSuccessURL = this.configuration.getValue('oct-login-success-url');
         app.get(this.redirectPath, async (req, res) => {
-            const token = (req.query.state as string)
+            const token = (req.query.state as string);
             if (!token) {
                 this.logger.error('missing token in request state');
                 res.status(400);
-                res.send(`Error: Missing token in request state`);
+                res.send('Error: Missing token in request state');
                 return;
             }
             passport.authenticate(this.id, { state: token, scope: this.scope }, async (err: any, userInfo?: UserInfo) => {
@@ -93,8 +99,8 @@ export abstract class OAuthEndpoint implements AuthEndpoint {
 @injectable()
 export class GitHubOAuthEndpoint extends OAuthEndpoint {
     protected id = 'github';
-    protected path = '/api/login/github'
-    protected redirectPath = '/api/login/github-callback'
+    protected path = '/api/login/github';
+    protected redirectPath = '/api/login/github-callback';
 
     shouldActivate(): boolean {
         return Boolean(this.configuration.getValue('oct-oauth-github-clientid') && this.configuration.getValue('oct-oauth-github-clientsecret'));
@@ -111,11 +117,10 @@ export class GitHubOAuthEndpoint extends OAuthEndpoint {
                 email: profile.emails?.[0]?.value,
                 authProvider: 'Github'
             };
-            done(undefined, userInfo)
+            done(undefined, userInfo);
         });
     }
 }
-
 
 @injectable()
 export class GoogleOAuthEndpoint extends OAuthEndpoint {
@@ -139,7 +144,7 @@ export class GoogleOAuthEndpoint extends OAuthEndpoint {
                 email: profile.emails?.find(mail => mail.verified)?.value,
                 authProvider: 'Google'
             };
-            done(undefined, userInfo)
+            done(undefined, userInfo);
         });
     }
 }

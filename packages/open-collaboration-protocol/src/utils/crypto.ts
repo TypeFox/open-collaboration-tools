@@ -58,7 +58,7 @@ function fromCryptoModule(crypto: CryptoModule): CryptoLib {
             return {
                 privateKey: toBase64(new Uint8Array(exportedPrivate)),
                 publicKey: toBase64(new Uint8Array(exportedPublic))
-            }
+            };
         },
         async generateSymKey() {
             const key = await subtle.generateKey({
@@ -73,7 +73,7 @@ function fromCryptoModule(crypto: CryptoModule): CryptoLib {
             return toBase64(iv);
         },
         async symEncrypt(data: Uint8Array, key: string, iv: string) {
-            const cryptoKey = await subtle.importKey("raw", fromBase64(key), "AES-CBC", false, ["encrypt"]);
+            const cryptoKey = await subtle.importKey('raw', fromBase64(key), 'AES-CBC', false, ['encrypt']);
             const arrayBuffer = await subtle.encrypt({
                 name: 'AES-CBC',
                 iv: fromBase64(iv),
@@ -81,7 +81,7 @@ function fromCryptoModule(crypto: CryptoModule): CryptoLib {
             return new Uint8Array(arrayBuffer);
         },
         async symDecrypt(data: Uint8Array, key: string, iv: string) {
-            const cryptoKey = await subtle.importKey("raw", fromBase64(key), "AES-CBC", false, ["decrypt"]);
+            const cryptoKey = await subtle.importKey('raw', fromBase64(key), 'AES-CBC', false, ['decrypt']);
             const arrayBuffer = await subtle.decrypt({
                 name: 'AES-CBC',
                 iv: fromBase64(iv),
@@ -90,7 +90,7 @@ function fromCryptoModule(crypto: CryptoModule): CryptoLib {
         },
         async publicEncrypt(data: Uint8Array, key: string) {
             const publicKey = await subtle.importKey(
-                "spki",
+                'spki',
                 fromBase64(key),
                 { name: 'RSA-OAEP', hash: 'SHA-256' },
                 false,
@@ -103,7 +103,7 @@ function fromCryptoModule(crypto: CryptoModule): CryptoLib {
         },
         async privateDecrypt(data: Uint8Array, key: string) {
             const privateKey = await subtle.importKey(
-                "pkcs8",
+                'pkcs8',
                 fromBase64(key),
                 { name: 'RSA-OAEP', hash: 'SHA-256' },
                 true,
@@ -114,6 +114,6 @@ function fromCryptoModule(crypto: CryptoModule): CryptoLib {
             }, privateKey, data);
             return new Uint8Array(decrypted);
         }
-    }
+    };
 }
 

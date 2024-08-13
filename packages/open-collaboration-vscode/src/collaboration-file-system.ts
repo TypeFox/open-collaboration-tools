@@ -1,3 +1,9 @@
+// ******************************************************************************
+// Copyright 2024 TypeFox GmbH
+// This program and the accompanying materials are made available under the
+// terms of the MIT License, which is available in the project root.
+// ******************************************************************************
+
 import { ProtocolBroadcastConnection, Peer } from 'open-collaboration-protocol';
 import * as vscode from 'vscode';
 import * as Y from 'yjs';
@@ -48,13 +54,13 @@ export class CollaborationFileSystemProvider implements vscode.FileSystemProvide
             return new Uint8Array();
         }
     }
-    writeFile(uri: vscode.Uri, content: Uint8Array, options: { readonly create: boolean; readonly overwrite: boolean; }): void {
+    writeFile(_uri: vscode.Uri, _content: Uint8Array, _options: { readonly create: boolean; readonly overwrite: boolean; }): void {
         // Do nothing
     }
-    delete(uri: vscode.Uri, options: { readonly recursive: boolean; }): Promise<void> {
+    delete(uri: vscode.Uri, _options: { readonly recursive: boolean; }): Promise<void> {
         return this.connection.fs.delete(this.host.id, this.getHostPath(uri));
     }
-    rename(oldUri: vscode.Uri, newUri: vscode.Uri, options: { readonly overwrite: boolean; }): Promise<void> {
+    rename(oldUri: vscode.Uri, newUri: vscode.Uri, _options: { readonly overwrite: boolean; }): Promise<void> {
         return this.connection.fs.rename(this.host.id, this.getHostPath(oldUri), this.getHostPath(newUri));
     }
 

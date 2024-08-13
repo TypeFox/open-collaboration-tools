@@ -150,7 +150,7 @@ export class PeerImpl implements Peer {
                 throw new Error('Unknown server message method: ' + notification.content.method);
             }
         } catch (err) {
-            this.logger.error('Failed to handle server message', err)
+            this.logger.error('Failed to handle server message', err);
         }
     }
 

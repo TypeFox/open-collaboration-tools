@@ -20,6 +20,9 @@
     "semver": "^7.6.2",
     "socket.io-client": "^4.7.5"
   },
+  "devDependencies": {
+    "@types/semver": "^7.5.8"
+  },
   "keywords": [
     "collaboration",
     "live-share",
@@ -38,5 +41,9 @@
   "author": {
     "name": "TypeFox",
     "url": "https://www.typefox.io/"
+  },
+  "volta": {
+    "node": "18.20.3",
+    "npm": "10.7.0"
   }
 }

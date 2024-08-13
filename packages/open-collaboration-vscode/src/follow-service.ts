@@ -1,5 +1,11 @@
-import { inject, injectable } from "inversify";
-import { CollaborationInstance, DisposablePeer } from "./collaboration-instance";
+// ******************************************************************************
+// Copyright 2024 TypeFox GmbH
+// This program and the accompanying materials are made available under the
+// terms of the MIT License, which is available in the project root.
+// ******************************************************************************
+
+import { inject, injectable } from 'inversify';
+import { CollaborationInstance, DisposablePeer } from './collaboration-instance';
 import { showQuickPick } from './utils/quick-pick';
 import { CollaborationStatusViewDataProvider } from './collaboration-status-view';
 import { ContextKeyService } from './context-key-service';

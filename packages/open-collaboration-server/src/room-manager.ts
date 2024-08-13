@@ -78,7 +78,7 @@ export class RoomManager {
             host: true,
             roomClock: 0
         };
-        this.logger.info(`Prepared room [id: '${claim.room}'] for user [provider: '${user.authProvider || '<none>'}' | id: '${user.id}' | name: '${user.name}' | email: '${user.email || '<none>'}']`)
+        this.logger.info(`Prepared room [id: '${claim.room}'] for user [provider: '${user.authProvider || '<none>'}' | id: '${user.id}' | name: '${user.name}' | email: '${user.email || '<none>'}']`);
         const jwt = await this.credentials.generateJwt(claim);
         return {
             id,
@@ -87,17 +87,17 @@ export class RoomManager {
     }
 
     async join(peer: Peer, roomId: string): Promise<Room> {
-        let room: Room;
+        let room: Room | undefined;
         if (peer.host) {
             room = new Room(roomId, peer, []);
             this.rooms.set(room.id, room);
             this.peers.set(peer.id, room);
             peer.onDispose(() => {
-                this.closeRoom(room.id);
+                this.closeRoom(room!.id);
             });
             this.logger.info(`Host [id: '${peer.id}' | client: '${peer.client}' | userId: '${peer.user.id}' | name: '${peer.user.name}' | email: '${peer.user.email || '<none>'}'] created room [id: '${room.id}']`);
         } else {
-            room = this.rooms.get(roomId)!;
+            room = this.rooms.get(roomId);
             if (!room) {
                 throw this.logger.createErrorAndLog(`Could not find room to join from id: ${roomId}`);
             }
@@ -197,8 +197,8 @@ export class RoomManager {
             );
             responsePromise.then(async response => {
                 if (ResponseMessage.is(response)) {
-                    const joinResponse = response.content.response as JoinResponse;
-                    if (joinResponse === undefined) {
+                    const joinResponse = response.content.response as JoinResponse | undefined;
+                    if (!joinResponse) {
                         pollResult.update({
                             failure: true,
                             code: 'JoinRejected',
@@ -232,7 +232,7 @@ export class RoomManager {
                         message: 'Join request has been rejected'
                     });
                 }
-            }).catch(err => {
+            }).catch(() => {
                 pollResult.update({
                     code: 'JoinTimeout',
                     message: 'Join request has timed out',
@@ -245,7 +245,7 @@ export class RoomManager {
                 code: 'WaitingForHost',
                 params: [],
                 message: 'Waiting for host to accept join request',
-            })
+            });
             return responseId;
         } catch {
             throw this.logger.createErrorAndLog('Failed to request join');

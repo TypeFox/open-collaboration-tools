@@ -4,8 +4,8 @@
 // terms of the MIT License, which is available in the project root.
 // ******************************************************************************
 
-import type { CompressionAlgorithm } from "./messaging";
-import { isObject } from "./utils";
+import type { CompressionAlgorithm } from './messaging';
+import { isObject } from './utils';
 
 export type Path = string;
 export type Token = string;
@@ -207,7 +207,7 @@ export interface Room {
 export interface Permissions {
     readonly: boolean;
     [key: string]: string | boolean;
-};
+}
 
 export interface FileSystemStat {
     type: FileType;

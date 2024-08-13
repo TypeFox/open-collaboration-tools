@@ -77,7 +77,7 @@ export class MessageRelay {
                                     keys: [peerKey]
                                 }
                             }
-                        }
+                        };
                         peer.channel.sendMessage(messageWithSingleKey);
                     } else if (!Message.isEncrypted(message)) {
                         peer.channel.sendMessage(message);

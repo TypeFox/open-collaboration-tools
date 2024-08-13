@@ -1,7 +1,14 @@
+// ******************************************************************************
+// Copyright 2024 TypeFox GmbH
+// This program and the accompanying materials are made available under the
+// terms of the MIT License, which is available in the project root.
+// ******************************************************************************
+
 import * as vscode from 'vscode';
-import { inject, injectable } from "inversify";
-import { ConnectionProvider, SocketIoTransportProvider } from 'open-collaboration-protocol'
+import { inject, injectable } from 'inversify';
+import { ConnectionProvider, SocketIoTransportProvider } from 'open-collaboration-protocol';
 import { ExtensionContext } from './inversify';
+import { version } from '../package.json';
 
 export const OCT_USER_TOKEN = 'oct.userToken';
 
@@ -17,12 +24,6 @@ export class CollaborationConnectionProvider {
     private fetch: typeof fetch;
 
     async createConnection(userToken?: string): Promise<ConnectionProvider | undefined> {
-        let version = 'unknown';
-        try {
-            version = require('../package.json').version;
-        } catch (error) {
-            console.error('Failed to get the extension version', error);
-        }
         const serverUrl = vscode.workspace.getConfiguration().get<string>('oct.serverUrl');
         userToken ??= await this.context.secrets.get(OCT_USER_TOKEN);
 

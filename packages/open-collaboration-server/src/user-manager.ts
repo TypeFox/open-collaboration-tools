@@ -20,7 +20,7 @@ export class UserManager {
         return registeredUser;
     }
 
-    async getUser(id: string): Promise<User | undefined> {
+    async getUser(_id: string): Promise<User | undefined> {
         return undefined;
     }
 

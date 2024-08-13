@@ -1,10 +1,16 @@
+// ******************************************************************************
+// Copyright 2024 TypeFox GmbH
+// This program and the accompanying materials are made available under the
+// terms of the MIT License, which is available in the project root.
+// ******************************************************************************
+
 import * as vscode from 'vscode';
-import { ConnectionProvider, Peer, stringifyError } from "open-collaboration-protocol";
-import { CollaborationInstance, CollaborationInstanceFactory } from "./collaboration-instance";
-import { CollaborationUri } from "./utils/uri";
-import { inject, injectable } from "inversify";
-import { ExtensionContext } from "./inversify";
-import { CollaborationConnectionProvider, OCT_USER_TOKEN } from "./collaboration-connection-provider";
+import { ConnectionProvider, Peer, stringifyError } from 'open-collaboration-protocol';
+import { CollaborationInstance, CollaborationInstanceFactory } from './collaboration-instance';
+import { CollaborationUri } from './utils/uri';
+import { inject, injectable } from 'inversify';
+import { ExtensionContext } from './inversify';
+import { CollaborationConnectionProvider, OCT_USER_TOKEN } from './collaboration-connection-provider';
 
 export const OCT_ROOM_DATA = 'oct.roomData';
 
@@ -97,7 +103,7 @@ export class CollaborationRoomService {
         this.tokenSource.cancel();
         this.tokenSource = new vscode.CancellationTokenSource();
         await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: vscode.l10n.t('Joining Session'), cancellable: true }, async (progress, cancelToken) => {
-            if (roomId && connectionProvider) {
+            if (roomId) {
                 const outerToken = this.tokenSource.token;
                 try {
                     const roomClaim = await connectionProvider.joinRoom({
@@ -113,7 +119,7 @@ export class CollaborationRoomService {
                         roomToken: roomClaim.roomToken,
                         roomId: roomClaim.roomId,
                         host: roomClaim.host
-                    }
+                    };
                     const roomDataJson = JSON.stringify(roomData);
                     await this.context.secrets.store(OCT_ROOM_DATA, roomDataJson);
                     const workspaceFolders = (vscode.workspace.workspaceFolders ?? []);

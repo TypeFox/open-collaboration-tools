@@ -4,7 +4,7 @@
 // terms of the MIT License, which is available in the project root.
 // ******************************************************************************
 
-import { inject, injectable } from "inversify";
+import { inject, injectable } from 'inversify';
 
 export enum LogLevel {
     none = 0,
@@ -12,7 +12,7 @@ export enum LogLevel {
     warn = 2,
     info = 3,
     debug = 4
-};
+}
 
 export interface Logger {
 
@@ -72,7 +72,7 @@ export class ConsoleLogger implements Logger {
 
 }
 
-export const checkLogLevel = (logLevel?: string | unknown) => {
+export function checkLogLevel(logLevel?: string | unknown) {
     switch (logLevel) {
         case 'none':
         case '0':
