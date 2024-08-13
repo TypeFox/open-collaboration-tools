@@ -11,6 +11,7 @@ import { CollaborationUri } from './utils/uri';
 import { inject, injectable } from 'inversify';
 import { ExtensionContext } from './inversify';
 import { CollaborationConnectionProvider, OCT_USER_TOKEN } from './collaboration-connection-provider';
+import { localizeInfo } from './utils/l10n';
 
 export const OCT_ROOM_DATA = 'oct.roomData';
 
@@ -66,7 +67,7 @@ export class CollaborationRoomService {
             try {
                 const roomClaim = await connectionProvider.createRoom({
                     abortSignal: this.toAbortSignal(this.tokenSource.token, cancelToken),
-                    reporter: info => progress.report({ message: info.message })
+                    reporter: info => progress.report({ message: localizeInfo(info) })
                 });
                 if (roomClaim.loginToken) {
                     const userToken = roomClaim.loginToken;
@@ -108,7 +109,7 @@ export class CollaborationRoomService {
                 try {
                     const roomClaim = await connectionProvider.joinRoom({
                         roomId,
-                        reporter: info => progress.report({ message: info.message }),
+                        reporter: info => progress.report({ message: localizeInfo(info) }),
                         abortSignal: this.toAbortSignal(outerToken, cancelToken)
                     });
                     if (roomClaim.loginToken) {
@@ -146,9 +147,9 @@ export class CollaborationRoomService {
             // We simply show a notification
             vscode.window.showInformationMessage(vscode.l10n.t('Action was cancelled by the user'));
         } else if (create) {
-            vscode.window.showErrorMessage(vscode.l10n.t('Failed to create session: {0}', stringifyError(error)));
+            vscode.window.showErrorMessage(vscode.l10n.t('Failed to create session: {0}', stringifyError(error, localizeInfo)));
         } else {
-            vscode.window.showErrorMessage(vscode.l10n.t('Failed to join session: {0}', stringifyError(error)));
+            vscode.window.showErrorMessage(vscode.l10n.t('Failed to join session: {0}', stringifyError(error, localizeInfo)));
         }
     }
 

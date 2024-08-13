@@ -20,4 +20,17 @@ export namespace Info {
             && Array.isArray(arg.params)
             && arg.params.every(param => typeof param === 'string');
     }
+    export namespace Codes {
+        export const PerformingLogin = 'PerformingLogin';
+        export const InvalidServerVersion = 'InvalidServerVersion';
+        export const IncompatibleProtocolVersions = 'IncompatibleProtocolVersions';
+        export const AwaitingServerResponse = 'AwaitingServerResponse';
+        export const AuthTimeout = 'AuthTimeout';
+        export const AuthInternalError = 'AuthInternalError';
+        export const RoomNotFound = 'RoomNotFound';
+        export const JoinRequestNotFound = 'JoinRequestNotFound';
+        export const JoinTimeout = 'JoinTimeout';
+        export const JoinRejected = 'JoinRejected';
+        export const WaitingForHost = 'WaitingForHost';
+    }
 }

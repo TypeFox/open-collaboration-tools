@@ -19,10 +19,10 @@ export class ServerError extends Error {
 
 }
 
-export function stringifyError(error: unknown, localization?: (code: string, msg: string, params: string[]) => string): string {
+export function stringifyError(error: unknown, localization?: (info: Info) => string): string {
     if (error instanceof ServerError || Info.is(error)) {
         if (localization) {
-            return localization(error.code, error.message, error.params);
+            return localization(error);
         }
         return error.message;
     }
