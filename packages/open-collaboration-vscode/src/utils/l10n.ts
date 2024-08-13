@@ -1,5 +1,11 @@
+// ******************************************************************************
+// Copyright 2024 TypeFox GmbH
+// This program and the accompanying materials are made available under the
+// terms of the MIT License, which is available in the project root.
+// ******************************************************************************
+
 import { l10n } from 'vscode';
-import { Info } from "open-collaboration-protocol";
+import { Info } from 'open-collaboration-protocol';
 
 export function localizeInfo(info: Info): string {
     switch (info.code) {
