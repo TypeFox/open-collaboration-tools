@@ -24,7 +24,8 @@ export class CollaborationStatusViewDataProvider implements vscode.TreeDataProvi
 
     async getTreeItem(element: DisposablePeer): Promise<vscode.TreeItem> {
         const self = await this.instance?.ownUserData;
-        const treeItem = new vscode.TreeItem(element.peer.id === self?.id ? `${element.peer.name} (you)` : element.peer.name);
+        const you = vscode.l10n.t('You');
+        const treeItem = new vscode.TreeItem(element.peer.id === self?.id ? `${element.peer.name} (${you})` : element.peer.name);
         treeItem.id = element.peer.id;
         treeItem.contextValue = 'self';
         if (self?.id !== element.peer.id) {

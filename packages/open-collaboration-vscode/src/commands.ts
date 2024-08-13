@@ -43,29 +43,29 @@ export class Commands {
                         const items: QuickPickItem<'invite' | 'stop'>[] = [
                             {
                                 key: 'invite',
-                                label: '$(clippy) Invite Others (Copy Code)',
-                                detail: 'Copy the invitation code to the clipboard to share with others'
+                                label: '$(clippy) ' + vscode.l10n.t('Invite Others (Copy Code)'),
+                                detail: vscode.l10n.t('Copy the invitation code to the clipboard to share with others')
                             }
                         ];
                         if (instance.host) {
                             items.push({
                                 key: 'stop',
-                                label: '$(circle-slash) Stop Collaboration Session',
-                                detail: 'Stop the collaboration session, stop sharing all content and remove all participants'
+                                label: '$(circle-slash) ' + vscode.l10n.t('Stop Collaboration Session'),
+                                detail: vscode.l10n.t('Stop the collaboration session, stop sharing all content and remove all participants')
                             });
                         } else {
                             items.push({
                                 key: 'stop',
-                                label: '$(circle-slash) Leave Collaboration Session',
-                                detail: 'Leave the collaboration session, closing the current workspace'
+                                label: '$(circle-slash) ' + vscode.l10n.t('Leave Collaboration Session'),
+                                detail: vscode.l10n.t('Leave the collaboration session, closing the current workspace')
                             });
                         }
                         const result = await showQuickPick(items, {
-                            placeholder: 'Select collaboration option'
+                            placeholder: vscode.l10n.t('Select Collaboration Option')
                         });
                         if (result === 'invite') {
                             vscode.env.clipboard.writeText(instance.roomId);
-                            vscode.window.showInformationMessage(`Invitation code ${instance.roomId} copied to clipboard!`);
+                            vscode.window.showInformationMessage(vscode.l10n.t('Invitation code {0} copied to clipboard!', instance.roomId));
                         } else if (result === 'stop') {
                             vscode.commands.executeCommand('oct.closeConnection');
                         }
@@ -73,19 +73,19 @@ export class Commands {
                         const items: QuickPickItem<'join' | 'create'>[] = [
                             {
                                 key: 'join',
-                                label: '$(vm-connect) Join Collaboration Session',
-                                detail: 'Join an open collaboration session using an invitation code'
+                                label: '$(vm-connect) ' + vscode.l10n.t('Join Collaboration Session'),
+                                detail: vscode.l10n.t('Join an open collaboration session using an invitation code')
                             }
                         ];
                         if (vscode.workspace.workspaceFolders?.length) {
                             items.unshift({
                                 key: 'create',
-                                label: '$(add) Create New Collaboration Session',
-                                detail: 'Become the host of a new collaboration session in your current workspace'
+                                label: '$(add) ' + vscode.l10n.t('Create New Collaboration Session'),
+                                detail: vscode.l10n.t('Become the host of a new collaboration session in your current workspace')
                             });
                         }
                         const index = await showQuickPick(items, {
-                            placeholder: 'Select collaboration option'
+                            placeholder: vscode.l10n.t('Select Collaboration Option')
                         });
                         if (index === 'create') {
                             await this.roomService.createRoom(connectionProvider);
@@ -120,7 +120,7 @@ export class Commands {
             vscode.commands.registerCommand('oct.signOut', async () => {
                 await vscode.commands.executeCommand('oct.closeConnection');
                 await this.context.secrets.delete(OCT_USER_TOKEN);
-                vscode.window.showInformationMessage('Signed out successfully!');
+                vscode.window.showInformationMessage(vscode.l10n.t('Signed out successfully!'));
             })
         );
         this.statusService.initialize('oct.enter');
@@ -131,8 +131,10 @@ export class Commands {
         if (connectionProvider) {
             await callback(connectionProvider);
         } else {
-            vscode.window.showInformationMessage('No OCT Server configured. Please set the server URL in the settings.', 'Open Settings').then((selection) => {
-                if (selection === 'Open Settings') {
+            const message = vscode.l10n.t('No OCT Server configured. Please set the server URL in the settings.');
+            const openSettings = vscode.l10n.t('Open Settings');
+            vscode.window.showInformationMessage(message, openSettings).then((selection) => {
+                if (selection === openSettings) {
                     vscode.commands.executeCommand('workbench.action.openSettings', 'oct.serverUrl');
                 }
             });

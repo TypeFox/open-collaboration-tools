@@ -20,7 +20,6 @@
   },
   "devDependencies": {
     "@types/node": "~16.18.41",
-    "@types/vscode": "~1.67.0",
     "@typescript-eslint/eslint-plugin": "~6.4.1",
     "@typescript-eslint/parser": "~6.4.1",
     "@vitest/coverage-v8": "~1.0.0",
