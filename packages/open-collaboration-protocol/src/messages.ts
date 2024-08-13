@@ -40,7 +40,7 @@ export namespace Messages {
         export const Stat = new RequestType<[types.Path], types.FileSystemStat>('fileSystem/stat');
         export const Mkdir = new RequestType<[types.Path], undefined>('fileSystem/mkdir');
         export const ReadFile = new RequestType<[types.Path], types.FileData>('fileSystem/readFile');
-        export const WriteFile = new RequestType<[types.Path, string], undefined>('fileSystem/writeFile');
+        export const WriteFile = new RequestType<[types.Path, types.FileData], undefined>('fileSystem/writeFile');
         export const ReadDir = new RequestType<[types.Path], Record<string, types.FileType>>('fileSystem/readDir');
         export const Delete = new RequestType<[types.Path], undefined>('fileSystem/delete');
         export const Rename = new RequestType<[types.Path, types.Path], undefined>('fileSystem/rename');

@@ -48,14 +48,13 @@ export class CollaborationFileSystemProvider implements vscode.FileSystemProvide
             const stringValue = this.yjs.getText(path);
             return this.encoder.encode(stringValue.toString());
         } else {
-            // Attempt to stat the file to see if it exists on the host system
-            await this.stat(uri);
-            // Just return an empty file. It will be filled by YJS
-            return new Uint8Array();
+            const file = await this.connection.fs.readFile(this.host.id, path);
+            return file.content;
         }
     }
-    writeFile(_uri: vscode.Uri, _content: Uint8Array, _options: { readonly create: boolean; readonly overwrite: boolean; }): void {
-        // Do nothing
+    writeFile(uri: vscode.Uri, content: Uint8Array, _options: { readonly create: boolean; readonly overwrite: boolean; }): void {
+        const path = this.getHostPath(uri);
+        this.connection.fs.writeFile(this.host.id, path, { content });
     }
     delete(uri: vscode.Uri, _options: { readonly recursive: boolean; }): Promise<void> {
         return this.connection.fs.delete(this.host.id, this.getHostPath(uri));
@@ -69,6 +68,8 @@ export class CollaborationFileSystemProvider implements vscode.FileSystemProvide
     }
 
     protected getHostPath(uri: vscode.Uri): string {
+        // When creating a URI as a guest, we always prepend it with the name of the workspace
+        // This just removes the workspace name from the path to get the path expected by the protocol
         const path = uri.path.substring(1).split('/');
         return path.slice(1).join('/');
     }
