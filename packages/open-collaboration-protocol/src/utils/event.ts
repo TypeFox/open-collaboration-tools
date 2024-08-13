@@ -40,7 +40,7 @@ export namespace Event {
         }
         return add;
     }
-    export const None: Event<any> = Object.assign(function (): { dispose(): void } { return _disposable; }, {
+    export const None: Event<any> = Object.assign(function(): { dispose(): void } { return _disposable; }, {
         get maxListeners(): number { return 0; },
         set maxListeners(maxListeners: number) { }
     });
@@ -190,7 +190,7 @@ export class Emitter<T = any> {
 
     private static LEAK_WARNING_THRESHHOLD = 175;
 
-    private static _noop = function (): void { };
+    private static _noop = function(): void { };
 
     private _event: Event<T>;
     protected _callbacks: CallbackList | undefined;

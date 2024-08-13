@@ -7,7 +7,6 @@
 type UnknownObject<T extends object> = { [K in keyof T]: unknown };
 
 export function isObject<T extends object>(value: unknown): value is UnknownObject<T> {
-    // eslint-disable-next-line no-null/no-null
     return typeof value === 'object' && value !== null;
 }
 

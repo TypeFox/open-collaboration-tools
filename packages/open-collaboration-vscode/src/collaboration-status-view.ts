@@ -1,3 +1,9 @@
+// ******************************************************************************
+// Copyright 2024 TypeFox GmbH
+// This program and the accompanying materials are made available under the
+// terms of the MIT License, which is available in the project root.
+// ******************************************************************************
+
 import * as vscode from 'vscode';
 import { CollaborationInstance, DisposablePeer } from './collaboration-instance';
 import { injectable } from 'inversify';
@@ -37,9 +43,9 @@ export class CollaborationStatusViewDataProvider implements vscode.TreeDataProvi
 
     getChildren(element?: DisposablePeer): vscode.ProviderResult<DisposablePeer[]> {
         if (!element && this.instance) {
-            return this.instance.connectedUsers
+            return this.instance.connectedUsers;
         }
-        return []
+        return [];
     }
 
     update() {

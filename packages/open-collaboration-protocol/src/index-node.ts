@@ -5,6 +5,7 @@
 // ******************************************************************************
 
 import { setCryptoModule } from './utils/crypto';
-setCryptoModule(require('node:crypto'));
+import crypto from 'node:crypto';
+setCryptoModule(crypto.webcrypto);
 
 export * from './index';

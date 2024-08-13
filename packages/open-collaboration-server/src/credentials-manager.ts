@@ -142,7 +142,6 @@ export class CredentialsManager {
         for (let letter = 97 /* 'a' */; letter <= 122 /* 'z' */; letter++) {
             alphabet += String.fromCharCode(letter);
         }
-        
         return customAlphabet(alphabet, 24);
     }
 

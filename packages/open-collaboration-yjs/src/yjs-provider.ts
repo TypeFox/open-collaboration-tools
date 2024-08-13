@@ -1,3 +1,9 @@
+// ******************************************************************************
+// Copyright 2024 TypeFox GmbH
+// This program and the accompanying materials are made available under the
+// terms of the MIT License, which is available in the project root.
+// ******************************************************************************
+
 import * as types from 'open-collaboration-protocol';
 import * as Y from 'yjs';
 import * as syncProtocol from 'y-protocols/sync';

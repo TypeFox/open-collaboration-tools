@@ -1,3 +1,9 @@
+// ******************************************************************************
+// Copyright 2024 TypeFox GmbH
+// This program and the accompanying materials are made available under the
+// terms of the MIT License, which is available in the project root.
+// ******************************************************************************
+
 import * as vscode from 'vscode';
 
 export interface QuickPickItem<T> extends vscode.QuickPickItem {
@@ -52,7 +58,7 @@ export function showQuickPick<T>(quickPick: vscode.QuickPick<QuickPickItem<T>> |
         if (options) {
             quickPick.placeholder = options.placeholder;
             quickPick.buttons = options.buttons ?? [];
-            if (options.onDidTriggerButton) 
+            if (options.onDidTriggerButton)
                 quickPick.onDidTriggerButton(options.onDidTriggerButton);
             if (options.onDidTriggerItemButton)
                 quickPick.onDidTriggerItemButton(options.onDidTriggerItemButton);

@@ -4,12 +4,12 @@
 // terms of the MIT License, which is available in the project root.
 // ******************************************************************************
 
-import * as msg from "./messages";
-import { MessageTransport } from "../transport/transport";
+import * as msg from './messages';
+import { MessageTransport } from '../transport/transport';
 import { Emitter, Event } from '../utils/event';
-import { Deferred } from "../utils/promise";
-import { Encryption } from "./encryption";
-import { Encoding } from "./encoding";
+import { Deferred } from '../utils/promise';
+import { Encryption } from './encryption';
+import { Encoding } from './encoding';
 
 export type Handler<P extends unknown[], R = void> = (origin: string, ...parameters: P) => (R | Promise<R>);
 export type ErrorHandler = (message: string) => void;
@@ -136,14 +136,14 @@ export abstract class AbstractBroadcastConnection implements BroadcastConnection
                 } else if (msg.ResponseMessage.is(message)) {
                     response = message;
                 } else {
-                    console.error(`Received invalid response message`);
+                    console.error('Received invalid response message');
                     return;
                 }
                 if (request) {
                     request.response.resolve(response.content.response);
                 }
             } catch (err) {
-                console.error(`Failed to handle response message`, err);
+                console.error('Failed to handle response message', err);
                 request?.response.reject(err);
             }
         } else if (msg.ResponseErrorMessage.isAny(message)) {
@@ -158,14 +158,14 @@ export abstract class AbstractBroadcastConnection implements BroadcastConnection
                 } else if (msg.ResponseErrorMessage.is(message)) {
                     response = message;
                 } else {
-                    console.error(`Received invalid response error message`);
+                    console.error('Received invalid response error message');
                     return;
                 }
                 if (request) {
                     request.response.reject(new Error(response.content.message));
                 }
             } catch (err) {
-                console.error(`Failed to handle response error message`, err);
+                console.error('Failed to handle response error message', err);
                 request?.response.reject(err);
             }
         } else if (msg.RequestMessage.isAny(message)) {
@@ -179,7 +179,7 @@ export abstract class AbstractBroadcastConnection implements BroadcastConnection
                 } else if (msg.RequestMessage.is(message)) {
                     decrypted = message;
                 } else {
-                    console.error(`Received invalid request message`);
+                    console.error('Received invalid request message');
                     return;
                 }
                 const handler = this.messageHandlers.get(decrypted.content.method);
@@ -211,7 +211,7 @@ export abstract class AbstractBroadcastConnection implements BroadcastConnection
                 }
 
             } catch (err) {
-                console.error(`Failed to handle request message`, err);
+                console.error('Failed to handle request message', err);
             }
         } else if (msg.BroadcastMessage.isAny(message) || msg.NotificationMessage.isAny(message)) {
             try {
@@ -247,16 +247,16 @@ export abstract class AbstractBroadcastConnection implements BroadcastConnection
                 } else if (msg.ErrorMessage.is(message)) {
                     decrypted = message;
                 } else {
-                    console.error(`Received invalid error message`);
+                    console.error('Received invalid error message');
                     return;
                 }
                 this.onErrorEmitter.fire(decrypted.content.message);
             } catch (err) {
-                console.error(`Failed to handle error message`, err);
+                console.error('Failed to handle error message', err);
             }
         }
     }
-    
+
     protected abstract getPublicKey(origin: string | undefined): Encryption.AsymmetricKey;
     protected abstract getPublicKeys(): Encryption.AsymmetricKey[];
     protected abstract getPublicKeysLength(): number;

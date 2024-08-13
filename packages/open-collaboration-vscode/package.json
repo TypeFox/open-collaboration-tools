@@ -209,15 +209,13 @@
     "open-collaboration-yjs": "0.1.0",
     "open-collaboration-protocol": "0.1.0",
     "lodash.debounce": "^4.0.8",
-    "node-fetch": "^2.0.0",
-    "ws": "^8.18.0"
+    "node-fetch": "^2.0.0"
   },
   "devDependencies": {
     "@types/lodash.debounce": "^4.0.9",
     "@types/node-fetch": "^2.0.0",
     "@types/path-browserify": "^1.0.2",
     "@types/vscode": "^1.73.0",
-    "@types/ws": "^8.5.10",
     "@vscode/l10n-dev": "^0.0.35",
     "path-browserify": "1.0.1"
   },

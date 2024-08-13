@@ -4,14 +4,14 @@
 // terms of the MIT License, which is available in the project root.
 // ******************************************************************************
 
-import { Encryption } from "./messaging";
-import { MessageTransportProvider } from "./transport";
-import { ProtocolBroadcastConnection, createConnection } from "./connection";
+import { Encryption } from './messaging';
+import { MessageTransportProvider } from './transport';
+import { ProtocolBroadcastConnection, createConnection } from './connection';
 import * as semver from 'semver';
 import * as types from './types';
-import { SEM_VERSION, compatibleVersions } from "./utils/version";
-import { ServerError } from "./utils";
-import { Info } from "./utils/info";
+import { SEM_VERSION, compatibleVersions } from './utils/version';
+import { ServerError } from './utils';
+import { Info } from './utils/info';
 
 export type Fetch = (url: string, options?: FetchRequestOptions) => Promise<FetchResponse>;
 
@@ -64,7 +64,7 @@ export class ConnectionProvider {
 
     constructor(options: ConnectionProviderOptions) {
         this.options = options;
-        this.fetch = options.fetch ?? ((url, options) => fetch(url, options));
+        this.fetch = options.fetch;
         this.userAuthToken = options.userToken;
         if (options.protocolVersion) {
             const parsed = semver.parse(options.protocolVersion);
@@ -123,6 +123,7 @@ export class ConnectionProvider {
     }
 
     private async pollLogin(confirmToken: string, options: LoginOptions): Promise<string> {
+        // eslint-disable-next-line
         while (true) {
             const confirmResponse = await this.fetch(this.getUrl(`/api/login/poll/${confirmToken}`), {
                 signal: options.abortSignal,
@@ -255,6 +256,7 @@ export class ConnectionProvider {
     }
 
     async pollJoin(joinToken: string, options: JoinRoomOptions): Promise<types.JoinRoomResponse> {
+        // eslint-disable-next-line
         while (true) {
             const response = await this.fetch(this.getUrl(`/api/session/poll/${joinToken}`), {
                 method: 'POST',

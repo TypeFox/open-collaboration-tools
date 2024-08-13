@@ -1,14 +1,20 @@
-import { ProtocolBroadcastConnection, Deferred, DisposableCollection } from "open-collaboration-protocol";
+// ******************************************************************************
+// Copyright 2024 TypeFox GmbH
+// This program and the accompanying materials are made available under the
+// terms of the MIT License, which is available in the project root.
+// ******************************************************************************
+
+import { ProtocolBroadcastConnection, Deferred, DisposableCollection } from 'open-collaboration-protocol';
 import * as vscode from 'vscode';
 import * as Y from 'yjs';
 import * as awarenessProtocol from 'y-protocols/awareness';
 import * as types from 'open-collaboration-protocol';
-import { CollaborationFileSystemProvider } from "./collaboration-file-system";
+import { CollaborationFileSystemProvider } from './collaboration-file-system';
 import paths from 'path-browserify';
 import { LOCAL_ORIGIN, OpenCollaborationYjsProvider } from 'open-collaboration-yjs';
 import debounce from 'lodash/debounce';
-import { inject, injectable, postConstruct } from "inversify";
-import { removeWorkspaceFolders } from "./utils/workspace";
+import { inject, injectable, postConstruct } from 'inversify';
+import { removeWorkspaceFolders } from './utils/workspace';
 import { Mutex } from 'async-mutex';
 
 export class DisposablePeer implements vscode.Disposable {
@@ -49,7 +55,7 @@ export class DisposablePeer implements vscode.Disposable {
 
     private createDecorationType(): ClientTextEditorDecorationType {
         const color = createColor();
-        const colorCss = typeof color === 'string' ? `var(--vscode-${color.replaceAll('.', '-')})` : `rgb(${color[0]}, ${color[1]}, ${color[2]})`
+        const colorCss = typeof color === 'string' ? `var(--vscode-${color.replaceAll('.', '-')})` : `rgb(${color[0]}, ${color[1]}, ${color[2]})`;
         const selection: vscode.DecorationRenderOptions = {
             backgroundColor: `color-mix(in srgb, ${colorCss} 25%, transparent)`,
             borderRadius: '0.1em'
@@ -71,7 +77,7 @@ export class DisposablePeer implements vscode.Disposable {
             ...selection,
             after: cursor
         });
-        const beforeNameTag = this.createNameTag(colorCss, 'top: -1rem;')
+        const beforeNameTag = this.createNameTag(colorCss, 'top: -1rem;');
         const beforeInvertedNameTag = this.createNameTag(colorCss, 'bottom: -1rem;');
 
         return new ClientTextEditorDecorationType(before, after, {
@@ -86,7 +92,7 @@ export class DisposablePeer implements vscode.Disposable {
             backgroundColor: color,
             textDecoration: `none; position: absolute; border-radius: 0.15rem; padding:0px 0.5ch; display: inline-block;
                                 pointer-events: none; color: #000; font-size: 0.7rem; z-index: 10; font-weight: bold;${textDecoration ?? ''}`
-        }
+        };
         return vscode.window.createTextEditorDecorationType({
             backgroundColor: color,
             rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
@@ -229,7 +235,7 @@ export class CollaborationInstance implements vscode.Disposable {
         this.toDispose.push(connection);
         this.toDispose.push(connection.onDisconnect(() => {
             this.dispose();
-        }))
+        }));
         this.toDispose.push(connection.onConnectionError(message => {
             vscode.window.showErrorMessage(vscode.l10n.t('Connection error: {0}', message));
         }));
@@ -419,7 +425,7 @@ export class CollaborationInstance implements vscode.Disposable {
             this.updateTextSelection(event.textEditor);
         }));
 
-        let awarenessDebounce = debounce(() => {
+        const awarenessDebounce = debounce(() => {
             this.rerenderPresence();
         }, 2000);
 

@@ -1,3 +1,9 @@
+// ******************************************************************************
+// Copyright 2024 TypeFox GmbH
+// This program and the accompanying materials are made available under the
+// terms of the MIT License, which is available in the project root.
+// ******************************************************************************
+
 import { inject, injectable } from 'inversify';
 import { type Express } from 'express';
 import { Emitter } from 'open-collaboration-protocol';
@@ -19,7 +25,7 @@ export class SimpleLoginEndpoint implements AuthEndpoint {
         return this.configuration.getValue('oct-activate-simple-login', 'boolean') ?? false;
     }
 
-    onStart(app: Express, hostname: string, port: number): void {
+    onStart(app: Express, _hostname: string, _port: number): void {
         app.post('/api/login/simple', async (req, res) => {
             try {
                 const token = req.body.token as string;

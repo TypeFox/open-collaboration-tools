@@ -51,7 +51,7 @@ export class CollaborationServer {
     startServer(args: Record<string, unknown>): void {
         this.logger.debug('Starting Open Collaboration Server ...');
 
-        const app = this.setupApiRoute()
+        const app = this.setupApiRoute();
         const httpServer = http.createServer(app);
         // const wsServer = new ws.Server({
         //     path: '/websocket',
@@ -103,7 +103,7 @@ export class CollaborationServer {
         this.logger.info(`Open Collaboration Server listening on ${args.hostname}:${args.port}`);
     }
 
-    protected async connectChannel(headers: Record<string, string>, channel: TransportChannel): Promise<void> {
+    protected async connectChannel(headers: Record<string, string | undefined>, channel: TransportChannel): Promise<void> {
         const jwt = headers['x-oct-jwt'];
         if (!jwt) {
             throw this.logger.createErrorAndLog('No JWT auth token set');
@@ -180,12 +180,12 @@ export class CollaborationServer {
                     loginPageURL.searchParams.set('token', token);
                     loginPage = loginPageURL.toString();
                 } catch (error) {
-                    loginPage = `/login.html?token=${encodeURIComponent(token)}`
+                    loginPage = `/login.html?token=${encodeURIComponent(token)}`;
                 }
                 const result: types.LoginInitialResponse = {
                     pollToken: token,
                     url: loginPage
-                }
+                };
                 res.status(200);
                 res.send(result);
             } catch (error) {
@@ -198,7 +198,7 @@ export class CollaborationServer {
             const user = await this.getUserFromAuth(req);
             const result: types.LoginValidateResponse = {
                 valid: !!user
-            }
+            };
             res.status(200);
             res.send(result);
         });
@@ -220,7 +220,7 @@ export class CollaborationServer {
                 if (delayedAuth.jwt) {
                     const result: types.LoginPollResponse = {
                         loginToken: delayedAuth.jwt
-                    }
+                    };
                     res.send(result);
                     // Don't dispose the delayed auth here, as it might be used for polling
                     // It will be disposed after 5 minutes anyway
@@ -236,7 +236,7 @@ export class CollaborationServer {
                         } else if (typeof value === 'string') {
                             const result: types.LoginPollResponse = {
                                 loginToken: value
-                            }
+                            };
                             res.status(200);
                             res.send(result);
                         } else {

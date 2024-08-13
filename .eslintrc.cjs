@@ -58,25 +58,25 @@ module.exports = {
         'semi': [2, 'always'],                            // Always use semicolons at end of statement
         'quotes': [2, 'single', { 'avoidEscape': true }], // Prefer single quotes
         'use-isnan': 'error',                             // isNaN(i) Number.isNaN(i) instead of i === NaN
-        // Use MIT/Generated file header
-        'header/header': [
-            2,
-            'block',
-            { 'pattern': 'MIT License|DO NOT EDIT MANUALLY!' }
-        ],
+        // Use MIT file header
+        'header/header': [2, "line", [
+            { "pattern": "\\*+" },
+            { "pattern": "Copyright" },
+            { "pattern": "" },
+            { "pattern": "MIT License" },
+            { "pattern": "\\*+" }
+        ]],
         // List of [@typescript-eslint rules](https://github.com/typescript-eslint/typescript-eslint/tree/master/packages/eslint-plugin#supported-rules)
         '@typescript-eslint/adjacent-overload-signatures': 'error', // grouping same method names
-        '@typescript-eslint/array-type': ['error', {                // string[] instead of Array<string>
-            'default': 'array-simple'
-        }],
-        '@typescript-eslint/ban-types': 'error',                    // bans types like String in favor of string
+        '@typescript-eslint/array-type': 'off',
+        '@typescript-eslint/ban-types': 'off',                      // bans types like String in favor of string
         '@typescript-eslint/no-inferrable-types': 'off',            // don't blame decls like "index: number = 0", esp. in api signatures!
         '@typescript-eslint/indent': 'error',                       // consistent indentation
-        '@typescript-eslint/no-explicit-any': 'error',              // don't use :any type
+        '@typescript-eslint/no-explicit-any': 'off',                // `any` is allowed
         '@typescript-eslint/no-misused-new': 'error',               // no constructors for interfaces or new for classes
         '@typescript-eslint/no-namespace': 'off',                   // disallow the use of custom TypeScript modules and namespaces
         '@typescript-eslint/no-non-null-assertion': 'off',          // allow ! operator
-        "@typescript-eslint/parameter-properties": "error",         // no property definitions in class constructors
+        "@typescript-eslint/parameter-properties": "off",           // no property definitions in class constructors
         '@typescript-eslint/no-unused-vars': ['error', {            // disallow Unused Variables
             'argsIgnorePattern': '^_'
         }],
@@ -85,7 +85,6 @@ module.exports = {
         '@typescript-eslint/prefer-namespace-keyword': 'error',     // prefer namespace over module in TypeScript
         '@typescript-eslint/triple-slash-reference': 'error',       // ban /// <reference />, prefer imports
         '@typescript-eslint/type-annotation-spacing': 'error',      // consistent space around colon ':'
-        '@typescript-eslint/consistent-type-imports': 'error',      // use import type whenever import is only used for type checking
-        '@typescript-eslint/no-unnecessary-condition': 'error'      // Disallow conditionals where the type is always truthy or always falsy
+        '@typescript-eslint/no-unnecessary-condition': 'off'        // Disallow conditionals where the type is always truthy or always falsy
     }
 };
