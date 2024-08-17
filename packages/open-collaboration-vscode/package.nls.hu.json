@@ -1,0 +1,11 @@
+{
+  "oct.followPeer": "Kövesse Peer",
+  "oct.stopFollowPeer": "Ne kövesse Peer",
+  "oct.closeConnection": "Jelenlegi kapcsolat bezárása",
+  "oct.joinRoom": "Csatlakozzon az együttműködési üléshez",
+  "oct.createRoom": "Együttműködési munkamenet létrehozása",
+  "oct.signOut": "Kijelentkezés",
+  "oct.roomView": "Jelenlegi együttműködési ülésszak",
+  "oct.serverUrl": "Az Open Collaboration Tools Server példányának URL-címe az élő együttműködési munkamenetekhez.",
+  "oct.user.color": "Szín a felhasználók számára az együttműködési munkamenetekben"
+}

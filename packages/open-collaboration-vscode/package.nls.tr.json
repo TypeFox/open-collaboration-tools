@@ -1,0 +1,11 @@
+{
+  "oct.followPeer": "Peer'i Takip Edin",
+  "oct.stopFollowPeer": "Akran Takibini Bırakın",
+  "oct.closeConnection": "Akım Bağlantısını Kapat",
+  "oct.joinRoom": "İşbirliği Oturumuna Katılın",
+  "oct.createRoom": "İşbirliği Oturumu Oluşturun",
+  "oct.signOut": "Çıkış Yapın",
+  "oct.roomView": "Güncel İşbirliği Oturumu",
+  "oct.serverUrl": "Canlı işbirliği oturumları için Open Collaboration Tools Server örneğinin URL'si.",
+  "oct.user.color": "İşbirliği oturumlarında kullanıcılar için renk"
+}

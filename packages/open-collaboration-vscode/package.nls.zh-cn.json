@@ -1,0 +1,11 @@
+{
+  "oct.followPeer": "关注同行",
+  "oct.stopFollowPeer": "停止追随同行",
+  "oct.closeConnection": "关闭电流连接",
+  "oct.joinRoom": "参加协作会议",
+  "oct.createRoom": "创建协作会议",
+  "oct.signOut": "签出",
+  "oct.roomView": "当前合作会议",
+  "oct.serverUrl": "用于实时协作会话的开放协作工具服务器实例的 URL。",
+  "oct.user.color": "协作会议中用户的颜色"
+}
