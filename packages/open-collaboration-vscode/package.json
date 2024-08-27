@@ -201,7 +201,7 @@
     "check-types": "tsc --noEmit",
     "l10n-export": "vscode-l10n-dev export --outDir ./l10n ./src",
     "l10n-pseudo": "vscode-l10n-dev generate-pseudo -o ./l10n/ ./l10n/bundle.l10n.json ./package.nls.json",
-    "l10n-translate": "ts-node ./scripts/translate.ts"
+    "l10n-translate": "tsx ./scripts/translate.ts"
   },
   "dependencies": {
     "async-mutex": "^0.5.0",
@@ -218,7 +218,8 @@
     "@types/vscode": "^1.73.0",
     "@vscode/l10n-dev": "^0.0.35",
     "deepl-node": "^1.13.1",
-    "ts-node": "^10.9.2"
+    "esbuild": "^0.23.0",
+    "tsx": "^4.19.0"
   },
   "volta": {
     "node": "18.20.3",
