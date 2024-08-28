@@ -1,13 +1,10 @@
-const esbuild = require("esbuild");
+import esbuild from "esbuild";
 
 const production = process.argv.includes('--production');
 const watch = process.argv.includes('--watch');
 const buildType = watch ? 'watch' : 'build';
 
-/**
- * @type {import('esbuild').Plugin}
- */
-function esbuildProblemMatcherPlugin(type) {
+function esbuildProblemMatcherPlugin(type: 'web' | 'node'): esbuild.Plugin {
     const prefix = `[${buildType}/${type}]`
     return {
         name: 'esbuild-problem-matcher',
@@ -18,7 +15,9 @@ function esbuildProblemMatcherPlugin(type) {
             build.onEnd((result) => {
                 result.errors.forEach(({ text, location }) => {
                     console.error(`✘ [ERROR] ${text}`);
-                    console.error(`    ${location.file}:${location.line}:${location.column}:`);
+                    if (location) {
+                        console.error(`    ${location.file}:${location.line}:${location.column}:`);
+                    }
                 });
                 console.log(prefix + ' finished');
             });
@@ -40,7 +39,6 @@ const main = async () => {
 		external: ['vscode'],
 		logLevel: 'silent',
 		plugins: [
-			/* add to the end of plugins array */
 			esbuildProblemMatcherPlugin('node')
 		]
 	});
@@ -58,7 +56,6 @@ const main = async () => {
 		external: ['vscode'],
 		logLevel: 'silent',
 		plugins: [
-			/* add to the end of plugins array */
 			esbuildProblemMatcherPlugin('web')
 		],
          // Node.js global to browser globalThis
