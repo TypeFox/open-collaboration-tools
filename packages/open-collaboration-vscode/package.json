@@ -2,7 +2,7 @@
   "name": "open-collaboration-tools",
   "displayName": "Open Collaboration Tools",
   "description": "Connect with others and live-share your code in real-time collaboration sessions",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "publisher": "typefox",
   "categories": [
     "Other"
@@ -195,9 +195,9 @@
     ]
   },
   "scripts": {
-    "vscode:prepublish": "npm run check-types && node esbuild.js --production",
-    "build": "npm run check-types && node esbuild.js",
-    "watch": "node esbuild.js --watch",
+    "vscode:prepublish": "npm run check-types && tsx ./scripts/esbuild.js --production",
+    "build": "npm run check-types && tsx ./scripts/esbuild.js",
+    "watch": "tsx ./scripts/esbuild.js --watch",
     "check-types": "tsc --noEmit",
     "l10n-export": "vscode-l10n-dev export --outDir ./l10n ./src",
     "l10n-pseudo": "vscode-l10n-dev generate-pseudo -o ./l10n/ ./l10n/bundle.l10n.json ./package.nls.json",
@@ -207,8 +207,8 @@
     "async-mutex": "^0.5.0",
     "inversify": "^6.0.2",
     "reflect-metadata": "^0.2.2",
-    "open-collaboration-yjs": "0.1.0",
-    "open-collaboration-protocol": "0.1.0",
+    "open-collaboration-yjs": "0.2.0",
+    "open-collaboration-protocol": "0.2.0",
     "lodash": "^4.17.21",
     "node-fetch": "^2.0.0"
   },
