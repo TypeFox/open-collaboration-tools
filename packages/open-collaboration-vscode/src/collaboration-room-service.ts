@@ -12,6 +12,7 @@ import { inject, injectable } from 'inversify';
 import { ExtensionContext } from './inversify';
 import { CollaborationConnectionProvider, OCT_USER_TOKEN } from './collaboration-connection-provider';
 import { localizeInfo } from './utils/l10n';
+import { isWeb } from './utils/system';
 
 export const OCT_ROOM_DATA = 'oct.roomData';
 
@@ -103,7 +104,7 @@ export class CollaborationRoomService {
         }
         this.tokenSource.cancel();
         this.tokenSource = new vscode.CancellationTokenSource();
-        await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: vscode.l10n.t('Joining Session'), cancellable: true }, async (progress, cancelToken) => {
+        const success = await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: vscode.l10n.t('Joining Session'), cancellable: true }, async (progress, cancelToken) => {
             if (roomId) {
                 const outerToken = this.tokenSource.token;
                 try {
@@ -129,12 +130,21 @@ export class CollaborationRoomService {
                         name: folder,
                         uri: CollaborationUri.create(workspace.name, folder)
                     }));
-                    vscode.workspace.updateWorkspaceFolders(0, workspaceFolders.length, ...newFolders);
+                    return vscode.workspace.updateWorkspaceFolders(0, workspaceFolders.length, ...newFolders);
                 } catch (error) {
                     this.showError(false, error, outerToken, cancelToken);
                 }
             }
+            return false;
         });
+        if (success && isWeb) {
+            // It seems like the web extension mode doesn't restart the extension host upon changing workspace folders
+            // However, force restarting the extension host by reloading the window removes the current workspace folders
+            // Therefore, we simply attempt to connect after a short delay after receiving the success signal
+            setTimeout(() => {
+                this.tryConnect();
+            }, 500);
+        }
     }
 
     private showError(create: boolean, error: unknown, outerToken: vscode.CancellationToken, innerToken: vscode.CancellationToken): void {
