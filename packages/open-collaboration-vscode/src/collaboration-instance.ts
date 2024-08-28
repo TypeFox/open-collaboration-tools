@@ -726,6 +726,9 @@ export class CollaborationInstance implements vscode.Disposable {
             return await vscode.workspace.applyEdit(edit);
         } else {
             const entries = edit.entries();
+            if (entries.length > 1) {
+                throw new Error('Only one file should be edited at a time!');
+            }
             for (const [uri] of entries) {
                 if (!this.findDocument(uri)) {
                     return false;
