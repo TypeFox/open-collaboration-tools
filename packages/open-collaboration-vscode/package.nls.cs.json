@@ -1,0 +1,11 @@
+{
+  "oct.followPeer": "Sledovat Peer",
+  "oct.stopFollowPeer": "Přestat sledovat vrstevníky",
+  "oct.closeConnection": "Zavřít aktuální připojení",
+  "oct.joinRoom": "Připojte se k zasedání o spolupráci",
+  "oct.createRoom": "Vytvořit relaci spolupráce",
+  "oct.signOut": "Odhlásit se",
+  "oct.roomView": "Aktuální relace spolupráce",
+  "oct.serverUrl": "Adresa URL instance serveru Open Collaboration Tools Server pro živé relace spolupráce.",
+  "oct.user.color": "Barva pro uživatele v relacích spolupráce"
+}

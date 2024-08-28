@@ -137,7 +137,7 @@ export class Commands {
         if (connectionProvider) {
             await callback(connectionProvider);
         } else {
-            const message = vscode.l10n.t('No OCT Server configured. Please set the server URL in the settings.');
+            const message = vscode.l10n.t('No Open Collaboration Server configured. Please set the server URL in the settings.');
             const openSettings = vscode.l10n.t('Open Settings');
             vscode.window.showInformationMessage(message, openSettings).then((selection) => {
                 if (selection === openSettings) {

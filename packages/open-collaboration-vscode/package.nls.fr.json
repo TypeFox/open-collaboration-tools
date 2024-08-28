@@ -1,0 +1,11 @@
+{
+  "oct.followPeer": "Suivre le pair",
+  "oct.stopFollowPeer": "Cesser de suivre les pairs",
+  "oct.closeConnection": "Fermer la connexion actuelle",
+  "oct.joinRoom": "Participer à une session de collaboration",
+  "oct.createRoom": "Créer une session de collaboration",
+  "oct.signOut": "S'inscrire",
+  "oct.roomView": "Session de collaboration en cours",
+  "oct.serverUrl": "URL de l'instance d'Open Collaboration Tools Server pour les sessions de collaboration en direct.",
+  "oct.user.color": "Couleur pour les utilisateurs lors des sessions de collaboration"
+}

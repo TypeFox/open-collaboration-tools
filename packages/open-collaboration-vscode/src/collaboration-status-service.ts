@@ -73,7 +73,7 @@ export class CollaborationStatusService {
     setState(state: StatusBarState) {
         switch (state) {
             case StatusBarState.Idle:
-                this.statusBarItem.text = '$(git-compare) ' + vscode.l10n.t('Collaborate');
+                this.statusBarItem.text = '$(git-compare) Open Collaboration';
                 break;
             case StatusBarState.Sharing:
                 this.statusBarItem.text = '$(broadcast) ' + vscode.l10n.t('Sharing');
