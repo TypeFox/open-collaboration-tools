@@ -400,12 +400,12 @@ export class CollaborationInstance implements vscode.Disposable {
         connection.fs.onWriteFile(async (_, path, content) => {
             const uri = CollaborationUri.getResourceUri(path);
             if (uri) {
-                const document = vscode.workspace.textDocuments.find(e => e.uri.toString() === uri.toString());
+                const document = this.findDocument(uri);
                 if (document) {
                     const textContent = new TextDecoder().decode(content.content);
                     // In case the supplied content differs from the current document content, apply the change first
                     if (textContent !== document.getText()) {
-                        await vscode.workspace.applyEdit(this.createFullDocumentEdit(document, textContent));
+                        await this.applyEdit(this.createFullDocumentEdit(document, textContent));
                     }
                     // Then save the document
                     await document.save();
@@ -672,7 +672,7 @@ export class CollaborationInstance implements vscode.Disposable {
                 });
                 this.yjsMutex.runExclusive(async () => {
                     this.updates.add(path);
-                    await vscode.workspace.applyEdit(edit);
+                    await this.applyEdit(edit);
                     this.updates.delete(path);
                     resyncThrottle();
                 }, 1000);
@@ -711,7 +711,7 @@ export class CollaborationInstance implements vscode.Disposable {
                     const newContent = yjsText.toString();
                     if (newContent !== document.getText()) {
                         this.updates.add(path);
-                        await vscode.workspace.applyEdit(this.createFullDocumentEdit(document, newContent));
+                        await this.applyEdit(this.createFullDocumentEdit(document, newContent));
                         this.updates.delete(path);
                     }
                 });
@@ -719,6 +719,27 @@ export class CollaborationInstance implements vscode.Disposable {
             this.throttles.set(path, value);
         }
         return value;
+    }
+
+    private async applyEdit(edit: vscode.WorkspaceEdit): Promise<boolean> {
+        if (this.host) {
+            return await vscode.workspace.applyEdit(edit);
+        } else {
+            const entries = edit.entries();
+            if (entries.length > 1) {
+                throw new Error('Only one file should be edited at a time!');
+            }
+            for (const [uri] of entries) {
+                if (!this.findDocument(uri)) {
+                    return false;
+                }
+            }
+            return await vscode.workspace.applyEdit(edit);
+        }
+    }
+
+    private findDocument(uri: vscode.Uri): vscode.TextDocument | undefined {
+        return vscode.workspace.textDocuments.find(e => e.uri.toString() === uri.toString());
     }
 
     private createFullDocumentEdit(document: vscode.TextDocument, content: string): vscode.WorkspaceEdit {
