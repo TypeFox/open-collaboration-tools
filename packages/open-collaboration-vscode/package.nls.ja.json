@@ -2,10 +2,10 @@
 	"oct.followPeer": "追跡をする",
 	"oct.stopFollowPeer": "追跡をやめる",
 	"oct.closeConnection": "共同作業部屋を閉じる",
-    "oct.joinRoom": "共同作業部屋に参加",
-    "oct.createRoom": "共同作業部屋を作成",
+	"oct.joinRoom": "共同作業部屋に参加",
+	"oct.createRoom": "共同作業部屋を作成",
 	"oct.signOut": "サインアウト",
-    "oct.roomView": "現在参加中の部屋",
-    "oct.serverUrl": "共同作業部屋の Open Collaboration Tools サーバに繋がる URL",
-    "oct.user.color": "共同作業部屋でのユーザーの色"
+	"oct.roomView": "現在参加中の部屋",
+	"oct.serverUrl": "Open Collaboration Tools サーバの URL",
+	"oct.user.color": "共同作業部屋でのユーザーの色"
 }
