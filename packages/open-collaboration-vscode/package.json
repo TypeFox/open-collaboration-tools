@@ -2,7 +2,7 @@
   "name": "open-collaboration-tools",
   "displayName": "Open Collaboration Tools",
   "description": "Connect with others and live-share your code in real-time collaboration sessions",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "publisher": "typefox",
   "categories": [
     "Other"
@@ -50,6 +50,16 @@
     }
   },
   "contributes": {
+    "resourceLabelFormatters": [
+      {
+        "scheme": "oct",
+        "formatting": {
+          "label": "${path}",
+          "separator": "/",
+          "workspaceSuffix": "Open Collaboration Tools"
+        }
+      }
+    ],
     "configuration": {
       "title": "Open Collaboration Tools",
       "properties": {
