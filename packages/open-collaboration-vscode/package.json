@@ -50,6 +50,16 @@
     }
   },
   "contributes": {
+    "resourceLabelFormatters": [
+      {
+        "scheme": "oct",
+        "formatting": {
+          "label": "${path}",
+          "separator": "/",
+          "workspaceSuffix": "Open Collaboration Tools"
+        }
+      }
+    ],
     "configuration": {
       "title": "Open Collaboration Tools",
       "properties": {
