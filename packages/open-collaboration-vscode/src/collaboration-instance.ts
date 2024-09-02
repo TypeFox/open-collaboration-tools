@@ -647,23 +647,23 @@ export class CollaborationInstance implements vscode.Disposable {
             } else {
                 this.options.connection.editor.open(this.options.hostId, path);
             }
-            const resyncThrottle = this.getOrCreateThrottle(path, document);
+            const resyncThrottle = this.getOrCreateThrottle(path);
             const observer = (textEvent: Y.YTextEvent) => {
-                if (textEvent.transaction.local || yjsText.toString() === document.getText()) {
+                const document = this.findDocument(uri);
+                if (textEvent.transaction.local || !document || yjsText.toString() === document.getText()) {
                     // Ignore own events or if the document is already in sync
                     return;
                 }
                 let index = 0;
                 const edit = new vscode.WorkspaceEdit();
                 textEvent.delta.forEach(delta => {
-                    if (delta.retain !== undefined) {
+                    if (typeof delta.retain === 'number') {
                         index += delta.retain;
-                    } else if (delta.insert !== undefined) {
+                    } else if (typeof delta.insert === 'string') {
                         const pos = document.positionAt(index);
-                        const insert = delta.insert as string;
-                        edit.insert(uri, pos, insert);
-                        index += insert.length;
-                    } else if (delta.delete !== undefined) {
+                        edit.insert(uri, pos, delta.insert);
+                        index += delta.insert.length;
+                    } else if (typeof delta.delete === 'number') {
                         const pos = document.positionAt(index);
                         const endPos = document.positionAt(index + delta.delete);
                         const range = new vscode.Range(pos.line, pos.character, endPos.line, endPos.character);
@@ -697,26 +697,33 @@ export class CollaborationInstance implements vscode.Disposable {
                         ytext.insert(change.rangeOffset, change.text);
                     }
                 });
-                this.getOrCreateThrottle(path, event.document)();
+                this.getOrCreateThrottle(path)();
             }, 500);
         }
     }
 
-    private getOrCreateThrottle(path: string, document: vscode.TextDocument): () => void {
+    private getOrCreateThrottle(path: string): () => void {
         let value = this.throttles.get(path);
-        if (!value) {
+        const uri = CollaborationUri.getResourceUri(path);
+        if (uri && !value) {
             value = debounce(() => {
                 this.yjsMutex.runExclusive(async () => {
-                    const yjsText = this.yjs.getText(path);
-                    const newContent = yjsText.toString();
-                    if (newContent !== document.getText()) {
-                        this.updates.add(path);
-                        await this.applyEdit(this.createFullDocumentEdit(document, newContent));
-                        this.updates.delete(path);
+                    const document = this.findDocument(uri);
+                    if (document) {
+                        const yjsText = this.yjs.getText(path);
+                        const newContent = yjsText.toString();
+                        if (newContent !== document.getText()) {
+                            this.updates.add(path);
+                            await this.applyEdit(this.createFullDocumentEdit(document, newContent));
+                            this.updates.delete(path);
+                        }
                     }
                 });
             }, 200);
             this.throttles.set(path, value);
+        } else {
+            console.error('Could not determine URI for path', path);
+            value = () => { };
         }
         return value;
     }
