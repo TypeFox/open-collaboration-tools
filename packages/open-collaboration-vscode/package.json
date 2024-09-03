@@ -2,7 +2,7 @@
   "name": "open-collaboration-tools",
   "displayName": "Open Collaboration Tools",
   "description": "Connect with others and live-share your code in real-time collaboration sessions",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "publisher": "typefox",
   "categories": [
     "Other"
@@ -206,6 +206,7 @@
   },
   "scripts": {
     "vscode:prepublish": "npm run check-types && tsx ./scripts/esbuild.js --production",
+    "package": "vsce package --no-dependencies",
     "build": "npm run check-types && tsx ./scripts/esbuild.js",
     "watch": "tsx ./scripts/esbuild.js --watch",
     "check-types": "tsc --noEmit",
@@ -227,6 +228,7 @@
     "@types/node-fetch": "^2.0.0",
     "@types/vscode": "^1.73.0",
     "@vscode/l10n-dev": "^0.0.35",
+    "@vscode/vsce": "^3.0.0",
     "deepl-node": "^1.13.1",
     "esbuild": "^0.23.0",
     "tsx": "^4.19.0"
