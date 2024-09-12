@@ -19,6 +19,8 @@ export const oauthProviders = Symbol('oauthProviders');
 @injectable()
 export abstract class OAuthEndpoint implements AuthEndpoint {
 
+    protected loginRedirectRequests = new Map<string, string>();
+
     @inject(LoggerSymbol) protected logger: Logger;
 
     @inject(Configuration) protected configuration: Configuration;
@@ -51,10 +53,14 @@ export abstract class OAuthEndpoint implements AuthEndpoint {
                 res.send('Error: Missing token parameter in request');
                 return;
             }
+            if(req.query.redirect) {
+                this.loginRedirectRequests.set(token.toString(), req.query.redirect.toString());
+            }
             passport.authenticate(this.id, { state: `${token}`, scope: this.scope })(req, res);
         });
 
         const loginSuccessURL = this.configuration.getValue('oct-login-success-url');
+        const redirectUriWhitelist = this.configuration.getValue('oct-redirect-uri-whitelist')?.split(',');
         app.get(this.redirectPath, async (req, res) => {
             const token = (req.query.state as string);
             if (!token) {
@@ -78,7 +84,18 @@ export abstract class OAuthEndpoint implements AuthEndpoint {
                     res.send('Internal server error occured during Login. Please try again');
                     return;
                 }
-                if (loginSuccessURL) {
+
+                const redirectRequest = this.loginRedirectRequests.get(token);
+                if(redirectRequest) {
+                    this.loginRedirectRequests.delete(token);
+                    if(!redirectUriWhitelist?.includes(redirectRequest)) {
+                        this.logger.error(`Redirect URI ${redirectRequest} not in whitelist`);
+                        res.status(400);
+                        res.send('Error: Redirect URI not in whitelist');
+                    } else {
+                        res.redirect(redirectRequest);
+                    }
+                } else if (loginSuccessURL) {
                     res.redirect(loginSuccessURL);
                 } else {
                     res.status(200);
