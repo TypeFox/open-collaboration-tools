@@ -18,10 +18,10 @@ export namespace CollaborationUri {
         if (!uri) {
             return undefined;
         }
-        const path = uri.toString();
+        const path = uri.toString(true);
         const roots = (vscode.workspace.workspaceFolders ?? []);
         for (const root of roots) {
-            const rootUri = root.uri.toString() + '/';
+            const rootUri = root.uri.toString(true) + '/';
             if (path.startsWith(rootUri)) {
                 return root.name + '/' + path.substring(rootUri.length);
             }
