@@ -91,7 +91,7 @@ export abstract class OAuthEndpoint implements AuthEndpoint {
                     if(!redirectUriWhitelist?.includes(redirectRequest)) {
                         this.logger.error(`Redirect URI ${redirectRequest} not in whitelist`);
                         res.status(400);
-                        res.send('Error: Redirect URI not in whitelist');
+                        res.send('Error: Redirect URL not in whitelist');
                     } else {
                         res.redirect(redirectRequest);
                     }
