@@ -60,7 +60,7 @@ export abstract class OAuthEndpoint implements AuthEndpoint {
         });
 
         const loginSuccessURL = this.configuration.getValue('oct-login-success-url');
-        const redirectUriWhitelist = this.configuration.getValue('oct-redirect-uri-whitelist')?.split(',');
+        const redirectUriWhitelist = this.configuration.getValue('oct-redirect-url-whitelist')?.split(',');
         app.get(this.redirectPath, async (req, res) => {
             const token = (req.query.state as string);
             if (!token) {

@@ -26,5 +26,5 @@ Environment variables
 | OCT_ACTIVATE_SIMPLE_LOGIN | Activates the simple login handler to alow unverified authentication just with username and optionally email |
 | OCT_OAUTH_{Provider Name}_CLIENTID | Sets the client id for the specified OAuth provider |
 | OCT_OAUTH_{Provider Name}_CLIENTSECRET | Sets the client secret for the specified OAuth provider |
-| OCT_REDIRECT_URI_WHITELIST | A comma seperated list to allow specific URLs with the `redirect` query parameter when authenticating with an OAuth provider  |
+| OCT_REDIRECT_URL_WHITELIST | A comma seperated list to allow usage of the specified URLs with the `redirect` query parameter when authenticating with a provider which redirects back after success |
 
