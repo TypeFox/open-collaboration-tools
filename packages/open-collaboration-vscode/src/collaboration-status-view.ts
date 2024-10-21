@@ -39,10 +39,9 @@ export class CollaborationStatusViewDataProvider implements vscode.TreeDataProvi
             tags.push(vscode.l10n.t('Host'));
         }
         treeItem.description = tags.length ? ('(' + tags.join(' • ') + ')') : undefined;
-        treeItem.id = peer.id;
         treeItem.contextValue = 'self';
         if (self?.id !== peer.id) {
-            const themeColor = typeof peer.color === 'string' ? new vscode.ThemeColor(peer.color) : undefined;
+            const themeColor = peer.color ? new vscode.ThemeColor(peer.color) : undefined;
             treeItem.iconPath = new vscode.ThemeIcon('circle-filled', themeColor);
             treeItem.contextValue = this.instance?.following === peer.id ? 'followedPeer' : 'peer';
         }

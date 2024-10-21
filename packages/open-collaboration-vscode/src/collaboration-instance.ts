@@ -17,10 +17,10 @@ import { inject, injectable, postConstruct } from 'inversify';
 import { removeWorkspaceFolders } from './utils/workspace';
 import { Mutex } from 'async-mutex';
 import { CollaborationUri } from './utils/uri';
-import { userColors } from "./utils/package";
+import { userColors } from './utils/package';
 
 export interface PeerWithColor extends types.Peer {
-    color?: [number, number, number] | string;
+    color?: string;
 }
 
 export class DisposablePeer implements vscode.Disposable {
@@ -60,8 +60,8 @@ export class DisposablePeer implements vscode.Disposable {
     }
 
     private createDecorationType(): ClientTextEditorDecorationType {
-        const color = createColor();
-        const colorCss = typeof color === 'string' ? `var(--vscode-${color.replaceAll('.', '-')})` : `rgb(${color[0]}, ${color[1]}, ${color[2]})`;
+        const color = nextColor();
+        const colorCss = `var(--vscode-${color.replaceAll('.', '-')})`;
         const selection: vscode.DecorationRenderOptions = {
             backgroundColor: `color-mix(in srgb, ${colorCss} 25%, transparent)`,
             borderRadius: '0.1em'
@@ -115,26 +115,10 @@ export class DisposablePeer implements vscode.Disposable {
 }
 
 let colorIndex = 0;
-const defaultColors: ([number, number, number] | string)[] = [
-    ...userColors,
-    [92, 45, 145], // Purple
-    [0, 178, 148], // Light teal
-    [255, 241, 0], // Light yellow
-    [180, 160, 255] // Light purple
-];
 
-const knownColors = new Set<string>();
-function createColor(): [number, number, number] | string {
-    if (colorIndex < defaultColors.length) {
-        return defaultColors[colorIndex++];
-    }
-    const o = Math.round, r = Math.random, s = 255;
-    let color: [number, number, number];
-    do {
-        color = [o(r() * s), o(r() * s), o(r() * s)];
-    } while (knownColors.has(JSON.stringify(color)));
-    knownColors.add(JSON.stringify(color));
-    return color;
+function nextColor(): string {
+    colorIndex %= userColors.length;
+    return userColors[colorIndex++];
 }
 
 export class ClientTextEditorDecorationType implements vscode.Disposable {
@@ -146,7 +130,7 @@ export class ClientTextEditorDecorationType implements vscode.Disposable {
             default: vscode.TextEditorDecorationType,
             inverted: vscode.TextEditorDecorationType
         },
-        readonly color: [number, number, number] | string
+        readonly color: string
     ) {
         this.toDispose = vscode.Disposable.from(
             before, after,
@@ -160,7 +144,7 @@ export class ClientTextEditorDecorationType implements vscode.Disposable {
     }
 
     getThemeColor(): vscode.ThemeColor | undefined {
-        return typeof this.color === 'string' ? new vscode.ThemeColor(this.color) : undefined;
+        return new vscode.ThemeColor(this.color);
     }
 }
 

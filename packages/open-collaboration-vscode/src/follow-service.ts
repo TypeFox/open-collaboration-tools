@@ -4,9 +4,8 @@
 // terms of the MIT License, which is available in the project root.
 // ******************************************************************************
 
-import * as vscode from 'vscode';
 import { inject, injectable } from 'inversify';
-import { CollaborationInstance, DisposablePeer } from './collaboration-instance';
+import { CollaborationInstance } from './collaboration-instance';
 import { showQuickPick } from './utils/quick-pick';
 import { CollaborationStatusViewDataProvider } from './collaboration-status-view';
 import { ContextKeyService } from './context-key-service';
@@ -26,10 +25,9 @@ export class FollowService {
         }
 
         if (!peer) {
-            const quickPick = vscode.window.createQuickPick();
             const users = await CollaborationInstance.Current.connectedUsers;
-            quickPick.items = users.map(user => ({ label: user.name, detail: user.id }));
-            peer = users[(await showQuickPick(quickPick))]?.id;
+            const items = users.map(user => ({ label: user.name, detail: user.id, key: user.id }));
+            peer = await showQuickPick(items);
         }
 
         if (!peer) {
